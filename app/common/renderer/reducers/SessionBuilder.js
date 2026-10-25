@@ -28,6 +28,7 @@ import {
   SET_CAPABILITY_NAME_ERROR,
   SET_CAPABILITY_PARAM,
   SET_CAPS_AND_SERVER,
+  SET_DEVICE_CAPABILITIES,
   SET_DESIRED_CAPS_NAME,
   SET_PROVIDERS,
   SET_RAW_DESIRED_CAPS,
@@ -44,6 +45,18 @@ import {isPlainObject, omit} from '../utils/common.js';
 import {getRandomId} from '../utils/other.js';
 
 const visibleProviders = []; // Pull this from the VISIBLE_PROVIDERS setting
+
+// Capabilities that name the device; replaced together when another device is picked
+const DEVICE_CAPABILITY_NAMES = [
+  'platformName',
+  'appium:automationName',
+  'appium:deviceName',
+  'appium:udid',
+  'appium:avd',
+  'appium:platformVersion',
+];
+
+const isBlankCapability = (cap) => !cap.name && (cap.value === undefined || cap.value === '');
 
 const server = {};
 for (const serverType of Object.values(SERVER_TYPES)) {
@@ -112,6 +125,22 @@ export default function builder(state = INITIAL_STATE, action) {
         ...state,
         caps: state.caps.filter((cap) => cap.id !== action.id),
         isCapsDirty: true,
+      };
+
+    case SET_DEVICE_CAPABILITIES:
+      return {
+        ...state,
+        isCapsDirty: true,
+        caps: [
+          ...Object.entries(action.deviceCaps).map(([name, value]) => ({
+            id: getRandomId(),
+            type: 'text',
+            enabled: true,
+            name,
+            value,
+          })),
+          ...state.caps.filter((cap) => !DEVICE_CAPABILITY_NAMES.includes(cap.name) && !isBlankCapability(cap)),
+        ],
       };
 
     case SET_CAPABILITY_PARAM:

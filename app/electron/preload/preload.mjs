@@ -1,5 +1,12 @@
 import {ipcRenderer} from 'electron';
 
+// Subscribes to a main process event; returns the function that unsubscribes
+const subscribe = (channel) => (callback) => {
+  const listener = (_evt, payload) => callback(payload);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+};
+
 window.electronIPC = {
   hasSetting: async (key) => await ipcRenderer.invoke('settings:has', key),
   setSetting: async (key, val) => await ipcRenderer.invoke('settings:set', key, val),
@@ -8,4 +15,19 @@ window.electronIPC = {
   setTheme: (theme) => ipcRenderer.send('electron:setTheme', theme),
   updateLanguage: (lngCode) => ipcRenderer.send('electron:updateLanguage', lngCode),
   loadSessionFileIfOpened: async () => await ipcRenderer.invoke('sessionfile:loadIfOpened'),
+  doctor: {
+    servers: async (options) => await ipcRenderer.invoke('doctor:servers', options),
+    deleteSession: async (server, sessionId) => await ipcRenderer.invoke('doctor:deleteSession', server, sessionId),
+    devices: async () => await ipcRenderer.invoke('doctor:devices'),
+    bootDevice: async (device) => await ipcRenderer.invoke('doctor:bootDevice', device),
+    environment: async () => await ipcRenderer.invoke('doctor:environment'),
+    driverDoctor: async (driver) => await ipcRenderer.invoke('doctor:driverDoctor', driver),
+    getServer: async () => await ipcRenderer.invoke('doctor:server:get'),
+    startServer: async (options) => await ipcRenderer.invoke('doctor:server:start', options),
+    stopServer: async () => await ipcRenderer.invoke('doctor:server:stop'),
+    installAppium: async (drivers) => await ipcRenderer.invoke('doctor:server:install', drivers),
+    installDriver: async (driver) => await ipcRenderer.invoke('doctor:server:installDriver', driver),
+    onServerLog: subscribe('doctor:server:log'),
+    onServerState: subscribe('doctor:server:state'),
+  },
 };

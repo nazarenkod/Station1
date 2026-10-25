@@ -41,6 +41,7 @@ export const ADD_CAPABILITY = 'ADD_CAPABILITY';
 export const REMOVE_CAPABILITY = 'REMOVE_CAPABILITY';
 export const SWITCHED_TABS = 'SWITCHED_TABS';
 export const SET_CAPS_AND_SERVER = 'SET_CAPS_AND_SERVER';
+export const SET_DEVICE_CAPABILITIES = 'SET_DEVICE_CAPABILITIES';
 export const SAVE_AS_MODAL_REQUESTED = 'SAVE_AS_MODAL_REQUESTED';
 export const HIDE_SAVE_AS_MODAL_REQUESTED = 'HIDE_SAVE_AS_MODAL_REQUESTED';
 export const SET_SAVE_AS_TEXT = 'SET_SAVE_AS_TEXT';
@@ -190,6 +191,30 @@ export function showError(e, params = {methodName: null, secs: 5, url: null}) {
 export function setCapsAndServer(server, serverType, caps, uuid, name) {
   return (dispatch) => {
     dispatch({type: SET_CAPS_AND_SERVER, server, serverType, caps, uuid, name});
+  };
+}
+
+/**
+ * Point the capabilities at a device found by the doctor: the device-specific
+ * capabilities are replaced, every other capability is kept
+ */
+export function setDeviceCapabilities(deviceCaps) {
+  return (dispatch) => {
+    dispatch({type: SET_DEVICE_CAPABILITIES, deviceCaps});
+    dispatch({type: SWITCHED_TABS, key: SESSION_BUILDER_TABS.CAPS_BUILDER});
+  };
+}
+
+/**
+ * Use a server found or started by the doctor
+ */
+export function applyLocalServer({hostname, port, path = ''}) {
+  return async (dispatch) => {
+    await dispatch(changeServerType(SERVER_TYPES.REMOTE));
+    await dispatch(setServerParam('hostname', hostname, SERVER_TYPES.REMOTE));
+    await dispatch(setServerParam('port', String(port), SERVER_TYPES.REMOTE));
+    await dispatch(setServerParam('path', path, SERVER_TYPES.REMOTE));
+    await dispatch(setServerParam('ssl', false, SERVER_TYPES.REMOTE));
   };
 }
 

@@ -1,4 +1,5 @@
 export const SESSION_BUILDER_TABS = {
+  DOCTOR: 'doctor',
   CAPS_BUILDER: 'new',
   SAVED_CAPS: 'saved',
   ATTACH_TO_SESSION: 'attach',

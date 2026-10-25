@@ -3,6 +3,7 @@ import debug from 'electron-debug';
 
 import {installExtensions} from './debug.js';
 import {isDev, setupIPCListeners} from './helpers.js';
+import {setupDoctorIPC} from './ipc/doctor.js';
 import {setupMainWindow} from './windows.js';
 
 // Used when opening Inspector through an .appiumsession file (Windows/Linux).
@@ -32,5 +33,6 @@ app.on('ready', async () => {
   }
 
   setupIPCListeners(() => openFilePath);
+  setupDoctorIPC();
   await setupMainWindow();
 });

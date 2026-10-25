@@ -21,6 +21,7 @@ import {log} from '../../utils/logger.js';
 import AppSettings from './AppSettings/AppSettings.jsx';
 import AttachToSession from './AttachToSessionTab/AttachToSession.jsx';
 import CapabilityEditor from './CapabilityBuilderTab/CapabilityEditor.jsx';
+import Doctor from './DoctorTab/Doctor.jsx';
 import SavedCapabilitySets from './SavedCapabilitySetsTab/SavedCapabilitySets.jsx';
 import AdvancedServerParams from './ServerDetails/AdvancedServerParams.jsx';
 import CloudProviders from './ServerDetails/CloudProviders.jsx';
@@ -177,6 +178,12 @@ const Session = () => {
           }}
           className={styles.builderTabsCont}
           items={[
+            {
+              label: t('doctorTab'),
+              key: SESSION_BUILDER_TABS.DOCTOR,
+              className: styles.scrollingTab,
+              children: <Doctor {...props} />,
+            },
             {
               label: t('Capability Builder'),
               key: SESSION_BUILDER_TABS.CAPS_BUILDER,

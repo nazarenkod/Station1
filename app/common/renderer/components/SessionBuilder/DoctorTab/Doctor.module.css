@@ -1,0 +1,64 @@
+.doctor {
+  width: 100%;
+  padding-right: 8px;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.serverLog {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--ant-color-fill-quaternary);
+  border-radius: 6px;
+}
+
+.serverLog .err {
+  color: var(--ant-color-error);
+}
+
+.serverLog .cmd {
+  color: var(--ant-color-primary);
+}
+
+.checkIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.checkOk {
+  color: var(--ant-color-success);
+}
+
+.checkWarn {
+  color: var(--ant-color-warning);
+}
+
+.checkError {
+  color: var(--ant-color-error);
+}
+
+.checkRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.checkText {
+  flex-grow: 1;
+}
+
+.muted {
+  color: var(--ant-color-text-tertiary);
+}

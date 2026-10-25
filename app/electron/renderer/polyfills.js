@@ -21,4 +21,15 @@ class ElectronSettings {
 
 const settings = new ElectronSettings();
 
-export {loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};
+// Features that run in the main process: local tools, credentials, outside services.
+// Getters, since the main process imports this file too and has no window.
+const backend = {
+  get available() {
+    return true;
+  },
+  get doctor() {
+    return window.electronIPC.doctor;
+  },
+};
+
+export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};
