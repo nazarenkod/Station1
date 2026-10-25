@@ -1,12 +1,62 @@
 @import 'antd/dist/reset.css';
 
+/* Brand tokens for custom components; antd's own tokens are --ant-* */
+:root {
+  --vi-violet: #7c5cff;
+  --vi-blue: #3b82f6;
+  --vi-cyan: #22d3ee;
+  --vi-gradient: linear-gradient(135deg, #7c5cff 0%, #3b82f6 55%, #22d3ee 100%);
+  --vi-gradient-soft: linear-gradient(135deg, rgba(124, 92, 255, 0.14), rgba(34, 211, 238, 0.1));
+  --vi-glow: 0 0 0 1px rgba(124, 92, 255, 0.35), 0 8px 30px rgba(124, 92, 255, 0.25);
+  --vi-surface-glass: rgba(255, 255, 255, 0.72);
+  --vi-hairline: rgba(20, 20, 50, 0.08);
+  --vi-shadow-card: 0 1px 2px rgba(20, 20, 50, 0.04), 0 8px 24px rgba(20, 20, 50, 0.06);
+  --vi-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --vi-titlebar-inset: 0px;
+}
+
 body.dark {
   color-scheme: dark;
+  --vi-surface-glass: rgba(19, 19, 26, 0.72);
+  --vi-hairline: rgba(255, 255, 255, 0.07);
+  --vi-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* macOS: the window has no title bar, the app header takes its place */
+body.mac-inset {
+  --vi-titlebar-inset: 78px;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
-  color: #222 !important;
   box-sizing: border-box;
+  font-family:
+    'Inter Variable',
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+code,
+pre,
+kbd {
+  font-family: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+::selection {
+  background: rgba(124, 92, 255, 0.3);
 }
 
 #root,
@@ -15,14 +65,39 @@ body {
   height: 100%;
 }
 
-.window {
-  background-color: #cde4f5 !important;
-  width: 100%;
-  height: 100%;
+/* thin, quiet scrollbars that appear on hover */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
 }
 
-.list-group-item.active {
-  background-color: #662d91 !important;
+*:hover {
+  scrollbar-color: var(--vi-hairline) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 10px;
+  background-color: rgba(128, 128, 160, 0.28);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(124, 92, 255, 0.5);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--vi-violet);
+  outline-offset: 2px;
 }
 
 .ant-spin,
@@ -54,7 +129,7 @@ body {
 }
 
 .ant-space-addon {
-  padding: 0 8px;
+  padding: 0 10px;
   white-space: nowrap;
 }
 
@@ -79,4 +154,132 @@ body {
 
 .ant-splitter-bar {
   margin: 6px;
+}
+
+/* cards: hairline border, soft shadow, a lift on hover */
+.ant-card {
+  box-shadow: var(--vi-shadow-card);
+  transition:
+    box-shadow 0.3s var(--vi-ease),
+    border-color 0.3s var(--vi-ease),
+    transform 0.3s var(--vi-ease);
+}
+
+.ant-card-head-title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* primary buttons carry the brand gradient */
+.ant-btn-variant-solid.ant-btn-color-primary:not(:disabled) {
+  background-image: var(--vi-gradient);
+  background-size: 160% 100%;
+  background-position: 0% 0%;
+  border: none;
+  transition:
+    background-position 0.5s var(--vi-ease),
+    box-shadow 0.3s var(--vi-ease),
+    transform 0.15s var(--vi-ease);
+}
+
+.ant-btn-variant-solid.ant-btn-color-primary:not(:disabled):hover {
+  background-position: 100% 0%;
+}
+
+.ant-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* the active tab gets a gradient underline */
+.ant-tabs-ink-bar {
+  background: var(--vi-gradient) !important;
+  height: 3px !important;
+  border-radius: 3px 3px 0 0;
+}
+
+.ant-tabs-tab-btn {
+  font-weight: 500;
+  transition: color 0.2s var(--vi-ease);
+}
+
+.ant-table-thead > tr > th {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ant-tag {
+  font-weight: 500;
+}
+
+@keyframes vi-pulse {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  70% {
+    box-shadow: 0 0 0 7px transparent;
+    opacity: 0.85;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 1;
+  }
+}
+
+@keyframes vi-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes vi-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes vi-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* a status dot that breathes while something is live */
+.vi-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.vi-dot.vi-dot-live {
+  animation: vi-pulse 1.8s var(--vi-ease) infinite;
+}
+
+.vi-gradient-text {
+  background: var(--vi-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

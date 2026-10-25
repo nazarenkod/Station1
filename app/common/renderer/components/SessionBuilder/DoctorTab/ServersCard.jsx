@@ -233,7 +233,10 @@ const ServersCard = ({doctor, applyLocalServer}) => {
         )}
 
         <div className={styles.cardActions}>
-          <Tag color={STATUS_COLOR[state.status]}>{t(`doctorServerStatus_${state.status}`)}</Tag>
+          <Tag color={STATUS_COLOR[state.status]} className={styles.statusTag}>
+            <span className={`vi-dot ${state.status === 'running' || isBusy ? 'vi-dot-live' : ''}`} />
+            {t(`doctorServerStatus_${state.status}`)}
+          </Tag>
           {state.status === 'running' ? (
             <Button icon={<IconPlayerStop size={16} />} danger onClick={() => doctor.stopServer()}>
               {t('doctorStopServer')}

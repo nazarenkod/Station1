@@ -19,7 +19,7 @@ let mainWindow = null;
 export async function setupMainWindow() {
   const preferredTheme = await settings.get(PREFERRED_THEME);
   const isDarkTheme = preferredTheme === 'dark' || (preferredTheme === 'system' && nativeTheme.shouldUseDarkColors);
-  const backgroundColor = isDarkTheme ? '#191919' : '#f5f5f5';
+  const backgroundColor = isDarkTheme ? '#0B0B10' : '#F5F5FA';
 
   const splashWindow = buildSplashWindow(backgroundColor);
   splashWindow[pathLoadMethod](splashPath);
@@ -85,14 +85,19 @@ function buildSplashWindow(backgroundColor) {
   });
 }
 
+// On macOS the app header is the title bar; the window buttons sit inside it
+const macTitleBar =
+  process.platform === 'darwin' ? {titleBarStyle: 'hiddenInset', trafficLightPosition: {x: 18, y: 19}} : {};
+
 function buildSessionWindow(backgroundColor) {
   return new BrowserWindow({
     show: false,
-    width: 1100,
-    height: 710,
+    width: 1240,
+    height: 800,
     minWidth: 500,
     minHeight: 600,
     backgroundColor,
+    ...macTitleBar,
     webPreferences: {
       preload: join(__dirname, '..', 'preload', 'preload.mjs'), // from 'main' in package.json
       sandbox: false,

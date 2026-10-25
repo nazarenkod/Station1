@@ -1,7 +1,8 @@
-import {Alert, Space} from 'antd';
+import {Alert} from 'antd';
 import {useTranslation} from 'react-i18next';
 
 import {backend} from '../../../polyfills.js';
+import {Stagger, StaggerItem} from '../../AppShell/motion.jsx';
 import DevicesCard from './DevicesCard.jsx';
 import EnvironmentCard from './EnvironmentCard.jsx';
 import ServersCard from './ServersCard.jsx';
@@ -20,11 +21,17 @@ const Doctor = ({setDeviceCapabilities, applyLocalServer}) => {
   }
 
   return (
-    <Space className={styles.doctor} orientation="vertical" size="middle">
-      <ServersCard doctor={backend.doctor} applyLocalServer={applyLocalServer} />
-      <DevicesCard doctor={backend.doctor} setDeviceCapabilities={setDeviceCapabilities} />
-      <EnvironmentCard doctor={backend.doctor} />
-    </Space>
+    <Stagger className={styles.doctor}>
+      <StaggerItem>
+        <ServersCard doctor={backend.doctor} applyLocalServer={applyLocalServer} />
+      </StaggerItem>
+      <StaggerItem>
+        <DevicesCard doctor={backend.doctor} setDeviceCapabilities={setDeviceCapabilities} />
+      </StaggerItem>
+      <StaggerItem>
+        <EnvironmentCard doctor={backend.doctor} />
+      </StaggerItem>
+    </Stagger>
   );
 };
 

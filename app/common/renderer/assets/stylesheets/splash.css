@@ -1,18 +1,95 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #ececf3;
+  background:
+    radial-gradient(260px 200px at 50% 38%, rgba(124, 92, 255, 0.28), transparent 70%), #0b0b10;
+}
+
 #root {
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 22px;
+}
+
+/* a gradient ring sweeping around the logo while the app loads */
+.ring {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+  animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 3px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #7c5cff 120deg,
+    #3b82f6 220deg,
+    #22d3ee 300deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: spin 1.1s linear infinite;
 }
 
 #splashImage {
-  height: 150px;
-  width: 150px;
-  margin-top: 35px;
+  width: 92px;
+  height: 92px;
+  filter: drop-shadow(0 10px 30px rgba(124, 92, 255, 0.55));
+  animation: breathe 2.4s ease-in-out infinite;
 }
 
-#loader {
-  height: 50px;
-  width: 50px;
-  margin-top: 20px;
+.wordmark {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  animation: rise 0.7s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gradient {
+  background: linear-gradient(135deg, #7c5cff 0%, #3b82f6 55%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
 }

@@ -1,9 +1,11 @@
-import {App, ConfigProvider, Layout, theme} from 'antd';
+import {App, ConfigProvider, Layout} from 'antd';
+import {MotionConfig} from 'motion/react';
 import {createContext, useMemo, useState} from 'react';
 
 import {PREFERRED_THEME} from '../../shared/setting-defs.js';
 import Notification from '../components/Notification.jsx';
 import {getSetting, setSetting, setTheme} from '../polyfills.js';
+import {buildThemeConfig} from '../theme/brand.js';
 
 import darkTheme from '../assets/stylesheets/prism-dark.css?url';
 import lightTheme from '../assets/stylesheets/prism-light.css?url';
@@ -56,44 +58,20 @@ export const ThemeProvider = ({children}) => {
     await setSetting(PREFERRED_THEME, theme);
   };
 
-  const themeConfig = {
-    algorithm: isDarkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
-    token: {
-      colorBgLayout: isDarkTheme ? '#191919' : '#f5f5f5',
-      fontSize: 12,
-    },
-    components: {
-      Badge: {
-        colorError: '#1677ff',
-        indicatorHeight: 20,
-        textFontSize: 12,
-      },
-      Switch: {
-        handleSize: 18,
-        trackHeight: 22,
-        trackMinWidth: 44,
-      },
-      Table: {
-        rowSelectedBg: isDarkTheme ? '#15325b' : '#cce9ff',
-      },
-      Tabs: {
-        titleFontSize: 14,
-      },
-      Tree: {
-        nodeSelectedBg: isDarkTheme ? '#15325b' : '#cce9ff',
-      },
-    },
-  };
+  const themeConfig = useMemo(() => buildThemeConfig(isDarkTheme), [isDarkTheme]);
 
   const themeContext = useMemo(() => ({updateTheme, preferredTheme, isDarkTheme}), [preferredTheme, isDarkTheme]);
 
   return (
     <ThemeContext value={themeContext}>
       <ConfigProvider theme={themeConfig}>
-        <App>
-          <Layout>{children}</Layout>
-          <Notification />
-        </App>
+        {/* animations follow the system "reduce motion" setting */}
+        <MotionConfig reducedMotion="user">
+          <App>
+            <Layout>{children}</Layout>
+            <Notification />
+          </App>
+        </MotionConfig>
       </ConfigProvider>
     </ThemeContext>
   );

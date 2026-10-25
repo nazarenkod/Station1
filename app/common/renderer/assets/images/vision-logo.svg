@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Vision Inspector</title>
+  <defs>
+    <linearGradient id="vi-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7C5CFF"/>
+      <stop offset="0.55" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <radialGradient id="vi-shine" cx="0.3" cy="0.2" r="0.9">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="0.6" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="vi-iris" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2A1B7A"/>
+      <stop offset="1" stop-color="#0B3A66"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="120" fill="url(#vi-bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="120" fill="url(#vi-shine)"/>
+  <!-- the eye: an almond lid, a lens-like iris and a highlight -->
+  <path d="M96 256c40-72 96-112 160-112s120 40 160 112c-40 72-96 112-160 112S136 328 96 256z" fill="#FFFFFF"/>
+  <circle cx="256" cy="256" r="74" fill="url(#vi-iris)"/>
+  <circle cx="256" cy="256" r="74" fill="none" stroke="#22D3EE" stroke-width="10" stroke-opacity="0.85"/>
+  <circle cx="256" cy="256" r="30" fill="#FFFFFF" fill-opacity="0.12"/>
+  <circle cx="282" cy="228" r="16" fill="#FFFFFF"/>
+  <!-- the inspector crosshair ticks -->
+  <path d="M256 84v32M256 396v32" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" stroke-opacity="0.75"/>
+</svg>

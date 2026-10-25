@@ -1,6 +1,9 @@
 .doctor {
   width: 100%;
-  padding-right: 8px;
+  padding: 2px 8px 16px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .cardActions {
@@ -61,4 +64,11 @@
 
 .muted {
   color: var(--ant-color-text-tertiary);
+}
+
+.statusTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
 }
