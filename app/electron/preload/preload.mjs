@@ -7,6 +7,11 @@ const subscribe = (channel) => (callback) => {
   return () => ipcRenderer.removeListener(channel, listener);
 };
 
+// the macOS window has no title bar: the app header leaves room for the window buttons
+if (process.platform === 'darwin') {
+  window.addEventListener('DOMContentLoaded', () => document.body.classList.add('mac-inset'));
+}
+
 window.electronIPC = {
   hasSetting: async (key) => await ipcRenderer.invoke('settings:has', key),
   setSetting: async (key, val) => await ipcRenderer.invoke('settings:set', key, val),
@@ -27,7 +32,19 @@ window.electronIPC = {
     stopServer: async () => await ipcRenderer.invoke('doctor:server:stop'),
     installAppium: async (drivers) => await ipcRenderer.invoke('doctor:server:install', drivers),
     installDriver: async (driver) => await ipcRenderer.invoke('doctor:server:installDriver', driver),
+    applyStress: async (device, mode) => await ipcRenderer.invoke('doctor:stress:apply', device, mode),
+    restoreStress: async (device, mode, previous) =>
+      await ipcRenderer.invoke('doctor:stress:restore', device, mode, previous),
     onServerLog: subscribe('doctor:server:log'),
     onServerState: subscribe('doctor:server:state'),
+  },
+  jira: {
+    hasToken: async () => await ipcRenderer.invoke('jira:hasToken'),
+    setToken: async (token) => await ipcRenderer.invoke('jira:setToken', token),
+    test: async () => await ipcRenderer.invoke('jira:test'),
+    issue: async (key) => await ipcRenderer.invoke('jira:issue', key),
+    findUsers: async (query) => await ipcRenderer.invoke('jira:findUsers', query),
+    prepare: async (request) => await ipcRenderer.invoke('jira:prepare', request),
+    file: async (request) => await ipcRenderer.invoke('jira:file', request),
   },
 };

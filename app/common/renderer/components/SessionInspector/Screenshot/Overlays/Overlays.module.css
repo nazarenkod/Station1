@@ -153,3 +153,78 @@
   stroke-dasharray: 0.9%;
   border-style: dashed;
 }
+
+/* accessibility issues over the screenshot */
+.a11yLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.a11yBox {
+  --sev: #3b82f6;
+  position: absolute;
+  border: 2px solid var(--sev);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--sev) 12%, transparent);
+  pointer-events: auto;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.a11y_error {
+  --sev: #f43f5e;
+}
+
+.a11y_warning {
+  --sev: #f59e0b;
+}
+
+.a11y_info {
+  --sev: #3b82f6;
+}
+
+.a11yBoxActive,
+.a11yBox:hover {
+  background: color-mix(in srgb, var(--sev) 28%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--sev) 35%, transparent),
+    0 0 24px color-mix(in srgb, var(--sev) 55%, transparent);
+  z-index: 2;
+}
+
+.a11yBoxActive {
+  animation: a11y-ping 1.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes a11y-ping {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--sev) 35%, transparent),
+      0 0 18px color-mix(in srgb, var(--sev) 45%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 7px color-mix(in srgb, var(--sev) 15%, transparent),
+      0 0 30px color-mix(in srgb, var(--sev) 65%, transparent);
+  }
+}
+
+.a11yOrderBadge {
+  position: absolute;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #7c5cff, #3b82f6);
+  box-shadow: 0 2px 8px rgba(124, 92, 255, 0.5);
+  z-index: 3;
+}

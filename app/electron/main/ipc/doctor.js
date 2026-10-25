@@ -4,6 +4,7 @@ import {ManagedAppium} from '../../../common/node/doctor/appium-server.js';
 import {bootDevice, listDevices} from '../../../common/node/doctor/devices.js';
 import {checkEnvironment, runDriverDoctor} from '../../../common/node/doctor/environment.js';
 import {deleteSession, scanServers} from '../../../common/node/doctor/servers.js';
+import {applyStress, restoreStress} from '../../../common/node/doctor/stress.js';
 
 const broadcast = (channel, payload) => {
   for (const window of BrowserWindow.getAllWindows()) {
@@ -24,6 +25,12 @@ export function setupDoctorIPC() {
   ipcMain.handle('doctor:bootDevice', async (_evt, device) => await bootDevice(device));
   ipcMain.handle('doctor:environment', async () => await checkEnvironment());
   ipcMain.handle('doctor:driverDoctor', async (_evt, driver) => await runDriverDoctor(driver));
+
+  ipcMain.handle('doctor:stress:apply', async (_evt, device, mode) => await applyStress(device, mode));
+  ipcMain.handle(
+    'doctor:stress:restore',
+    async (_evt, device, mode, previous) => await restoreStress(device, mode, previous),
+  );
 
   ipcMain.handle('doctor:server:get', () => ({state: appium.state, logs: appium.logs}));
   ipcMain.handle('doctor:server:start', async (_evt, options) => await appium.start(options));

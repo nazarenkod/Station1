@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AppiumAUT>
+  <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="Bank" label="Bank" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+    <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Payment" name="Payment" label="Payment" enabled="true" visible="true" accessible="true" x="16" y="60" width="120" height="24" index="0"/>
+        <XCUIElementTypeButton type="XCUIElementTypeButton" name="closeButton" label="" enabled="true" visible="true" accessible="true" x="340" y="56" width="30" height="30" index="1"/>
+        <XCUIElementTypeTextField type="XCUIElementTypeTextField" name="amountField" label="" value="" enabled="true" visible="true" accessible="true" x="16" y="200" width="358" height="44" index="2"/>
+        <XCUIElementTypeButton type="XCUIElementTypeButton" name="helpButton" label="Help" enabled="true" visible="true" accessible="false" x="16" y="300" width="358" height="44" index="3"/>
+        <XCUIElementTypeButton type="XCUIElementTypeButton" name="Pay" label="Pay" enabled="true" visible="true" accessible="true" x="16" y="760" width="358" height="50" index="4"/>
+      </XCUIElementTypeOther>
+    </XCUIElementTypeWindow>
+  </XCUIElementTypeApplication>
+</AppiumAUT>

@@ -51,3 +51,9 @@
 .clientCode {
   margin-bottom: 0;
 }
+
+.a11yTabLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

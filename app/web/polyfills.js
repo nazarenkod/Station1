@@ -30,6 +30,6 @@ const settings = new BrowserSettings();
 
 // A browser page cannot run local tools or keep credentials: the doctor, Jira
 // and AI are only offered by the desktop app
-const backend = {available: false, doctor: null};
+const backend = {available: false, doctor: null, jira: null, ai: null};
 
 export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};

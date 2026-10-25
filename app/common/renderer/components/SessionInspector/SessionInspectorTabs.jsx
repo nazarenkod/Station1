@@ -1,9 +1,11 @@
+import {IconAccessible} from '@tabler/icons-react';
 import {Tabs, Tooltip} from 'antd';
 import {useEffect, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {PLATFORMS_WITHOUT_W3C_ACTIONS} from '../../constants/common.js';
 import {INSPECTOR_TABS} from '../../constants/session-inspector.js';
+import A11yTab from './A11yTab/A11yTab.jsx';
 import Commands from './CommandsTab/Commands.jsx';
 import GestureEditor from './GesturesTab/GestureEditor/GestureEditor.jsx';
 import SavedGestures from './GesturesTab/SavedGestures.jsx';
@@ -55,6 +57,17 @@ const SessionInspectorTabs = (props) => {
       key: INSPECTOR_TABS.SOURCE,
       disabled: !showScreenshot,
       children: <SourceTab {...props} tabWidth={tabWidth} />,
+    },
+    {
+      label: (
+        <span className={styles.a11yTabLabel}>
+          <IconAccessible size={16} />
+          {t('a11yTab')}
+        </span>
+      ),
+      key: INSPECTOR_TABS.A11Y,
+      disabled: !showScreenshot,
+      children: <A11yTab {...props} />,
     },
     {
       label: t('Commands'),

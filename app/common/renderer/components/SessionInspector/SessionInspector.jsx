@@ -4,13 +4,16 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {shallowEqual, useDispatch, useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
+import * as A11yActions from '../../actions/A11y.js';
 import * as SessionInspectorActions from '../../actions/SessionInspector.js';
 import {WINDOW_DIMENSIONS} from '../../constants/common.js';
+import AppHeader from '../AppShell/AppHeader.jsx';
 import HeaderButtons from './Header/HeaderButtons.jsx';
 import Screenshot from './Screenshot/Screenshot.jsx';
 import SessionExpiryModal from './SessionExpiryModal.jsx';
 import SessionInspectorTabs from './SessionInspectorTabs.jsx';
 
+import shellStyles from '../AppShell/AppShell.module.css';
 import styles from './SessionInspector.module.css';
 
 const MAX_SCREENSHOT_WIDTH_PERCENT = `${WINDOW_DIMENSIONS.MAX_SCREENSHOT_PANEL_WIDTH_FRACTION * 100}%`;
@@ -21,7 +24,7 @@ const MAX_SCREENSHOT_WIDTH_PERCENT = `${WINDOW_DIMENSIONS.MAX_SCREENSHOT_PANEL_W
 const Inspector = () => {
   const inspector = useSelector((state) => state.inspector, shallowEqual);
   const dispatch = useDispatch();
-  const actions = useMemo(() => bindActionCreators(SessionInspectorActions, dispatch), [dispatch]);
+  const actions = useMemo(() => bindActionCreators({...SessionInspectorActions, ...A11yActions}, dispatch), [dispatch]);
   const props = {...inspector, ...actions};
 
   const {
@@ -86,8 +89,10 @@ const Inspector = () => {
   }, [applyClientMethod, getSavedClientFramework, runKeepAliveLoop, setSessionTime, storeSessionSettings]);
 
   return (
-    <div className={styles.inspectorContainer}>
-      <HeaderButtons {...props} quitSessionAndReturn={quitSessionAndReturn} />
+    <div className={`${styles.inspectorContainer} ${shellStyles.page}`}>
+      <AppHeader>
+        <HeaderButtons {...props} quitSessionAndReturn={quitSessionAndReturn} />
+      </AppHeader>
       <Splitter className={styles.inspectorSplitter} onResize={setPanelWidthManually}>
         <Splitter.Panel
           min={WINDOW_DIMENSIONS.MIN_IMG_WIDTH_PX}

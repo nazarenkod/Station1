@@ -4,6 +4,7 @@ import {useState} from 'react';
 import {POINTER_TYPES} from '../../../constants/gestures.js';
 import {DEFAULT_SWIPE, DEFAULT_TAP, SCREENSHOT_INTERACTION_MODE} from '../../../constants/screenshot.js';
 import {INSPECTOR_TABS} from '../../../constants/session-inspector.js';
+import A11yOverlay from './Overlays/A11yOverlay.jsx';
 import CoordinatesContainer from './Overlays/CoordinatesContainer.jsx';
 import ElementOverlays from './Overlays/ElementOverlays.jsx';
 import GestureTrail from './Overlays/GestureTrail.jsx';
@@ -157,9 +158,9 @@ const ScreenshotImgWithOverlays = (props) => {
             <CoordinatesContainer x={x} y={y} />
           )}
           <img src={screenSrc} id="screenshot" ref={imageElRef} />
-          {(screenshotInteractionMode === SELECT || screenshotInteractionMode === TAP_ELEMENT) && (
-            <ElementOverlays {...props} />
-          )}
+          {(screenshotInteractionMode === SELECT || screenshotInteractionMode === TAP_ELEMENT) &&
+            selectedInspectorTab !== INSPECTOR_TABS.A11Y && <ElementOverlays {...props} />}
+          {selectedInspectorTab === INSPECTOR_TABS.A11Y && <A11yOverlay {...props} />}
           {screenshotInteractionMode === TAP_SWIPE && (
             <TapSwipeTrail coordStart={coordStart} coordEnd={coordEnd} x={x} y={y} scaleRatio={scaleRatio} />
           )}

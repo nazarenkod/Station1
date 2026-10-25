@@ -30,6 +30,9 @@ const backend = {
   get doctor() {
     return window.electronIPC.doctor;
   },
+  get jira() {
+    return window.electronIPC.jira;
+  },
 };
 
 export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};

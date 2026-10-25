@@ -1,4 +1,15 @@
 import {
+  A11Y_SCAN_DONE,
+  A11Y_SCAN_FAILED,
+  A11Y_SCAN_REQUESTED,
+  SET_A11Y_CONFIG,
+  SET_A11Y_FILTER,
+  SET_A11Y_HIGHLIGHT,
+  SET_A11Y_ISSUES,
+  SET_A11Y_OVERLAY,
+  SET_A11Y_STRESS,
+} from '../actions/A11y.js';
+import {
   ADD_ASSIGNED_VAR_CACHE,
   CLEAR_ASSIGNED_VAR_CACHE,
   CLEAR_COORD_ACTION,
@@ -115,12 +126,60 @@ const INITIAL_STATE = {
   showSourceAttrs: false,
   isUploadingGestureFiles: false,
   autoSessionRestart: false,
+  // accessibility audit of the current screen
+  a11yStatus: 'idle',
+  a11yScan: null,
+  a11yScreen: null,
+  a11yDevice: null,
+  a11yError: null,
+  a11yScannedAt: null,
+  a11yHighlight: null,
+  a11yOverlay: {issues: true, readingOrder: false},
+  a11yFilter: {status: 'open', severity: 'all', rule: 'all'},
+  a11yConfig: null,
+  a11yIssues: {},
+  a11yInput: null,
+  a11yStress: null,
 };
 
 let nextState;
 
 export default function inspector(state = INITIAL_STATE, action) {
   switch (action.type) {
+    case A11Y_SCAN_REQUESTED:
+      return {...state, a11yStatus: 'scanning', a11yError: null, a11yInput: action.input};
+
+    case SET_A11Y_STRESS:
+      return {...state, a11yStress: action.stress};
+
+    case A11Y_SCAN_DONE:
+      return {
+        ...state,
+        a11yStatus: 'done',
+        a11yScan: action.scan,
+        a11yScreen: action.screen,
+        a11yDevice: action.device,
+        a11yScannedAt: action.scannedAt,
+      };
+
+    case A11Y_SCAN_FAILED:
+      return {...state, a11yStatus: 'error', a11yError: action.error};
+
+    case SET_A11Y_HIGHLIGHT:
+      return {...state, a11yHighlight: action.violationId};
+
+    case SET_A11Y_OVERLAY:
+      return {...state, a11yOverlay: {...state.a11yOverlay, ...action.patch}};
+
+    case SET_A11Y_FILTER:
+      return {...state, a11yFilter: {...state.a11yFilter, ...action.patch}};
+
+    case SET_A11Y_CONFIG:
+      return {...state, a11yConfig: action.config};
+
+    case SET_A11Y_ISSUES:
+      return {...state, a11yIssues: action.issues};
+
     case SET_SOURCE_AND_SCREENSHOT:
       return {
         ...state,
