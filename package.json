@@ -3,9 +3,9 @@
   "version": "2026.9.2",
   "description": "Mobile app inspector with environment doctor, accessibility audit and Jira filing, powered by Appium",
   "keywords": [
-    "appium",
-    "accessibility",
     "a11y",
+    "accessibility",
+    "appium",
     "inspector"
   ],
   "license": "Apache-2.0",
@@ -13,7 +13,8 @@
     "name": "nazarenkod"
   },
   "bin": {
-    "electron": "./node_modules/.bin/electron"
+    "electron": "./node_modules/.bin/electron",
+    "vision-inspector": "./dist-cli/vision-inspector.mjs"
   },
   "type": "module",
   "main": "./dist/main/main.js",
@@ -28,10 +29,11 @@
     "test:e2e": "echo 'Currently not functional - TODO: fixme'",
     "dev:browser": "vite",
     "dev:electron": "electron-vite -w",
-    "build": "npm run build:browser && npm run build:electron && npm run build:plugin",
+    "build": "npm run build:browser && npm run build:electron && npm run build:plugin && npm run build:cli",
     "build:browser": "vite build",
     "build:browser:url": "vite build --base $PUBLIC_URL",
-    "build:plugin": "vite build --base /inspector --outDir ../../plugins/dist-browser",
+    "build:plugin": "vite build --base /inspector --outDir ../../plugins/dist-browser && vite build -c vite.plugin-api.config.mjs",
+    "build:cli": "vite build -c vite.cli.config.mjs",
     "build:electron": "electron-vite build",
     "preview:browser": "npm run build:browser && vite preview",
     "preview:plugin": "npm run build:plugin && vite preview --base /inspector --outDir ../../plugins/dist-browser",
@@ -41,6 +43,7 @@
     "clean:electron": "rimraf dist/ && rimraf node_modules/.vite/ && rimraf node_modules/.vite-electron-renderer/",
     "clean:browser": "rimraf dist-browser/ && rimraf node_modules/.vite/",
     "clean:plugin": "rimraf plugins/dist-browser",
+    "clean:cli": "rimraf dist-cli",
     "clean:npm": "rimraf package-lock.json && rimraf node_modules && npm install",
     "build:docs": "appium-docs build",
     "dev:docs": "appium-docs build --serve",
@@ -54,6 +57,7 @@
     "@dnd-kit/react": "0.5.1",
     "@fontsource-variable/inter": "5.3.0",
     "@fontsource-variable/jetbrains-mono": "5.3.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@reduxjs/toolkit": "2.13.0",
     "@tabler/icons-react": "3.49.0",
     "@wdio/protocols": "9.31.5",
@@ -71,6 +75,7 @@
     "i18next-http-backend": "4.0.4",
     "ky": "1.14.3",
     "motion": "14.1.0",
+    "pngjs": "7.0.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-i18next": "17.0.16",
@@ -79,7 +84,8 @@
     "react-router": "7.18.4",
     "sanitize-filename": "1.6.4",
     "webdriver": "9.32.0",
-    "xpath": "0.0.35"
+    "xpath": "0.0.35",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@appium/docutils": "3.0.1",

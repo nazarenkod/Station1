@@ -13,6 +13,7 @@
     "index.mjs",
     "package.json",
     "dist-browser",
+    "dist-node",
     "README.md"
   ],
   "type": "module",

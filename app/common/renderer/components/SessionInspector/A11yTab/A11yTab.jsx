@@ -12,6 +12,7 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {A11Y_RULES} from '../../../lib/a11y/types';
+import {backend} from '../../../polyfills.js';
 import {downloadText, pickFiles, readTextFromUploadedFiles} from '../../../utils/file-handling.js';
 import {notification} from '../../../utils/notification.js';
 import AiSettingsModal from '../../AiSettings/AiSettingsModal.jsx';
@@ -208,14 +209,16 @@ const A11yTab = (props) => {
         </div>
         <Space orientation="vertical" size={6} className={styles.summaryActions}>
           <Space size={6}>
-            <Button
-              className={styles.aiButton}
-              icon={<IconSparkles size={16} />}
-              loading={a11yAi?.status === 'running'}
-              onClick={() => runA11yAi()}
-            >
-              {t('aiCheck')}
-            </Button>
+            {backend.ai && (
+              <Button
+                className={styles.aiButton}
+                icon={<IconSparkles size={16} />}
+                loading={a11yAi?.status === 'running'}
+                onClick={() => runA11yAi()}
+              >
+                {t('aiCheck')}
+              </Button>
+            )}
             <Button
               type="primary"
               icon={<IconRefresh size={16} className={a11yStatus === 'scanning' ? styles.spinning : ''} />}

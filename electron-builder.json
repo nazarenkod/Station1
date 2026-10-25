@@ -5,9 +5,7 @@
   "directories": {
     "output": "release"
   },
-  "files": [
-    "dist/"
-  ],
+  "files": ["dist/"],
   "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
   "fileAssociations": [
     {
@@ -35,20 +33,14 @@
     ]
   },
   "win": {
-    "target": [
-      "nsis",
-      "zip"
-    ]
+    "target": ["nsis", "zip"]
   },
   "nsis": {
     "allowToChangeInstallationDirectory": true,
     "oneClick": false
   },
   "linux": {
-    "target": [
-      "AppImage",
-      "tar.gz"
-    ],
+    "target": ["AppImage", "tar.gz"],
     "category": "Development",
     "desktop": {
       "entry": {

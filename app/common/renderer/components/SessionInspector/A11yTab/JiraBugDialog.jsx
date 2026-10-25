@@ -101,7 +101,7 @@ const JiraBugDialog = ({
 
   // settings, remembered choices and the outlined screenshot, each time the dialog opens
   useEffect(() => {
-    if (!open || !backend.available) {
+    if (!open || !backend.jira) {
       return;
     }
     let cancelled = false;
@@ -282,7 +282,7 @@ const JiraBugDialog = ({
     .filter((option) => option && option.toLowerCase().includes(block.toLowerCase()))
     .map((value) => ({value}));
 
-  const body = !backend.available ? (
+  const body = !backend.jira ? (
     <Alert type="info" showIcon title={t('jiraDesktopOnly')} />
   ) : settings && !configured ? (
     <div className={styles.setup}>

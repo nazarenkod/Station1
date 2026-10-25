@@ -16,7 +16,7 @@ import styles from './Doctor.module.css';
 const Doctor = ({setDeviceCapabilities, applyLocalServer}) => {
   const {t} = useTranslation();
 
-  if (!backend.available) {
+  if (!backend.doctor) {
     return <Alert type="info" showIcon title={t('doctorDesktopOnly')} />;
   }
 

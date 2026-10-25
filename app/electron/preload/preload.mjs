@@ -21,6 +21,7 @@ window.electronIPC = {
   updateLanguage: (lngCode) => ipcRenderer.send('electron:updateLanguage', lngCode),
   loadSessionFileIfOpened: async () => await ipcRenderer.invoke('sessionfile:loadIfOpened'),
   doctor: {
+    managedServer: true,
     servers: async (options) => await ipcRenderer.invoke('doctor:servers', options),
     deleteSession: async (server, sessionId) => await ipcRenderer.invoke('doctor:deleteSession', server, sessionId),
     devices: async () => await ipcRenderer.invoke('doctor:devices'),

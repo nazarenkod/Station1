@@ -22,7 +22,35 @@ locators, commands, gestures, the recorder and the cloud provider integrations.
 1. Desktop application for macOS, Windows and Linux (`npm run pack:electron`)
 2. Appium server plugin, see the [plugin README](./plugins/README.md)
 3. Web application (`npm run build:browser`). Features that need local processes or credentials
-   (doctor, Jira, AI) are only available in the desktop app and the plugin.
+   (doctor, Jira, AI) are only in the desktop app. Served by the plugin, the page gets the doctor of
+   the Appium server's machine; Jira and AI stay in the desktop app, which keeps credentials in the
+   system keychain.
+
+## Command line and CI
+
+`npm run build:cli` builds `dist-cli/vision-inspector.mjs` (also installed as `vision-inspector`):
+
+```bash
+vision-inspector doctor                       # servers, devices, environment
+vision-inspector audit                        # the first session on http://127.0.0.1:4723
+vision-inspector audit --session <id> --format junit --output a11y.xml
+vision-inspector audit --source screen.xml --screenshot screen.png --density 420 --format html --output a11y.html
+```
+
+`--config` takes rules exported from the app, `--decisions` the decisions exported from it, so issues
+already filed or ignored do not fail the build. `--fail-on error|warning|info|none` sets what fails it
+(exit code 1).
+
+## MCP
+
+`vision-inspector mcp` serves the doctor and the audit to agents over stdio: tools `doctor`,
+`audit_screen` and `list_rules`. For Kiro CLI, add to `~/.kiro/settings/mcp.json`:
+
+```json
+{"mcpServers": {"vision-inspector": {"command": "vision-inspector", "args": ["mcp"]}}}
+```
+
+Driving the app is left to the official `appium-mcp`; Vision Inspector looks at what it shows.
 
 ## Development
 

@@ -13,7 +13,9 @@ appium plugin install --source=local ./plugins
 appium --use-plugins=vision-inspector
 ```
 
-Then open `http://<appium-host>:<port>/inspector`.
+Then open `http://<appium-host>:<port>/inspector`. The Doctor tab there shows the servers, devices
+and environment of the machine the Appium server runs on, and the accessibility stress modes switch
+its devices. Jira and AI checks are in the desktop app only.
 
 ## License
 

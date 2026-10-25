@@ -635,5 +635,6 @@
   "a11yRule_ai-color-only": "Meaning shown only by colour",
   "a11yRule_ai-text-in-image": "Text inside an image",
   "a11yRule_ai-missing-heading": "Title is not a heading",
-  "a11yRule_ai-affordance": "Looks other than it acts"
+  "a11yRule_ai-affordance": "Looks other than it acts",
+  "a11yReportIssues": "{{count}} issue(s)"
 }

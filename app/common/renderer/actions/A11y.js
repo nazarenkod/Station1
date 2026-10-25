@@ -222,7 +222,7 @@ export function startA11yStress(mode) {
         notification.warning({title: i18n.t('a11yStressLocked'), duration: 6});
       }
     } else {
-      if (!backend.available) {
+      if (!backend.doctor) {
         notification.error({title: i18n.t('a11yStressUnavailable')});
         return;
       }
@@ -253,7 +253,7 @@ export function endA11yStress() {
     try {
       if (mode === 'landscape') {
         await driver.setOrientation(previous || 'PORTRAIT');
-      } else if (backend.available) {
+      } else if (backend.doctor) {
         await backend.doctor.restoreStress(device, mode, previous);
       }
     } catch (error) {
@@ -334,7 +334,7 @@ const compilePatterns = (patterns = []) =>
 export function runA11yAi() {
   return async (dispatch, getState) => {
     const {sourceXML, screenshot, a11yScan, a11yScreen, a11yDevice} = getState().inspector;
-    if (!backend.available || !sourceXML || !screenshot || !a11yScan || !a11yScreen) {
+    if (!backend.ai || !sourceXML || !screenshot || !a11yScan || !a11yScreen) {
       return;
     }
     const status = await backend.ai.status();

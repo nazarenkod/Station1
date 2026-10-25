@@ -635,5 +635,6 @@
   "a11yRule_ai-color-only": "Смысл передан только цветом",
   "a11yRule_ai-text-in-image": "Текст внутри изображения",
   "a11yRule_ai-missing-heading": "Заголовок не помечен как заголовок",
-  "a11yRule_ai-affordance": "Выглядит не так, как работает"
+  "a11yRule_ai-affordance": "Выглядит не так, как работает",
+  "a11yReportIssues": "проблем: {{count}}"
 }

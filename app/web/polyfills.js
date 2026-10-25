@@ -28,8 +28,47 @@ class BrowserSettings {
 
 const settings = new BrowserSettings();
 
-// A browser page cannot run local tools or keep credentials: the doctor, Jira
-// and AI are only offered by the desktop app
-const backend = {available: false, doctor: null, jira: null, ai: null};
+// Served by the Appium plugin, the page can reach the server's doctor; a plain
+// web build cannot run local tools. Jira and AI need the desktop app's keychain.
+const isPlugin = viteBase.startsWith('/inspector');
+const apiRoot = `${vitePath}api/doctor`;
+
+const api = async (path, body) => {
+  const response = await fetch(`${apiRoot}/${path}`, {
+    method: body ? 'POST' : 'GET',
+    headers: body ? {'Content-Type': 'application/json'} : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = await response.json();
+  if (!response.ok) {
+    throw new Error(json.error ?? response.statusText);
+  }
+  return json;
+};
+
+const unavailable = async () => ({ok: false, error: 'Not available when the Inspector is served by the Appium plugin'});
+
+const pluginDoctor = {
+  managedServer: false,
+  servers: () => api('servers'),
+  deleteSession: (server, sessionId) => api('delete-session', {server, sessionId}),
+  devices: () => api('devices'),
+  bootDevice: (device) => api('boot', {device}),
+  environment: () => api('environment'),
+  driverDoctor: (driver) => api(`driver-doctor/${encodeURIComponent(driver)}`),
+  getServer: async () => ({state: {status: 'stopped'}, logs: []}),
+  startServer: unavailable,
+  stopServer: unavailable,
+  installAppium: async () => false,
+  installDriver: async () => false,
+  applyStress: (device, mode) => api('stress', {device, mode}),
+  restoreStress: (device, mode, previous) => api('stress/restore', {device, mode, previous}),
+  onServerLog: () => () => {},
+  onServerState: () => () => {},
+};
+
+const backend = isPlugin
+  ? {available: true, doctor: pluginDoctor, jira: null, ai: null}
+  : {available: false, doctor: null, jira: null, ai: null};
 
 export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};

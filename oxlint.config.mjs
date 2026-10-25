@@ -2,7 +2,7 @@ import appiumConfig, {defineConfig, ignorePatterns} from '@appium/oxc-config/oxl
 
 export default defineConfig({
   extends: [appiumConfig],
-  ignorePatterns: [...ignorePatterns],
+  ignorePatterns: [...ignorePatterns, 'dist-cli/**', 'plugins/dist-node/**'],
   overrides: [
     {
       files: ['**/*.{js,mjs,cjs,jsx,mjsx,ts,tsx,mtsx}'],

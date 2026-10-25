@@ -61,7 +61,7 @@ code{font-size:12px;color:var(--muted)}.filed{font-size:11px;padding:1px 8px;bor
 footer{padding:0 32px 28px;color:var(--muted);font-size:12px}
 </style></head><body>
 <header><div class="score">${score}</div><div><h1>${escapeHtml(screen?.title ?? t('a11yScreenUnknown'))}</h1>
-<p>${escapeHtml(device?.appId ?? '')} · ${issues.length} · ${new Date().toLocaleString()}</p></div></header>
+<p>${escapeHtml(device?.appId ?? '')} · ${escapeHtml(t('a11yReportIssues', {count: issues.length}))} · ${new Date().toLocaleString()}</p></div></header>
 <main><div class="shot">${screenshot ? `<img src="data:image/png;base64,${screenshot}" alt="">` : ''}${boxes}</div>
 <ol>${rows || `<li style="--c:#22C55E"><div class="title">${escapeHtml(t('a11yAllClear'))}</div></li>`}</ol></main>
 <footer>Vision Inspector</footer></body></html>`;

@@ -35,7 +35,7 @@ const JiraSettingsModal = ({open, onClose, onSaved}) => {
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    if (!open || !backend.available) {
+    if (!open || !backend.jira) {
       return;
     }
     (async () => {
@@ -67,7 +67,7 @@ const JiraSettingsModal = ({open, onClose, onSaved}) => {
     }
   };
 
-  if (!backend.available) {
+  if (!backend.jira) {
     return (
       <Modal open={open} onCancel={onClose} footer={null} title={t('jiraSettings')}>
         <Alert type="info" showIcon title={t('jiraDesktopOnly')} />

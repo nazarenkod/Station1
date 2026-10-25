@@ -232,35 +232,37 @@ const ServersCard = ({doctor, applyLocalServer}) => {
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('doctorNoServers')} />
         )}
 
-        <div className={styles.cardActions}>
-          <Tag color={STATUS_COLOR[state.status]} className={styles.statusTag}>
-            <span className={`vi-dot ${state.status === 'running' || isBusy ? 'vi-dot-live' : ''}`} />
-            {t(`doctorServerStatus_${state.status}`)}
-          </Tag>
-          {state.status === 'running' ? (
-            <Button icon={<IconPlayerStop size={16} />} danger onClick={() => doctor.stopServer()}>
-              {t('doctorStopServer')}
-            </Button>
-          ) : (
-            <>
-              <Space.Compact>
-                <Space.Addon>{t('Remote Port')}</Space.Addon>
-                <InputNumber min={1} max={65535} value={port} onChange={(value) => setPort(value ?? DEFAULT_PORT)} />
-              </Space.Compact>
-              <Button type="primary" icon={<IconPlayerPlay size={16} />} loading={isBusy} onClick={start}>
-                {t('doctorStartServer')}
+        {doctor.managedServer && (
+          <div className={styles.cardActions}>
+            <Tag color={STATUS_COLOR[state.status]} className={styles.statusTag}>
+              <span className={`vi-dot ${state.status === 'running' || isBusy ? 'vi-dot-live' : ''}`} />
+              {t(`doctorServerStatus_${state.status}`)}
+            </Tag>
+            {state.status === 'running' ? (
+              <Button icon={<IconPlayerStop size={16} />} danger onClick={() => doctor.stopServer()}>
+                {t('doctorStopServer')}
               </Button>
-              {/* an Appium from PATH that failed is often outdated: offer our own */}
-              {state.status === 'failed' && !state.local && (
-                <Button loading={isBusy} onClick={install}>
-                  {t('doctorInstallAppium')}
+            ) : (
+              <>
+                <Space.Compact>
+                  <Space.Addon>{t('Remote Port')}</Space.Addon>
+                  <InputNumber min={1} max={65535} value={port} onChange={(value) => setPort(value ?? DEFAULT_PORT)} />
+                </Space.Compact>
+                <Button type="primary" icon={<IconPlayerPlay size={16} />} loading={isBusy} onClick={start}>
+                  {t('doctorStartServer')}
                 </Button>
-              )}
-            </>
-          )}
-        </div>
+                {/* an Appium from PATH that failed is often outdated: offer our own */}
+                {state.status === 'failed' && !state.local && (
+                  <Button loading={isBusy} onClick={install}>
+                    {t('doctorInstallAppium')}
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
-        {lines.length > 0 && (
+        {doctor.managedServer && lines.length > 0 && (
           <Collapse
             size="small"
             items={[{key: 'log', label: t('doctorServerLog'), children: <ServerLog lines={lines} />}]}

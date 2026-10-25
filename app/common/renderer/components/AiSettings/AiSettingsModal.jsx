@@ -36,7 +36,7 @@ const AiSettingsModal = ({open, onClose, onSaved}) => {
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    if (!open || !backend.available) {
+    if (!open || !backend.ai) {
       return;
     }
     (async () => {
@@ -67,7 +67,7 @@ const AiSettingsModal = ({open, onClose, onSaved}) => {
     }
   };
 
-  if (!backend.available) {
+  if (!backend.ai) {
     return (
       <Modal open={open} onCancel={onClose} footer={null} title={t('aiSettings')}>
         <Alert type="info" showIcon title={t('aiDesktopOnly')} />

@@ -34,9 +34,14 @@ export class VisionInspectorPlugin extends BasePlugin {
   /**
    * Updates the Express server configuration
    * @param {import('express').Application} expressApp - Express application instance
+   * @param {import('http').Server} _httpServer - HTTP server instance
+   * @param {Record<string, unknown>} cliArgs - Appium server arguments
    * @returns {Promise<void>}
    */
-  static async updateServer(expressApp) {
+  static async updateServer(expressApp, _httpServer, cliArgs) {
+    // the doctor's API first, so the catch-all below does not serve files for it
+    const {registerRoutes} = await import('./dist-node/api.mjs');
+    registerRoutes(expressApp, {port: cliArgs?.port});
     // Handle both /inspector and /inspector/* paths
     expressApp.all(['/inspector', '/inspector/*all'], VisionInspectorPlugin.openInspector);
   }
