@@ -3,6 +3,7 @@ import debug from 'electron-debug';
 
 import {installExtensions} from './debug.js';
 import {isDev, setupIPCListeners} from './helpers.js';
+import {setupAiIPC} from './ipc/ai.js';
 import {setupDoctorIPC} from './ipc/doctor.js';
 import {setupJiraIPC} from './ipc/jira.js';
 import {setupMainWindow} from './windows.js';
@@ -36,5 +37,6 @@ app.on('ready', async () => {
   setupIPCListeners(() => openFilePath);
   setupDoctorIPC();
   setupJiraIPC();
+  setupAiIPC();
   await setupMainWindow();
 });

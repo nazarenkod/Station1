@@ -126,6 +126,14 @@ const IssueCard = forwardRef(function IssueCard(
           {issue.comment ? t('a11yIgnoredBecause', {comment: issue.comment}) : t('a11yIgnoredNoReason')}
         </div>
       )}
+      {violation.details?.suggestedLabel && (
+        <div className={styles.suggestion}>
+          <IconSparkles size={14} />
+          <span>
+            {t('aiSuggestedLabel')} <strong>“{violation.details.suggestedLabel}”</strong>
+          </span>
+        </div>
+      )}
       {fix && !issue && (
         <div className={styles.issueFix}>
           <IconBulb size={14} />

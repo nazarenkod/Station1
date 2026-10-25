@@ -1,4 +1,11 @@
-import {IconAdjustmentsHorizontal, IconDots, IconListNumbers, IconRefresh, IconScan} from '@tabler/icons-react';
+import {
+  IconAdjustmentsHorizontal,
+  IconDots,
+  IconListNumbers,
+  IconRefresh,
+  IconScan,
+  IconSparkles,
+} from '@tabler/icons-react';
 import {Alert, Button, Dropdown, Empty, Segmented, Select, Space, Spin, Tooltip} from 'antd';
 import {AnimatePresence, motion} from 'motion/react';
 import {useEffect, useMemo, useRef, useState} from 'react';
@@ -7,8 +14,10 @@ import {useTranslation} from 'react-i18next';
 import {A11Y_RULES} from '../../../lib/a11y/types';
 import {downloadText, pickFiles, readTextFromUploadedFiles} from '../../../utils/file-handling.js';
 import {notification} from '../../../utils/notification.js';
+import AiSettingsModal from '../../AiSettings/AiSettingsModal.jsx';
 import JiraSettingsModal from '../../Jira/JiraSettingsModal.jsx';
 import {a11yScore, violationAsText, visibleIssues} from './a11y-ui.js';
+import AiPanel from './AiPanel.jsx';
 import DecisionModal from './DecisionModal.jsx';
 import {buildHtmlReport} from './html-report.js';
 import IssueCard from './IssueCard.jsx';
@@ -41,6 +50,8 @@ const A11yTab = (props) => {
     a11yIssues,
     a11yStress,
     endA11yStress,
+    a11yAi,
+    runA11yAi,
     loadA11ySettings,
     runA11yScan,
     setA11yHighlight,
@@ -57,6 +68,7 @@ const A11yTab = (props) => {
   const [decision, setDecision] = useState(null);
   const [bugFor, setBugFor] = useState(null);
   const [jiraOpen, setJiraOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const cardRefs = useRef(new Map());
 
   useEffect(() => {
@@ -71,8 +83,8 @@ const A11yTab = (props) => {
   }, [sourceXML, screenshot, runA11yScan]);
 
   const {reviewed, visible} = useMemo(
-    () => visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter}),
-    [a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter],
+    () => visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi}),
+    [a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi],
   );
 
   // the overlay scrolls the list to the issue clicked on the screenshot
@@ -152,6 +164,7 @@ const A11yTab = (props) => {
   const moreItems = [
     {key: 'report', label: t('a11yReportExport'), onClick: exportReport},
     {key: 'jira', label: t('jiraSettings'), onClick: () => setJiraOpen(true)},
+    {key: 'ai', label: t('aiSettings'), onClick: () => setAiOpen(true)},
     {type: 'divider'},
     {key: 'export', label: t('a11yDecisionsExport'), onClick: exportDecisions},
     {key: 'import', label: t('a11yDecisionsImport'), onClick: importDecisions},
@@ -194,13 +207,23 @@ const A11yTab = (props) => {
           </div>
         </div>
         <Space orientation="vertical" size={6} className={styles.summaryActions}>
-          <Button
-            type="primary"
-            icon={<IconRefresh size={16} className={a11yStatus === 'scanning' ? styles.spinning : ''} />}
-            onClick={() => runA11yScan({force: true})}
-          >
-            {t('a11yRescan')}
-          </Button>
+          <Space size={6}>
+            <Button
+              className={styles.aiButton}
+              icon={<IconSparkles size={16} />}
+              loading={a11yAi?.status === 'running'}
+              onClick={() => runA11yAi()}
+            >
+              {t('aiCheck')}
+            </Button>
+            <Button
+              type="primary"
+              icon={<IconRefresh size={16} className={a11yStatus === 'scanning' ? styles.spinning : ''} />}
+              onClick={() => runA11yScan({force: true})}
+            >
+              {t('a11yRescan')}
+            </Button>
+          </Space>
           <Space size={6}>
             <Tooltip title={t('a11yOverlayIssues')}>
               <Button
@@ -252,6 +275,8 @@ const A11yTab = (props) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AiPanel {...props} onOpenSettings={() => setAiOpen(true)} />
 
       <div className={styles.filters}>
         <Segmented
@@ -327,6 +352,7 @@ const A11yTab = (props) => {
       />
       <JiraBugDialog {...props} violation={bugFor} onClose={() => setBugFor(null)} />
       <JiraSettingsModal open={jiraOpen} onClose={() => setJiraOpen(false)} />
+      <AiSettingsModal open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
   );
 };

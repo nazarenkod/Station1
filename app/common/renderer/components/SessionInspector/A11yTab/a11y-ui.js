@@ -54,11 +54,19 @@ export function violationAsText(t, violation, screen) {
  * The scan with the team's decisions applied, and the issues the current
  * filter shows. The list and the screenshot overlay show the same ones.
  */
-export function visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter}) {
+export function visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi}) {
   if (!a11yScan || !a11yScreen || !a11yDevice) {
     return {reviewed: null, visible: []};
   }
-  const reviewed = reviewScan(a11yScan.violations, a11yIssues ?? {}, a11yDevice.appId, a11yScreen.key);
+  // the model's findings and suggested labels belong to the screen they were asked about
+  const ai = a11yAi?.status === 'done' && a11yAi.screenKey === a11yScreen.key ? a11yAi : null;
+  const violations = [
+    ...a11yScan.violations.map((v) =>
+      ai?.labels?.[v.id] ? {...v, details: {...v.details, suggestedLabel: ai.labels[v.id]}} : v,
+    ),
+    ...(ai?.violations ?? []),
+  ];
+  const reviewed = reviewScan(violations, a11yIssues ?? {}, a11yDevice.appId, a11yScreen.key);
   const byStatus = {open: reviewed.open, reported: reviewed.reported, ignored: reviewed.ignored, resolved: []};
   const visible = (byStatus[a11yFilter.status] ?? []).filter(
     (v) =>

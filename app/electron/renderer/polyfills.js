@@ -33,6 +33,9 @@ const backend = {
   get jira() {
     return window.electronIPC.jira;
   },
+  get ai() {
+    return window.electronIPC.ai;
+  },
 };
 
 export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};

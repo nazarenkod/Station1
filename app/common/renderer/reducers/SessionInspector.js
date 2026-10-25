@@ -7,6 +7,7 @@ import {
   SET_A11Y_HIGHLIGHT,
   SET_A11Y_ISSUES,
   SET_A11Y_OVERLAY,
+  SET_A11Y_AI,
   SET_A11Y_STRESS,
 } from '../actions/A11y.js';
 import {
@@ -140,6 +141,7 @@ const INITIAL_STATE = {
   a11yIssues: {},
   a11yInput: null,
   a11yStress: null,
+  a11yAi: {status: 'idle'},
 };
 
 let nextState;
@@ -151,6 +153,9 @@ export default function inspector(state = INITIAL_STATE, action) {
 
     case SET_A11Y_STRESS:
       return {...state, a11yStress: action.stress};
+
+    case SET_A11Y_AI:
+      return {...state, a11yAi: action.ai};
 
     case A11Y_SCAN_DONE:
       return {

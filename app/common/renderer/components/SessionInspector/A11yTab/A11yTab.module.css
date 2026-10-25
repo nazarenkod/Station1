@@ -414,3 +414,101 @@
 .stressBanner {
   flex-shrink: 0;
 }
+
+/* the AI check */
+.aiButton {
+  border-color: rgba(124, 92, 255, 0.5);
+  background: var(--vi-gradient-soft);
+}
+
+.aiButton:not(:disabled):hover {
+  border-color: var(--vi-violet) !important;
+  box-shadow: var(--vi-glow);
+}
+
+.aiThinking {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.aiThinkingHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  background: var(--vi-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.aiSparkle {
+  color: var(--vi-violet);
+  animation: vi-spin 2.4s linear infinite;
+}
+
+.skeletonCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--vi-hairline);
+  background: var(--ant-color-bg-container);
+}
+
+.skeletonLine {
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--ant-color-fill-tertiary) 0%,
+    rgba(124, 92, 255, 0.28) 40%,
+    rgba(34, 211, 238, 0.22) 55%,
+    var(--ant-color-fill-tertiary) 100%
+  );
+  background-size: 200% 100%;
+  animation: vi-shimmer 1.6s linear infinite;
+}
+
+.aiDone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  flex-shrink: 0;
+}
+
+.aiDone svg {
+  color: var(--vi-violet);
+}
+
+.aiCached {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ant-color-fill-tertiary);
+}
+
+.suggestion {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: var(--vi-gradient-soft);
+  border: 1px solid rgba(124, 92, 255, 0.3);
+}
+
+.suggestion svg {
+  color: var(--vi-violet);
+}
+
+.consentList {
+  padding-left: 18px;
+  color: var(--ant-color-text-secondary);
+}

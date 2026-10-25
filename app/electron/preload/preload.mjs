@@ -47,4 +47,11 @@ window.electronIPC = {
     prepare: async (request) => await ipcRenderer.invoke('jira:prepare', request),
     file: async (request) => await ipcRenderer.invoke('jira:file', request),
   },
+  ai: {
+    status: async () => await ipcRenderer.invoke('ai:status'),
+    hasKey: async () => await ipcRenderer.invoke('ai:hasKey'),
+    setKey: async (key) => await ipcRenderer.invoke('ai:setKey', key),
+    generate: async (request) => await ipcRenderer.invoke('ai:generate', request),
+    test: async () => await ipcRenderer.invoke('ai:test'),
+  },
 };

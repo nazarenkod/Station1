@@ -1,5 +1,6 @@
-import {A11Y_CONFIG, A11Y_ISSUE_STATES} from '../../shared/setting-defs.js';
+import {A11Y_CONFIG, A11Y_ISSUE_STATES, AI_CONFIG} from '../../shared/setting-defs.js';
 import i18n from '../i18next.js';
+import {aiElements, auditPrompt, labelsPrompt, parseAuditAnswer, parseLabelsAnswer, screenTexts} from '../lib/a11y/ai';
 import {mergeConfig} from '../lib/a11y/config';
 import {forgetDecision, importDecisions, recordDecision} from '../lib/a11y/issues';
 import {scanScreen} from '../lib/a11y/rules';
@@ -19,6 +20,13 @@ export const SET_A11Y_CONFIG = 'SET_A11Y_CONFIG';
 export const SET_A11Y_ISSUES = 'SET_A11Y_ISSUES';
 export const SET_A11Y_FILTER = 'SET_A11Y_FILTER';
 export const SET_A11Y_STRESS = 'SET_A11Y_STRESS';
+export const SET_A11Y_AI = 'SET_A11Y_AI';
+
+// the longest side of the screenshot a model gets, and of each control crop
+const AI_SCREEN_MAX_SIDE = 1280;
+const AI_CROP_MAX_SIDE = 128;
+const AI_MAX_LABEL_CROPS = 8;
+const EDITABLE = /EditText|AutoCompleteTextView|XCUIElementType(TextField|SecureTextField|SearchField|TextView)$/;
 
 // time for the app to redraw after a theme, font or orientation change
 const STRESS_SETTLE_MS = 2000;
@@ -255,5 +263,143 @@ export function endA11yStress() {
     await delay(STRESS_SETTLE_MS / 2);
     await refreshAndScan(dispatch);
     notification.info({title: i18n.t('a11yStressRestored'), duration: 2});
+  };
+}
+
+async function loadImage(base64Png) {
+  const image = new Image();
+  image.src = `data:image/png;base64,${base64Png}`;
+  await image.decode();
+  return image;
+}
+
+const canvasPng = (canvas) => canvas.toDataURL('image/png').split(',')[1];
+
+/**
+ * Hides what must not leave the machine, then shrinks the screenshot: password
+ * and filled-in fields, and any element whose text matches a mask pattern.
+ */
+function maskedScreenshot(image, tree, maskPatterns) {
+  const masked = (text) => maskPatterns.some((pattern) => pattern.test(text));
+  const scale = Math.min(1, AI_SCREEN_MAX_SIDE / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(image.naturalWidth * scale);
+  canvas.height = Math.round(image.naturalHeight * scale);
+  const context = canvas.getContext('2d');
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#000';
+  for (const node of tree.nodes) {
+    const secret =
+      node.password || (EDITABLE.test(node.className) && node.text.trim()) || masked(`${node.text} ${node.label}`);
+    if (secret && node.bounds.width > 0) {
+      context.fillRect(
+        node.bounds.x * scale,
+        node.bounds.y * scale,
+        node.bounds.width * scale,
+        node.bounds.height * scale,
+      );
+    }
+  }
+  return canvasPng(canvas);
+}
+
+function cropControl(image, bounds) {
+  const padding = 8;
+  const x = Math.max(0, bounds.x - padding);
+  const y = Math.max(0, bounds.y - padding);
+  const width = Math.min(image.naturalWidth - x, bounds.width + 2 * padding);
+  const height = Math.min(image.naturalHeight - y, bounds.height + 2 * padding);
+  const scale = Math.min(1, AI_CROP_MAX_SIDE / Math.max(width, height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
+  canvas.getContext('2d').drawImage(image, x, y, width, height, 0, 0, canvas.width, canvas.height);
+  return canvasPng(canvas);
+}
+
+const compilePatterns = (patterns = []) =>
+  patterns.flatMap((pattern) => {
+    try {
+      return [new RegExp(pattern, 'gi')];
+    } catch {
+      return [];
+    }
+  });
+
+/**
+ * Asks the chosen model what the rules cannot see on this screen, and for
+ * labels of the controls that have none. Issues it finds sit next to the
+ * rules' ones with an AI badge; suggested labels go into the bug.
+ */
+export function runA11yAi() {
+  return async (dispatch, getState) => {
+    const {sourceXML, screenshot, a11yScan, a11yScreen, a11yDevice} = getState().inspector;
+    if (!backend.available || !sourceXML || !screenshot || !a11yScan || !a11yScreen) {
+      return;
+    }
+    const status = await backend.ai.status();
+    if (!status.ready) {
+      dispatch({type: SET_A11Y_AI, ai: {status: 'setup'}});
+      return;
+    }
+    if (!status.consent) {
+      dispatch({type: SET_A11Y_AI, ai: {status: 'consent'}});
+      return;
+    }
+    dispatch({type: SET_A11Y_AI, ai: {status: 'running', screenKey: a11yScreen.key}});
+    try {
+      const settings = {...(await getSetting(AI_CONFIG))};
+      const patterns = compilePatterns(settings.maskPatterns);
+      const mask = (text) => patterns.reduce((value, pattern) => value.replace(pattern, '•••'), text);
+      const image = await loadImage(screenshot);
+      const tree = parseUiTree(sourceXML, {
+        imageWidth: image.naturalWidth,
+        imageHeight: image.naturalHeight,
+        densityDpi: a11yDevice?.densityDpi ?? undefined,
+      });
+      const {elements, nodes} = aiElements(tree, mask);
+      const platform = a11yScan.format === 'appium-ios' ? 'ios' : 'android';
+      const audit = await backend.ai.generate({
+        kind: 'a11y-audit',
+        prompt: auditPrompt(elements, i18n.language?.slice(0, 2) ?? 'en', platform),
+        images: [maskedScreenshot(image, tree, patterns)],
+      });
+      if (!audit.ok) {
+        throw new Error(audit.error);
+      }
+      const violations = parseAuditAnswer(audit.result, tree, nodes);
+
+      let labels = {};
+      const unlabeled = a11yScan.violations.filter((v) => v.rule === 'missing-label').slice(0, AI_MAX_LABEL_CROPS);
+      if (unlabeled.length) {
+        const answer = await backend.ai.generate({
+          kind: 'a11y-labels',
+          prompt: labelsPrompt(unlabeled.length, screenTexts(tree, mask)),
+          images: unlabeled.map((v) => cropControl(image, v.bounds)),
+        });
+        labels = answer.ok ? parseLabelsAnswer(answer.result, unlabeled) : {};
+      }
+      dispatch({
+        type: SET_A11Y_AI,
+        ai: {status: 'done', screenKey: a11yScreen.key, violations, labels, model: audit.model, cached: audit.cached},
+      });
+    } catch (error) {
+      log.error(error);
+      dispatch({type: SET_A11Y_AI, ai: {status: 'error', screenKey: a11yScreen.key, error: error.message}});
+    }
+  };
+}
+
+export function setA11yAiState(ai) {
+  return (dispatch) => dispatch({type: SET_A11Y_AI, ai});
+}
+
+/**
+ * Remembers that the person agreed to send screenshots to the chosen provider.
+ */
+export function grantAiConsent() {
+  return async (dispatch) => {
+    await setSetting(AI_CONFIG, {...((await getSetting(AI_CONFIG)) ?? {}), consent: true});
+    await dispatch(runA11yAi());
   };
 }
