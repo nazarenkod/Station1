@@ -13,7 +13,14 @@
     in either direction, while still allowing it to be scaled up past its natural resolution */
   object-fit: contain;
   object-position: left top;
-  box-shadow: 0px 0px 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* the screenshot as a device screen: rounded, lifted off the page */
+.screenshotBox img {
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 1px var(--vi-hairline),
+    0 20px 50px rgba(0, 0, 0, 0.28);
 }
 
 .screenshotControls {

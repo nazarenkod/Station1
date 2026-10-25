@@ -5,6 +5,7 @@ import {
   DEVICE_KIND,
   parseAdbDevices,
   parseAvdList,
+  parseIni,
   parseDevicectlDevices,
   parseSimctlDevices,
   parseSimRuntime,
@@ -31,6 +32,18 @@ describe('doctor: devices', function () {
       {serial: 'emulator-5554', state: 'device', model: 'sdk gphone64 arm64'},
       {serial: 'R58M1234ABC', state: 'unauthorized', model: ''},
     ]);
+  });
+
+  it('reads the emulator ini files', function () {
+    expect(
+      parseIni(
+        'avd.ini.encoding=UTF-8\npath=/Users/qa/.android/avd/Pixel.avd\n# comment\nimage.sysdir.1 = system-images/android-33/google_apis/arm64-v8a/\n',
+      ),
+    ).toEqual({
+      'avd.ini.encoding': 'UTF-8',
+      path: '/Users/qa/.android/avd/Pixel.avd',
+      'image.sysdir.1': 'system-images/android-33/google_apis/arm64-v8a/',
+    });
   });
 
   it('skips emulator log lines in the AVD list', function () {

@@ -636,5 +636,7 @@
   "a11yRule_ai-text-in-image": "Текст усередині зображення",
   "a11yRule_ai-missing-heading": "Заголовок не позначений як заголовок",
   "a11yRule_ai-affordance": "Виглядає не так, як працює",
-  "a11yReportIssues": "проблем: {{count}}"
+  "a11yReportIssues": "проблем: {{count}}",
+  "doctorDeviceState_broken": "немає образу",
+  "doctorDeviceStateHint_broken": "Системного образу немає: перевстановіть його в Android Studio (SDK Manager, System Images) або створіть AVD заново"
 }

@@ -636,5 +636,7 @@
   "a11yRule_ai-text-in-image": "Text inside an image",
   "a11yRule_ai-missing-heading": "Title is not a heading",
   "a11yRule_ai-affordance": "Looks other than it acts",
-  "a11yReportIssues": "{{count}} issue(s)"
+  "a11yReportIssues": "{{count}} issue(s)",
+  "doctorDeviceState_broken": "image missing",
+  "doctorDeviceStateHint_broken": "Its system image is gone: reinstall it in Android Studio (SDK Manager, System Images) or recreate the AVD"
 }

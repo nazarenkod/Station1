@@ -15,6 +15,7 @@ const STATE_COLOR = {
   disconnected: 'default',
   offline: 'warning',
   unauthorized: 'error',
+  broken: 'error',
 };
 
 const canBoot = (device) => device.state === 'stopped' && ['android-avd', 'ios-simulator'].includes(device.kind);
@@ -107,7 +108,7 @@ const DevicesCard = ({doctor, setDeviceCapabilities}) => {
           <Button
             size="small"
             type="primary"
-            disabled={['offline', 'unauthorized'].includes(device.state)}
+            disabled={['offline', 'unauthorized', 'broken'].includes(device.state)}
             onClick={() => use(device)}
           >
             {t('doctorUseDevice')}

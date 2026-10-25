@@ -1,8 +1,9 @@
 import {spawn} from 'node:child_process';
-import {mkdtemp, readFile, rm} from 'node:fs/promises';
+import {access, mkdtemp, readFile, rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+import {findAndroidSdk} from './environment.js';
 import {runTool, shellEnv} from './exec.js';
 
 export const DEVICE_KIND = {
@@ -30,6 +31,50 @@ export function parseAdbDevices(output) {
       return {serial, state, model: props.model?.replace(/_/g, ' ') ?? ''};
     })
     .filter((entry) => entry.serial && entry.state);
+}
+
+// key=value lines of the emulator's .ini files
+export function parseIni(text) {
+  return Object.fromEntries(
+    text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.includes('=') && !line.startsWith('#'))
+      .map((line) => {
+        const separator = line.indexOf('=');
+        return [line.slice(0, separator).trim(), line.slice(separator + 1).trim()];
+      }),
+  );
+}
+
+const fileExists = async (target) => {
+  try {
+    await access(target);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Whether an AVD's system image is gone (a partly removed SDK package): the
+ * emulator then fails with "No initial system image for this configuration".
+ * Unknown (false) when the AVD files cannot be read.
+ */
+export async function isAvdImageMissing(name, env) {
+  const avdHome = env.ANDROID_AVD_HOME || path.join(os.homedir(), '.android', 'avd');
+  try {
+    const avdIni = parseIni(await readFile(path.join(avdHome, `${name}.ini`), 'utf8'));
+    const config = parseIni(await readFile(path.join(avdIni.path, 'config.ini'), 'utf8'));
+    const sdk = await findAndroidSdk(env);
+    const sysdir = config['image.sysdir.1'];
+    if (!sdk?.exists || !sysdir) {
+      return false;
+    }
+    return !(await fileExists(path.join(sdk.path, sysdir, 'system.img')));
+  } catch {
+    return false;
+  }
 }
 
 export function parseAvdList(output) {
@@ -129,17 +174,20 @@ async function listAndroid() {
 
   const avds = await runTool('emulator', ['-list-avds'], {timeout: 10000});
   const runningAvds = new Set(devices.map((device) => device.avdName).filter(Boolean));
-  const stopped = (avds.ok ? parseAvdList(avds.stdout) : [])
-    .filter((name) => !runningAvds.has(name))
-    .map((name) => ({
-      kind: DEVICE_KIND.ANDROID_AVD,
-      id: name,
-      name: name.replace(/_/g, ' '),
-      avdName: name,
-      platformName: 'Android',
-      platformVersion: '',
-      state: 'stopped',
-    }));
+  const env = await shellEnv();
+  const stopped = await Promise.all(
+    (avds.ok ? parseAvdList(avds.stdout) : [])
+      .filter((name) => !runningAvds.has(name))
+      .map(async (name) => ({
+        kind: DEVICE_KIND.ANDROID_AVD,
+        id: name,
+        name: name.replace(/_/g, ' '),
+        avdName: name,
+        platformName: 'Android',
+        platformVersion: '',
+        state: (await isAvdImageMissing(name, env)) ? 'broken' : 'stopped',
+      })),
+  );
 
   return {devices: [...devices, ...stopped], adbFound: !adb.missing, emulatorFound: !avds.missing};
 }
