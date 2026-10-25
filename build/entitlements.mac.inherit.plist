@@ -8,6 +8,10 @@
   <!-- Required for unsigned executable memory (some Electron internals) -->
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
+  <!-- The Appium that Vision Inspector runs on its own Node.js loads native modules npm installed,
+       signed by others or not at all: library validation would refuse them -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
   <!-- Outbound network access (connecting to Appium servers) -->
   <key>com.apple.security.network.client</key>
   <true/>
