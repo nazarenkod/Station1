@@ -4,7 +4,10 @@ const {autoUpdater} = pkg;
 
 import {t} from './helpers.js';
 
-const RELEASES_LINK = 'https://github.com/appium/appium-inspector/releases';
+// Vision Inspector has no release channel yet: the update check stays off and
+// out of the menus until electron-builder.json gets a "publish" target
+export const UPDATES_ENABLED = false;
+const RELEASES_LINK = '';
 
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
@@ -18,7 +21,7 @@ autoUpdater.on('update-not-available', () => {
     type: 'info',
     buttons: [t('OK')],
     message: t('No update available'),
-    detail: t('Appium Inspector is up-to-date'),
+    detail: t('Vision Inspector is up-to-date'),
   });
 });
 

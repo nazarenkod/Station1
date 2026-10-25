@@ -7,12 +7,12 @@ const INDEX_HTML = 'index.html';
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'dist-browser');
 
 /**
- * Appium Inspector Plugin class
+ * Vision Inspector plugin class
  * @extends {BasePlugin}
  */
-export class AppiumInspectorPlugin extends BasePlugin {
+export class VisionInspectorPlugin extends BasePlugin {
   /**
-   * Creates an instance of AppiumInspectorPlugin
+   * Creates an instance of VisionInspectorPlugin
    * @param {string} name - The name of the plugin
    * @param {Record<string, unknown>} cliArgs - Command line arguments
    */
@@ -38,6 +38,6 @@ export class AppiumInspectorPlugin extends BasePlugin {
    */
   static async updateServer(expressApp) {
     // Handle both /inspector and /inspector/* paths
-    expressApp.all(['/inspector', '/inspector/*all'], AppiumInspectorPlugin.openInspector);
+    expressApp.all(['/inspector', '/inspector/*all'], VisionInspectorPlugin.openInspector);
   }
 }

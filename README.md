@@ -1,268 +1,39 @@
-<p align="center">
-   <a href="https://appium.github.io/appium-inspector/">
-      <img alt="Appium" src="./docs/assets/images/icon.png" width="200">
-   </a>
-</p>
-<p align="center">
-   GUI Inspector tool for all kinds of apps, powered by Appium.
-</p>
+# Vision Inspector
 
-<div align="center">
+A GUI inspector for Android and iOS apps, powered by Appium, with what everyday mobile QA work needs on top:
 
-![Current Version](https://img.shields.io/github/package-json/v/appium/appium-inspector)
-![Current Version GitHub Downloads](https://img.shields.io/github/downloads/appium/appium-inspector/latest/total)
-![Total GitHub Downloads](https://img.shields.io/github/downloads/appium/appium-inspector/total)
-[![Crowdin](https://badges.crowdin.net/appium-desktop/localized.svg)](https://crowdin.com/project/appium-desktop)
+- **Doctor**: finds running Appium servers, connected devices, emulators and simulators, checks the
+  environment, and starts its own Appium server when none is running. Picking a device fills in the
+  session capabilities.
+- **Accessibility audit** of the current screen: missing and meaningless labels, touch target size,
+  text and non-text contrast, duplicate labels, reading order and more. Rules and thresholds are
+  configurable, and stress modes re-check the screen in dark theme, with large fonts and rotated.
+- **Jira Cloud filing**: an accessibility issue becomes a bug under a task, with the team's template,
+  fields copied from the task and the screenshot with the element outlined. Issues already filed for
+  a screen are recognised by its title and never filed twice.
+- **AI checks** (Gemini or Kiro CLI, opt-in): what rules cannot see, such as a label that does not match
+  its icon or information shown only by colour.
 
-</div>
+Everything the original inspector does is still here: screenshot and page source, element search,
+locators, commands, gestures, the recorder and the cloud provider integrations.
 
----
+## Formats
 
-<p align="center"><b>
-   <a href="https://appium.github.io/appium-inspector/">Documentation</a> |
-   <a href="https://appium.github.io/appium-inspector/latest/quickstart/">Get Started</a> |
-   <a href="https://discuss.appium.io">Discussion Forum</a> |
-   <a href="https://crowdin.com/project/appium-desktop">Help with Translations</a>
-</b></p>
-
----
-
-Appium Inspector is a GUI assistant tool for Appium, providing visual inspection of the application
-under test. It can show the application page screenshot along with its page source, and includes
-various features for interacting with the app.
-
-When inspecting a mobile app, the Inspector looks like this:
-
-![Appium Inspector screenshot](./docs/assets/images/session-inspector.png)
-
-## Installation
-
-Appium Inspector is released in two formats:
-
-1. Standalone desktop application for macOS, Windows, and Linux - download it from the
-   [**Releases**](https://github.com/appium/appium-inspector/releases) section
-2. Appium server plugin - see the [**plugin README**](./plugins/README.md) for details
-
-Check the [System Requirements](https://appium.github.io/appium-inspector/latest/quickstart/requirements/)
-and [Installation](https://appium.github.io/appium-inspector/latest/quickstart/installation/)
-documentation for more details.
-
-> [!NOTE]
->
-> The Inspector was also formerly released as a web application hosted at `https://inspector.appiumpro.com`, however, the site is no longer related to the Appium team. Please use the standalone app or the plugin version.
-> The Appium team is exploring the idea of hosting an up-to-date version of the web app in the future.
-
-## Features
-
-The Inspector has many features in addition to its app inspection abilities:
-
-- Specify the Appium server details
-- Interact with the app screenshot
-- Search for elements and interact with them
-- Run Appium driver commands
-- and more...
-
-Check the [Features documentation](https://appium.github.io/appium-inspector/latest/overview/#features-overview)
-for a more comprehensive list!
-
-### Cloud Platforms
-
-The Inspector has built-in integrations with various cloud service provider platforms:
-
-<table>
-  <tr>
-    <td align="center" valign="center">
-      <a href="https://docs.saucelabs.com/mobile-apps/automated-testing/appium/">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/sauce_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/sauce_logo_dark.svg">
-          <img width="200" height="50" alt="SauceLabs">
-        </picture>
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://www.headspin.io/docs/appium-inspector-integration">
-        <img width="200" height="50" alt="HeadSpin" src="app/common/renderer/assets/images/headspin_logo.svg">
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://www.browserstack.com/docs/app-automate/appium/integrations/appium-desktop">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/browserstack_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/browserstack_logo_dark.svg">
-          <img width="200" height="50" alt="BrowserStack">
-        </picture>
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://www.testmuai.com/support/docs/appium-inspector-integration/">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/testmuai_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/testmuai_logo_dark.svg">
-          <img width="200" height="50" alt="TestMu AI (formerly LambdaTest)">
-        </picture>
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" valign="center">
-      <a href="https://testingbot.com/support/getting-started/appium.html">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/testingbot_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/testingbot_logo_dark.svg">
-          <img width="200" height="50" alt="TestingBot">
-        </picture>
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://docs.digital.ai/continuous-testing/docs/te/test-execution-home/mobile-android-and-ios/appium">
-        <img width="200" height="50" alt="ExperiTest" src="app/common/renderer/assets/images/experitest_logo.svg">
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://robotqa.com/documentation/docs/for-testers/first-test/inspect_element">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/robotqa_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/robotqa_logo_dark.svg">
-          <img width="200" height="50" alt="RobotQA">
-        </picture>
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://appkitbox.com/en/support/automation/appium/">
-        <img width="200" height="50" alt="Remote TestKit" src="app/common/renderer/assets/images/remotetestkit_logo.svg">
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" valign="center">
-      <a href="https://support.smartbear.com/bitbar/docs/en/mobile-app-tests/automated-testing/appium-support.html">
-        <img width="200" height="50" alt="BitBar" src="app/common/renderer/assets/images/bitbar_logo.svg">
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://docs.kobiton.com/automation-testing/basic-appium-server/launch-a-basic-appium-2-session">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/kobiton_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/kobiton_logo_dark.svg">
-          <img width="200" height="50" alt="Kobiton">
-        </picture>
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://help.perfecto.io/perfecto-help/content/perfecto/automation-testing/appium.htm">
-        <img width="200" height="50" alt="Perfecto" src="app/common/renderer/assets/images/perfecto_logo.svg">
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://www.pcloudy.com/docs/inspect-element-using-appium-desktop">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/pcloudy_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/pcloudy_logo_dark.svg">
-          <img width="200" height="50" alt="Pcloudy">
-        </picture>
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" valign="center">
-      <a href="https://mobitru.com/docs/appium-inspector-integration/">
-        <img width="200" height="50" alt="Mobitru" src="app/common/renderer/assets/images/mobitru_logo.svg">
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://docs.tvlabs.ai/platform/integrations/appium/inspector">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/tvlabs_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/tvlabs_logo_dark.svg">
-          <img width="200" height="50" alt="TV Labs">
-        </picture>
-      </a>
-    </td>
-     <td align="center" valign="center">
-      <a href="https://docs.testcribe.com/docs/Introduction">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/testcribe_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/testcribe_logo_dark.svg">
-          <img width="200" height="50" alt="Testcribe">
-        </picture>
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://docs.webmate.io/app-testing/appium-inspector/">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/webmate_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/webmate_logo_dark.svg">
-          <img width="200" height="50" alt="Webmate">
-        </picture>
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" valign="center">
-      <a href="https://www.fireflink.com/documentation/">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/fireflink_devicefarm_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/fireflink_devicefarm_logo_dark.svg">
-          <img width="200" height="50" alt="Fireflink Devicefarm">
-        </picture>
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://docs.rabbitqa.com/modules/devicer/appium-config">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/rabbitqa_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/rabbitqa_logo_dark.svg">
-          <img width="200" height="50" alt="RabbitQA">
-        </picture>
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://robotactions.com">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/robotactions_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/robotactions_logo_dark.svg">
-          <img width="200" height="50" alt="RobotActions">
-        </picture>
-      </a>
-    </td>
-    <td align="center" valign="center">
-      <a href="https://www.42gears.com/products/device-farm">
-        <picture>
-          <source media="(prefers-color-scheme: light)" srcset="app/common/renderer/assets/images/astrofarm_logo.svg">
-          <source media="(prefers-color-scheme: dark)" srcset="app/common/renderer/assets/images/astrofarm_logo.svg">
-          <img width="200" height="30" alt="AstroFarm">
-        </picture>
-      </a>
-    </td>
-  </tr>
-</table>
-
-> [!NOTE]
->
-> We may remove cloud providers if they no longer work properly with this inspector, as there is no compatibility.
-
-## Reporting Issues
-
-If you run into a problem, first check whether you can reproduce it _without_ the Inspector, by using a different Appium client.
-
-- If the issue still exists, then it's _not_ an issue with the Inspector - report it at the [main Appium repo](https://github.com/appium/appium/issues)
-- If the issue is gone, then it is likely specific to the Inspector -
-  [please report it in this repo](https://github.com/appium/appium-inspector/issues/new?assignees=&labels=bug&projects=&template=bug_report.yml&title=bug%3A+%3Ctitle%3E)
+1. Desktop application for macOS, Windows and Linux (`npm run pack:electron`)
+2. Appium server plugin, see the [plugin README](./plugins/README.md)
+3. Web application (`npm run build:browser`). Features that need local processes or credentials
+   (doctor, Jira, AI) are only available in the desktop app and the plugin.
 
 ## Development
 
-Want to help us develop this app? Awesome! Please check the
-[Contributing documentation](https://appium.github.io/appium-inspector/latest/contributing/) for details.
+```bash
+npm ci
+npm run dev:electron   # desktop app with hot reload
+npm run dev:browser    # web app
+npm test               # lint, unit and integration tests
+```
 
-### Localization
+## Origin and license
 
-Localization for the Inspector is provided by [Crowdin](https://crowdin.com/project/appium-desktop).
-If you would like to help translate this app, please check the [Localization section](https://appium.github.io/appium-inspector/2023.12/contributing/#localization)
-of the Contributing documentation.
-
-## Version Schema
-
-The Inspector's version schema is `<RELEASE_YEAR>.<RELEASE_MONTH_NUM>.<RELEASE_COUNT_FOR_MONTH>`.
-For example, the first release in the month of April in the year 2022 would be `2022.4.1`, and the
-10th in that month would be `2022.4.10`.
+Vision Inspector is based on [Appium Inspector](https://github.com/appium/appium-inspector) by the
+Appium developers and is distributed under the same [Apache-2.0](./LICENSE) license.

@@ -1,22 +1,13 @@
 {
-  "name": "appium-inspector-plugin",
+  "name": "vision-inspector-plugin",
   "version": "2026.9.2",
-  "description": "An app inspector for use with an Appium server",
+  "description": "Vision Inspector served from an Appium server",
   "keywords": [
     "appium"
   ],
-  "homepage": "https://github.com/appium/appium-inspector",
-  "bugs": {
-    "url": "https://github.com/appium/appium-inspector/issues"
-  },
   "license": "Apache-2.0",
   "author": {
-    "name": "Appium Developers",
-    "url": "https://github.com/appium"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/appium/appium-inspector.git"
+    "name": "nazarenkod"
   },
   "files": [
     "index.mjs",
@@ -44,7 +35,7 @@
     "npm": ">=10.x"
   },
   "appium": {
-    "pluginName": "inspector",
-    "mainClass": "AppiumInspectorPlugin"
+    "pluginName": "vision-inspector",
+    "mainClass": "VisionInspectorPlugin"
   }
 }

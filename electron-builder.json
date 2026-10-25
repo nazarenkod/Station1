@@ -1,11 +1,13 @@
 {
-  "productName": "Appium Inspector",
-  "appId": "io.appium.inspector",
+  "productName": "Vision Inspector",
+  "appId": "app.vision.inspector",
   "asar": true,
   "directories": {
     "output": "release"
   },
-  "files": ["dist/"],
+  "files": [
+    "dist/"
+  ],
   "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
   "fileAssociations": [
     {
@@ -33,25 +35,25 @@
     ]
   },
   "win": {
-    "target": ["nsis", "zip"],
-    "azureSignOptions": {
-      "publisherName": "CN=OpenJS Foundation, O=OpenJS Foundation, L=San Francisco, S=California, C=US",
-      "endpoint": "https://eus.codesigning.azure.net/",
-      "codeSigningAccountName": "OpenJS-CodeSigning",
-      "certificateProfileName": "Appium"
-    }
+    "target": [
+      "nsis",
+      "zip"
+    ]
   },
   "nsis": {
     "allowToChangeInstallationDirectory": true,
     "oneClick": false
   },
   "linux": {
-    "target": ["AppImage", "tar.gz"],
+    "target": [
+      "AppImage",
+      "tar.gz"
+    ],
     "category": "Development",
     "desktop": {
       "entry": {
-        "Name": "Appium Inspector",
-        "Comment": "GUI inspector for apps, powered by Appium",
+        "Name": "Vision Inspector",
+        "Comment": "Mobile app inspector with accessibility audit, powered by Appium",
         "Categories": "Development",
         "Terminal": false,
         "Type": "Application"
@@ -60,10 +62,5 @@
   },
   "toolsets": {
     "appimage": "1.0.3"
-  },
-  "publish": {
-    "provider": "github",
-    "owner": "appium",
-    "vPrefixedTagName": true
   }
 }

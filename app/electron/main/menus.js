@@ -2,14 +2,11 @@ import {app, dialog, Menu, shell} from 'electron';
 
 import webdriverPackageJson from '../../../node_modules/webdriver/package.json';
 import {isDev, t} from './helpers.js';
-import {checkForUpdates} from './updater.js';
+import {checkForUpdates, UPDATES_ENABLED} from './updater.js';
 import {launchNewSessionWindow} from './windows.js';
 
-const INSPECTOR_DOCS_URL = 'https://appium.github.io/appium-inspector';
 const APPIUM_DOCS_URL = 'https://appium.io';
 const APPIUM_FORUM_URL = 'https://discuss.appium.io';
-const GITHUB_ISSUES_URL = 'https://github.com/appium/appium-inspector/issues';
-const CROWDIN_URL = 'https://crowdin.com/project/appium-desktop';
 
 const separator = {type: 'separator'};
 
@@ -29,7 +26,7 @@ function showAppInfoPopup() {
   dialog.showMessageBox({
     title: t('appiumInspector'),
     message:
-      `Appium Inspector ${app.getVersion()}\n\n` +
+      `Vision Inspector ${app.getVersion()}\n\n` +
       `WebdriverIO ${webdriverPackageJson.version}\n` +
       `Electron ${process.versions.electron}\n` +
       `Node.js ${process.versions.node}`,
@@ -38,16 +35,14 @@ function showAppInfoPopup() {
 
 function optionAbout() {
   return {
-    label: t('About Appium Inspector'),
+    label: t('About Vision Inspector'),
     click: () => showAppInfoPopup(),
   };
 }
 
-function optionCheckForUpdates() {
-  return {
-    label: t('Check for Updates…'),
-    click: () => checkForUpdates(),
-  };
+// empty until Vision Inspector has its own release channel
+function optionsCheckForUpdates() {
+  return UPDATES_ENABLED ? [{label: t('Check for Updates…'), click: () => checkForUpdates()}] : [];
 }
 
 function dropdownApp() {
@@ -55,13 +50,13 @@ function dropdownApp() {
     label: t('appiumInspector'),
     submenu: [
       optionAbout(),
-      optionCheckForUpdates(),
+      ...optionsCheckForUpdates(),
       separator,
-      {label: t('Hide Appium Inspector'), role: 'hide'},
+      {label: t('Hide Vision Inspector'), role: 'hide'},
       {label: t('Hide Others'), role: 'hideOthers'},
       {label: t('Show All'), role: 'unhide'},
       separator,
-      {label: t('Quit Appium Inspector'), role: 'quit'},
+      {label: t('Quit Vision Inspector'), role: 'quit'},
     ],
   };
 }
@@ -73,7 +68,7 @@ function dropdownFile(isMac) {
   ];
 
   if (!isMac) {
-    submenu.push(...[separator, optionAbout(), optionCheckForUpdates()]);
+    submenu.push(...[separator, optionAbout(), ...optionsCheckForUpdates()]);
   }
 
   return {
@@ -138,12 +133,8 @@ function dropdownHelp() {
   return {
     label: t('Help'),
     submenu: [
-      {label: t('Inspector Documentation'), click: () => shell.openExternal(INSPECTOR_DOCS_URL)},
       {label: t('Appium Documentation'), click: () => shell.openExternal(APPIUM_DOCS_URL)},
       {label: t('Appium Discussion Forum'), click: () => shell.openExternal(APPIUM_FORUM_URL)},
-      separator,
-      {label: t('Report Issues'), click: () => shell.openExternal(GITHUB_ISSUES_URL)},
-      {label: t('Improve Translations'), click: () => shell.openExternal(CROWDIN_URL)},
     ],
   };
 }
