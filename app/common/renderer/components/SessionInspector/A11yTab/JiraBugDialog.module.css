@@ -112,3 +112,18 @@
   color: var(--ant-color-text-tertiary);
   max-width: 380px;
 }
+
+.markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.markers code {
+  font-size: 10px;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: var(--vi-violet);
+  background: rgba(124, 92, 255, 0.12);
+}

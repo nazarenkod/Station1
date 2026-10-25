@@ -31,7 +31,11 @@ const DecisionModal = ({decision, onCancel, onConfirm}) => {
       destroyOnHidden
       centered
     >
-      {decision && <p>{violationText(t, decision.violation).title}</p>}
+      {decision && (
+        <p>
+          {violationText(t, decision.group.violations[0]).title} <code>{decision.group.code}</code>
+        </p>
+      )}
       {isLink ? (
         <Input
           autoFocus

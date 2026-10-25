@@ -10,6 +10,7 @@ import {
   IconLink,
   IconArrowBackUp,
   IconSparkles,
+  IconStack2,
 } from '@tabler/icons-react';
 import {Button, Tag, Tooltip} from 'antd';
 import {motion} from 'motion/react';
@@ -70,17 +71,24 @@ const IssueFacts = ({violation}) => {
   return null;
 };
 
+// the elements of a problem listed on its card before "and N more"
+const SHOWN_ELEMENTS = 3;
+
 /**
- * One accessibility issue, with what can be done about it.
+ * One accessibility problem: the same rule on one or more elements (of one
+ * component, or of one screen), with its id and what can be done about it.
  */
 const IssueCard = forwardRef(function IssueCard(
-  {violation, highlighted, underStress, onHover, onShow, onIgnore, onLink, onFileBug, onUndo, onCopy, index},
+  {group, highlighted, underStress, onHover, onShow, onIgnore, onLink, onFileBug, onUndo, onCopy, index},
   ref,
 ) {
   const {t} = useTranslation();
-  const {title, message, fix} = violationText(t, violation);
-  const issue = violation.issue;
-  const SeverityIcon = SEVERITY_ICON[violation.severity];
+  const [first] = group.violations;
+  const {title, fix} = violationText(t, first);
+  const messages = group.violations.map((violation) => violationText(t, violation).message);
+  const issue = group.issue;
+  const SeverityIcon = SEVERITY_ICON[group.severity];
+  const suggested = group.violations.find((violation) => violation.details?.suggestedLabel)?.details.suggestedLabel;
 
   return (
     <motion.div
@@ -90,8 +98,8 @@ const IssueCard = forwardRef(function IssueCard(
       animate={{opacity: 1, y: 0, scale: 1}}
       exit={{opacity: 0, x: 40, scale: 0.96, transition: {duration: 0.25}}}
       transition={{duration: 0.4, delay: Math.min(index, 12) * 0.03, ease: [0.22, 1, 0.36, 1]}}
-      className={`${styles.issueCard} ${styles[`sev_${violation.severity}`]} ${highlighted ? styles.issueHighlighted : ''}`}
-      onMouseEnter={() => onHover(violation.id)}
+      className={`${styles.issueCard} ${styles[`sev_${group.severity}`]} ${highlighted ? styles.issueHighlighted : ''}`}
+      onMouseEnter={() => onHover(group.key)}
       onMouseLeave={() => onHover(null)}
     >
       <div className={styles.issueHead}>
@@ -102,7 +110,7 @@ const IssueCard = forwardRef(function IssueCard(
             {t('a11yUnderStress')}
           </Tag>
         )}
-        {violation.source === 'ai' && (
+        {first.source === 'ai' && (
           <Tag className={styles.aiTag} icon={<IconSparkles size={12} />}>
             {t('a11ySourceAi')}
           </Tag>
@@ -118,19 +126,71 @@ const IssueCard = forwardRef(function IssueCard(
           </Tag>
         )}
       </div>
-      <div className={styles.issueMessage}>{message}</div>
-      <IssueFacts violation={violation} />
-      {issue?.status === 'ignored' && (
+      <div className={styles.problemMeta}>
+        <Tooltip title={t('a11yProblemIdHint')}>
+          <code className={styles.problemCode}>{group.code}</code>
+        </Tooltip>
+        {group.component && (
+          <Tooltip title={group.everyScreen ? t('a11yEveryScreenHint') : null}>
+            <span className={styles.problemChip}>
+              {group.everyScreen && <IconStack2 size={12} />}
+              {group.component}
+            </span>
+          </Tooltip>
+        )}
+        {group.problemClass && <span className={styles.problemChip}>{group.problemClass}</span>}
+        {group.violations.length > 1 && (
+          <span className={styles.problemChip}>{t('a11yElements', {count: group.violations.length})}</span>
+        )}
+      </div>
+      {group.violations.length === 1 ? (
+        <div className={styles.issueMessage}>{messages[0]}</div>
+      ) : (
+        <ul className={styles.problemElements}>
+          {messages.slice(0, SHOWN_ELEMENTS).map((message, i) => (
+            <li key={group.violations[i].id}>{message}</li>
+          ))}
+          {messages.length > SHOWN_ELEMENTS && (
+            <li>{t('a11yMoreElements', {count: messages.length - SHOWN_ELEMENTS})}</li>
+          )}
+        </ul>
+      )}
+      <IssueFacts violation={first} />
+      {issue?.decidedOn && (
         <div className={styles.issueNote}>
-          <IconEyeOff size={14} />
-          {issue.comment ? t('a11yIgnoredBecause', {comment: issue.comment}) : t('a11yIgnoredNoReason')}
+          <IconStack2 size={14} />
+          {issue.status === 'reported'
+            ? t('a11yFiledOnScreen', {screen: issue.decidedOn})
+            : t('a11yIgnoredOnScreen', {screen: issue.decidedOn})}
         </div>
       )}
-      {violation.details?.suggestedLabel && (
+      {issue?.comment === 'Found in Jira' && (
+        <div className={styles.issueNote}>
+          <IconBug size={14} />
+          {t('a11yFoundInJiraNote')}
+        </div>
+      )}
+      {issue?.related?.length > 0 && (
+        <div className={styles.issueNote}>
+          <IconBug size={14} />
+          {t('a11yRelatedBugs', {bugs: issue.related.map((bug) => bug.jiraKey ?? bug.code).join(', ')})}
+        </div>
+      )}
+      {issue?.status === 'ignored' && !issue.decidedOn && (
+        <div className={styles.issueNote}>
+          <IconEyeOff size={14} />
+          {issue.byClass
+            ? t('a11yIgnoredByClass', {name: issue.byClass})
+            : issue.comment
+              ? t('a11yIgnoredBecause', {comment: issue.comment})
+              : t('a11yIgnoredNoReason')}
+        </div>
+      )}
+      {suggested && (
         <div className={styles.suggestion}>
           <IconSparkles size={14} />
           <span>
-            {t('aiSuggestedLabel')} <strong>“{violation.details.suggestedLabel}”</strong>
+            {t('aiSuggestedLabel')} <strong>“{suggested}”</strong>
           </span>
         </div>
       )}
@@ -141,31 +201,33 @@ const IssueCard = forwardRef(function IssueCard(
         </div>
       )}
       <div className={styles.issueActions}>
-        {violation.elementPath !== undefined && (
-          <Button size="small" type="text" icon={<IconFocus2 size={14} />} onClick={() => onShow(violation)}>
+        {first.elementPath !== undefined && (
+          <Button size="small" type="text" icon={<IconFocus2 size={14} />} onClick={() => onShow(group)}>
             {t('a11yShowElement')}
           </Button>
         )}
         {!issue && (
           <>
-            <Button size="small" type="primary" icon={<IconBug size={14} />} onClick={() => onFileBug(violation)}>
+            <Button size="small" type="primary" icon={<IconBug size={14} />} onClick={() => onFileBug(group)}>
               {t('a11yFileBug')}
             </Button>
             <Tooltip title={t('a11yLinkJira')}>
-              <Button size="small" type="text" icon={<IconLink size={14} />} onClick={() => onLink(violation)} />
+              <Button size="small" type="text" icon={<IconLink size={14} />} onClick={() => onLink(group)} />
             </Tooltip>
             <Tooltip title={t('a11yIgnore')}>
-              <Button size="small" type="text" icon={<IconEyeOff size={14} />} onClick={() => onIgnore(violation)} />
+              <Button size="small" type="text" icon={<IconEyeOff size={14} />} onClick={() => onIgnore(group)} />
             </Tooltip>
           </>
         )}
-        {issue && (
-          <Button size="small" type="text" icon={<IconArrowBackUp size={14} />} onClick={() => onUndo(violation)}>
-            {t('a11yUndo')}
-          </Button>
+        {issue && !issue.byClass && (
+          <Tooltip title={issue.status === 'reported' ? t('a11yUnlinkHint') : null}>
+            <Button size="small" type="text" icon={<IconArrowBackUp size={14} />} onClick={() => onUndo(group)}>
+              {issue.status === 'reported' ? t('a11yUnlink') : t('a11yUndo')}
+            </Button>
+          </Tooltip>
         )}
         <Tooltip title={t('a11yCopy')}>
-          <Button size="small" type="text" icon={<IconCopy size={14} />} onClick={() => onCopy(violation)} />
+          <Button size="small" type="text" icon={<IconCopy size={14} />} onClick={() => onCopy(group)} />
         </Tooltip>
       </div>
     </motion.div>

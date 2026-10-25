@@ -1,3 +1,5 @@
+import {DEFAULT_SCREEN_TITLE_SELECTORS} from './problems';
+import type {DuplicateMode, ProblemClass} from './problems';
 import type {A11yRule, A11ySeverity} from './types';
 import {A11Y_RULES} from './types';
 
@@ -31,8 +33,16 @@ export interface A11yConfig {
     roleWords: string;
     // labels that read like code: resource names, file names, identifiers
     nonDescriptiveLabel: string;
-    // the element that carries the screen title, by resource id or label
-    screenTitleTag: string;
+  };
+  // what is one problem, as in vision's project settings
+  problems: {
+    // problem ids are made for this project: empty for the app's id; vision's project id gives vision's ids
+    projectId: string;
+    // where the screen's title is in the UI tree, first match wins (id:Appbar#Title)
+    screenTitle: string[];
+    // when two issues are the same problem, per rule; rules not set use the defaults
+    duplicateModes: Partial<Record<string, DuplicateMode>>;
+    classes: ProblemClass[];
   };
 }
 
@@ -74,7 +84,12 @@ export const DEFAULT_A11Y_CONFIG: A11yConfig = {
     roleWords: '\\b(button|btn|image|icon|picture)\\b|кнопк|зображенн|картинк|іконк|иконк',
     nonDescriptiveLabel:
       '^(ic|img|image|icon|btn|button|iv|tv|imageview|imagebutton)[_\\-.]|^[a-z0-9]+(_[a-z0-9]+)+$|^[a-z]+([A-Z][a-z0-9]+)+$|\\.(png|jpe?g|svg|webp)$|^(null|undefined|image|button|icon|todo|test|label)$',
-    screenTitleTag: 'appbar#title',
+  },
+  problems: {
+    projectId: '',
+    screenTitle: DEFAULT_SCREEN_TITLE_SELECTORS,
+    duplicateModes: {},
+    classes: [],
   },
 };
 
@@ -117,6 +132,32 @@ export function mergeConfig(saved: unknown): A11yConfig {
       if (typeof value === 'string' && isValidPattern(value)) {
         config.patterns[key] = value;
       }
+    }
+  }
+  if (isObject(saved.problems)) {
+    const problems = saved.problems;
+    if (typeof problems.projectId === 'string') {
+      config.problems.projectId = problems.projectId.trim();
+    }
+    if (Array.isArray(problems.screenTitle)) {
+      const selectors = problems.screenTitle.filter(
+        (item): item is string => typeof item === 'string' && !!item.trim(),
+      );
+      if (selectors.length) {
+        config.problems.screenTitle = selectors;
+      }
+    }
+    if (isObject(problems.duplicateModes)) {
+      for (const [rule, mode] of Object.entries(problems.duplicateModes)) {
+        if (['component-value', 'component', 'screen'].includes(mode as string)) {
+          config.problems.duplicateModes[rule] = mode as DuplicateMode;
+        }
+      }
+    }
+    if (Array.isArray(problems.classes)) {
+      config.problems.classes = problems.classes.filter(
+        (item): item is ProblemClass => isObject(item) && typeof item.id === 'string' && typeof item.name === 'string',
+      );
     }
   }
   return config;

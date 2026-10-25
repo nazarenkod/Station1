@@ -5,11 +5,14 @@ import {describe, expect, it} from 'vitest';
 
 import {DEFAULT_A11Y_CONFIG, mergeConfig} from '../../app/common/renderer/lib/a11y/config';
 import {
-  forgetDecision,
-  importDecisions,
-  issueKey,
-  recordDecision,
+  asStore,
+  decide,
+  emptyStore,
+  forget,
+  importStore,
+  problemContextOf,
   reviewScan,
+  unlinkedKeys,
 } from '../../app/common/renderer/lib/a11y/issues';
 import {readingOrder, scanScreen} from '../../app/common/renderer/lib/a11y/rules';
 import {identifyScreen, screenTitle} from '../../app/common/renderer/lib/a11y/screen';
@@ -241,7 +244,12 @@ describe('a11y: config', function () {
         'touch-target': {severity: 'fatal'},
       },
       thresholds: {minContrast: 7, minTargetDp: -1, unknown: 3},
-      patterns: {roleWords: '(unclosed', screenTitleTag: 'toolbar_title'},
+      patterns: {roleWords: '(unclosed'},
+      problems: {
+        screenTitle: ['id:toolbar_title', ''],
+        duplicateModes: {'touch-target': 'component', x: 'bad'},
+        classes: [{nope: 1}],
+      },
     });
     expect(config.rules['missing-label']).toEqual({enabled: true, severity: 'warning'});
     expect(config.rules['touch-target'].severity).toBe('warning');
@@ -249,7 +257,9 @@ describe('a11y: config', function () {
     expect(config.thresholds.minContrast).toBe(7);
     expect(config.thresholds.minTargetDp).toBe(48);
     expect(config.patterns.roleWords).toBe(DEFAULT_A11Y_CONFIG.patterns.roleWords);
-    expect(config.patterns.screenTitleTag).toBe('toolbar_title');
+    expect(config.problems.screenTitle).toEqual(['id:toolbar_title']);
+    expect(config.problems.duplicateModes).toEqual({'touch-target': 'component'});
+    expect(config.problems.classes).toEqual([]);
     expect(mergeConfig(null)).toEqual(DEFAULT_A11Y_CONFIG);
   });
 });
@@ -296,44 +306,150 @@ describe('a11y: screen identity', function () {
   });
 });
 
-describe('a11y: local decisions', function () {
-  const xml = fixture('android-payment.xml');
-  const tree = parseUiTree(xml, {imageWidth: 1080, imageHeight: 2400, densityDpi: 420});
-  const {violations} = scanScreen(tree);
-  const [first, second] = violations;
-  const base = {appId: 'com.bank.app', screenKey: 'title:payment', screenTitle: 'Payment', rule: 'r', element: 'e'};
+describe('a11y: problems and decisions', function () {
+  // two screens with the same button component, 34 dp tall, and an unlabeled icon without an id
+  const screenWith = (title: string, buttonHeight = 90, extra = '') =>
+    androidScreen(
+      node(
+        'android.widget.TextView',
+        `resource-id="com.bank:id/Appbar#Title" text="${title}" bounds="[0,0][1080,150]"`,
+      ) +
+        node(
+          'android.widget.Button',
+          `resource-id="Pay#PbButton" text="Pay" clickable="true" bounds="[0,300][1080,${300 + buttonHeight}]"`,
+        ) +
+        node(
+          'android.widget.Button',
+          `resource-id="Next#PbButton" text="Next" clickable="true" bounds="[0,600][1080,${600 + buttonHeight}]"`,
+        ) +
+        node('android.widget.ImageButton', 'clickable="true" bounds="[900,900][1050,1050]"') +
+        extra,
+    );
+  const config = mergeConfig({rules: {testability: {enabled: false}}});
+  const review = (xml: string, store = emptyStore(), cfg = config) => {
+    const tree = parseUiTree(xml, {imageWidth: 1080, imageHeight: 2400, densityDpi: 420});
+    const screen = identifyScreen(tree, {titleSelectors: cfg.problems.screenTitle});
+    const context = problemContextOf({config: cfg, appId: 'com.bank', screen});
+    return {reviewed: reviewScan(scanScreen(tree, undefined, cfg).violations, store, context), context};
+  };
+  const touch = (reviewed) => reviewed.open.find((group) => group.rule === 'touch-target');
 
-  it('splits issues into open, reported and ignored, and lists filed bugs that are gone', function () {
-    let store = recordDecision({}, {...base, violationId: first.id, status: 'reported', jiraKey: 'QA-1'});
-    store = recordDecision(store, {...base, violationId: second.id, status: 'ignored', comment: 'by design'});
-    store = recordDecision(store, {...base, violationId: 'missing-label|id:gone', status: 'reported', jiraKey: 'QA-2'});
-    // another screen's decision changes nothing here
-    store = recordDecision(store, {
-      ...base,
-      screenKey: 'title:other',
-      violationId: violations[2].id,
-      status: 'ignored',
+  it('makes one problem of a component with the same size on a screen and on every other', function () {
+    const first = review(screenWith('Payments'));
+    const group = touch(first.reviewed);
+    expect(group.violations).toHaveLength(2);
+    expect(group).toMatchObject({component: 'PbButton', everyScreen: true, key: 'touch-target|c:PbButton|411x34'});
+    expect(group.code).toMatch(/^a11y-[0-9a-f]{8}$/);
+
+    const store = decide(
+      emptyStore(),
+      group,
+      {status: 'reported', jiraKey: 'PAY-1', jiraUrl: 'u'},
+      'filed',
+      first.context,
+    );
+    const other = review(screenWith('Transfers'), store);
+    expect(touch(other.reviewed)).toBeUndefined();
+    expect(other.reviewed.reported.find((g) => g.rule === 'touch-target').issue).toMatchObject({
+      jiraKey: 'PAY-1',
+      decidedOn: 'Payments',
     });
-
-    const reviewed = reviewScan(violations, store, 'com.bank.app', 'title:payment');
-    expect(reviewed.reported.map((v) => v.issue.jiraKey)).toEqual(['QA-1']);
-    expect(reviewed.ignored.map((v) => v.id)).toEqual([second.id]);
-    expect(reviewed.open).toHaveLength(violations.length - 2);
-    expect(reviewed.resolved.map((s) => s.jiraKey)).toEqual(['QA-2']);
-
-    const forgotten = forgetDecision(store, 'com.bank.app', 'title:payment', first.id);
-    expect(forgotten[issueKey('com.bank.app', 'title:payment', first.id)]).toBeUndefined();
   });
 
-  it('merges imported decisions, newer ones winning', function () {
-    const mine = recordDecision({}, {...base, violationId: first.id, status: 'ignored', at: '2026-10-01T00:00:00Z'});
-    const theirs = recordDecision(
-      {},
-      {...base, violationId: first.id, status: 'reported', jiraKey: 'QA-9', at: '2026-10-02T00:00:00Z'},
+  it('files again when the component is too small by another size, unless sizes do not matter', function () {
+    const first = review(screenWith('Payments'));
+    const store = decide(
+      emptyStore(),
+      touch(first.reviewed),
+      {status: 'reported', jiraKey: 'PAY-1'},
+      'filed',
+      first.context,
     );
-    const merged = importDecisions(mine, {...theirs, junk: {status: 'nope'}});
-    expect(Object.values(merged)).toHaveLength(1);
-    expect(Object.values(merged)[0]).toMatchObject({status: 'reported', jiraKey: 'QA-9'});
+    // 30 dp instead of 34 dp: another problem
+    expect(touch(review(screenWith('Transfers', 80), store).reviewed)).toBeDefined();
+    const anySize = mergeConfig({...config, problems: {duplicateModes: {'touch-target': 'component'}}});
+    expect(touch(review(screenWith('Transfers', 80), store, anySize).reviewed)).toBeUndefined();
+  });
+
+  it('keeps problems of elements without an id to their screen', function () {
+    const first = review(screenWith('Payments'));
+    const unlabeled = first.reviewed.open.find((group) => group.rule === 'missing-label');
+    expect(unlabeled.everyScreen).toBe(false);
+    const store = decide(emptyStore(), unlabeled, {status: 'ignored', comment: 'decor'}, 'ignored', first.context);
+    expect(review(screenWith('Payments'), store).reviewed.ignored.map((g) => g.rule)).toEqual(['missing-label']);
+    expect(review(screenWith('Transfers'), store).reviewed.open.some((g) => g.rule === 'missing-label')).toBe(true);
+  });
+
+  it('lets a class ignore what it takes, and lists filed bugs whose problem is gone', function () {
+    const decor = mergeConfig({
+      ...config,
+      problems: {
+        classes: [
+          {id: 'd', name: 'Decor', rules: ['missing-label'], when: {className: ['*ImageButton']}, action: 'ignore'},
+        ],
+      },
+    });
+    const {reviewed} = review(screenWith('Payments'), emptyStore(), decor);
+    expect(reviewed.ignored[0].issue).toMatchObject({byClass: 'Decor'});
+
+    const first = review(screenWith('Payments'));
+    const store = decide(
+      emptyStore(),
+      touch(first.reviewed),
+      {status: 'reported', jiraKey: 'PAY-1'},
+      'filed',
+      first.context,
+    );
+    // the buttons grew to 48 dp: the bug filed from this screen can be closed
+    const fixed = review(screenWith('Payments', 126), store);
+    expect(fixed.reviewed.resolved.map((problem) => problem.jiraKey)).toEqual(['PAY-1']);
+  });
+
+  it('forgets a decision on every screen and remembers the bug as unlinked', function () {
+    const first = review(screenWith('Payments'));
+    const filed = decide(
+      emptyStore(),
+      touch(first.reviewed),
+      {status: 'reported', jiraKey: 'PAY-1'},
+      'filed',
+      first.context,
+    );
+    const again = review(screenWith('Transfers'), filed);
+    const group = again.reviewed.reported.find((g) => g.rule === 'touch-target');
+    const {store, unlinked} = forget(filed, group, again.context);
+    expect(unlinked).toEqual([{jiraKey: 'PAY-1', code: group.code}]);
+    expect(store.problems).toEqual([]);
+    expect(unlinkedKeys(store)).toEqual(['PAY-1']);
+    expect(store.log.map((entry) => entry.action)).toEqual(['filed', 'unlinked']);
+  });
+
+  it('reads decisions kept per issue before problems had ids', function () {
+    const old = {
+      'com.bank::title:payments::touch-target|id:Pay#PbButton': {
+        appId: 'com.bank',
+        screenKey: 'title:payments',
+        screenTitle: 'Payments',
+        violationId: 'touch-target|id:Pay#PbButton',
+        status: 'reported',
+        jiraKey: 'PAY-9',
+        at: '2026-10-25T10:00:00.000Z',
+      },
+    };
+    const store = asStore(old);
+    expect(store.problems).toHaveLength(1);
+    expect(store.problems[0]).toMatchObject({projectId: 'com.bank', jiraKey: 'PAY-9', key: 'touch-target|c:PbButton|'});
+  });
+
+  it('merges decisions exported elsewhere, the newer winning', function () {
+    const first = review(screenWith('Payments'));
+    const group = touch(first.reviewed);
+    const mine = decide(emptyStore(), group, {status: 'ignored'}, 'ignored', first.context);
+    const theirs = decide(emptyStore(), group, {status: 'reported', jiraKey: 'PAY-2'}, 'filed', first.context);
+    theirs.problems[0].updatedAt = '2999-01-01T00:00:00.000Z';
+    const merged = importStore(mine, theirs);
+    expect(merged.problems).toHaveLength(1);
+    expect(merged.problems[0]).toMatchObject({status: 'reported', jiraKey: 'PAY-2'});
+    expect(merged.log).toHaveLength(2);
   });
 });
 

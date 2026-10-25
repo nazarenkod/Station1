@@ -61,6 +61,17 @@ export interface JiraParentIssue {
   fields: Record<string, unknown>;
 }
 
+/** An issue found by a search, with whether it is still open. */
+export interface JiraFoundIssue {
+  key: string;
+  url: string;
+  summary: string;
+  status: string;
+  // the status category is Done
+  done: boolean;
+  labels: string[];
+}
+
 export interface JiraAttachment {
   fileName: string;
   content: Buffer;
@@ -220,6 +231,37 @@ export class JiraClient {
     }));
   }
 
+  /**
+   * Issues matching a JQL query, newest first. Jira Cloud has the paged
+   * search/jql endpoint (the old one is being removed); Server and Data Center
+   * only the classic search.
+   */
+  async search(jql: string, max = 10, timeoutMs?: number): Promise<JiraFoundIssue[]> {
+    type Found = {issues?: Array<{key: string; fields?: Record<string, unknown>}>};
+    const query = `jql=${encodeURIComponent(jql)}&maxResults=${max}&fields=summary,status,labels`;
+    const init = timeoutMs ? {signal: AbortSignal.timeout(timeoutMs)} : {};
+    let found: Found;
+    try {
+      found = await this.request<Found>(`/rest/api/2/search/jql?${query}`, init);
+    } catch (error) {
+      if (!(error instanceof JiraError) || ![404, 405, 410].includes(error.status)) {
+        throw error;
+      }
+      found = await this.request<Found>(`/rest/api/2/search?${query}`, init);
+    }
+    return (found.issues ?? []).map((issue) => {
+      const status = (issue.fields?.status ?? {}) as {name?: string; statusCategory?: {key?: string}};
+      return {
+        key: issue.key,
+        url: this.browseUrl(issue.key),
+        summary: String(issue.fields?.summary ?? ''),
+        status: status.name ?? '',
+        done: status.statusCategory?.key === 'done',
+        labels: Array.isArray(issue.fields?.labels) ? (issue.fields.labels as string[]) : [],
+      };
+    });
+  }
+
   async linkTypes(): Promise<JiraLinkType[]> {
     const body = await this.request<{issueLinkTypes: JiraLinkType[]}>('/rest/api/2/issueLinkType');
     return body.issueLinkTypes ?? [];
@@ -246,6 +288,18 @@ export class JiraClient {
       `/rest/api/2/issue/${encodeURIComponent(key)}/assignee`,
       this.json('PUT', user.accountId ? {accountId: user.accountId} : {name: user.name}),
     );
+  }
+
+  /** Adds and removes labels by editing the issue: for create screens without labels, and for markers. */
+  async editLabels(key: string, change: {add?: string[]; remove?: string[]}): Promise<void> {
+    const labels = [
+      ...(change.add ?? []).map((label) => ({add: label})),
+      ...(change.remove ?? []).map((label) => ({remove: label})),
+    ];
+    if (!labels.length) {
+      return;
+    }
+    await this.request(`/rest/api/2/issue/${encodeURIComponent(key)}`, this.json('PUT', {update: {labels}}));
   }
 
   async attach(key: string, attachment: JiraAttachment): Promise<void> {

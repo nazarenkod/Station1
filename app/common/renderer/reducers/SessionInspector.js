@@ -6,6 +6,7 @@ import {
   SET_A11Y_FILTER,
   SET_A11Y_HIGHLIGHT,
   SET_A11Y_ISSUES,
+  SET_A11Y_JIRA_LOOKUP,
   SET_A11Y_OVERLAY,
   SET_A11Y_AI,
   SET_A11Y_STRESS,
@@ -138,7 +139,8 @@ const INITIAL_STATE = {
   a11yOverlay: {issues: true, readingOrder: false},
   a11yFilter: {status: 'open', severity: 'all', rule: 'all'},
   a11yConfig: null,
-  a11yIssues: {},
+  a11yIssues: {version: 2, problems: [], log: []},
+  a11yJiraLookup: {status: 'idle', found: 0},
   a11yInput: null,
   a11yStress: null,
   a11yAi: {status: 'idle'},
@@ -184,6 +186,9 @@ export default function inspector(state = INITIAL_STATE, action) {
 
     case SET_A11Y_ISSUES:
       return {...state, a11yIssues: action.issues};
+
+    case SET_A11Y_JIRA_LOOKUP:
+      return {...state, a11yJiraLookup: {status: action.status, found: action.found ?? 0}};
 
     case SET_SOURCE_AND_SCREENSHOT:
       return {

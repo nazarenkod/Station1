@@ -16,13 +16,22 @@ const violation = {
   details: {element: 'ImageButton (id/btn_scan_qr)'},
 };
 
+const problem = {
+  code: 'a11y-3f9c2a1b',
+  component: 'btn_scan_qr',
+  everyScreen: true,
+  markers: ['a11y-3f9c2a1b', 'a11y-missing-label', 'a11y-component-btn_scan_qr'],
+  markerQuery: ['a11y-missing-label', 'a11y-component-btn_scan_qr'],
+};
+
 const request = {
-  violation,
+  violations: [violation],
+  problem,
   block: 'Платежі',
   screen: 'Оплата',
   device: 'Pixel 6 · Android 12',
   app: 'com.bank.app',
-  locator: 'id: com.bank.app:id/btn_scan_qr',
+  locators: ['id: com.bank.app:id/btn_scan_qr'],
   parentKey: 'pay-42',
   screenshotPng: Buffer.from('png').toString('base64'),
 };
@@ -31,7 +40,7 @@ const request = {
  * A Jira Cloud that knows one task, PAY-42, in a project whose bug sub-task
  * needs a severity and a customer copied from the task.
  */
-function fakeJira() {
+function fakeJira(searchResults = null) {
   const calls = [];
   const json = (body, status = 200) => ({ok: status < 400, status, text: async () => JSON.stringify(body)});
   const fetchImpl = async (url, init = {}) => {
@@ -95,6 +104,13 @@ function fakeJira() {
     if (path === '/rest/api/2/issue/PAY-77/attachments') {
       return json([]);
     }
+    if (path.startsWith('/rest/api/2/search/jql')) {
+      const jql = decodeURIComponent(path.split('jql=')[1].split('&')[0]);
+      return json({issues: (searchResults ?? (() => []))(jql)});
+    }
+    if (/^\/rest\/api\/2\/issue\/PAY-\d+$/.test(path) && init.method === 'PUT') {
+      return json({}, 204);
+    }
     return json({errorMessages: [`unexpected ${path}`]}, 404);
   };
   return {calls, fetchImpl};
@@ -110,12 +126,20 @@ describe('JiraBugService', function () {
     expect(prep.ok).toBe(true);
     expect(prep.parent).toMatchObject({key: 'PAY-42', projectKey: 'PAY', assignee: 'Olena'});
     expect(prep.issueTypeId).toBe('11');
-    expect(prep.summary).toBe('[A11y] Платежі. Оплата: Control has no label (com.bank.app:id/btn_scan_qr)');
+    expect(prep.summary).toBe(
+      '[A11y] Платежі. Оплата: Control has no label (com.bank.app:id/btn_scan_qr) [a11y-3f9c2a1b]',
+    );
+    expect(prep.markers).toEqual(problem.markers);
+    expect(prep.inJira).toEqual([]);
     expect(prep.filled).toEqual(
       expect.arrayContaining([
         {field: 'Parent', value: 'PAY-42', source: 'task'},
         {field: 'Assignee', value: 'Olena', source: 'task'},
-        {field: 'Labels', value: 'accessibility, vision', source: 'vision'},
+        {
+          field: 'Labels',
+          value: 'accessibility, vision, a11y-3f9c2a1b, a11y-missing-label, a11y-component-btn_scan_qr',
+          source: 'vision',
+        },
       ]),
     );
     expect(prep.missing).toEqual([]);
@@ -124,7 +148,15 @@ describe('JiraBugService', function () {
   it('files the bug, attaches the outlined screenshot and returns its key', async function () {
     const {calls, fetchImpl} = fakeJira();
     const result = await service(fetchImpl).file(request);
-    expect(result).toEqual({ok: true, key: 'PAY-77', url: 'https://bank.atlassian.net/browse/PAY-77', warnings: []});
+    expect(result).toEqual({
+      ok: true,
+      key: 'PAY-77',
+      url: 'https://bank.atlassian.net/browse/PAY-77',
+      code: 'a11y-3f9c2a1b',
+      alreadyFiled: false,
+      duplicates: [],
+      warnings: [],
+    });
 
     const created = JSON.parse(calls.find((call) => call.path === '/rest/api/2/issue' && call.method === 'POST').body);
     expect(created.fields).toMatchObject({
@@ -132,13 +164,14 @@ describe('JiraBugService', function () {
       issuetype: {id: '11'},
       parent: {key: 'PAY-42'},
       assignee: {accountId: 'acc-1'},
-      labels: ['accessibility', 'vision'],
+      labels: ['accessibility', 'vision', ...problem.markers],
       customfield_100: {id: '2'},
       customfield_200: {id: '7'},
     });
     expect(created.fields.description).toContain('||Локатор|id: com.bank.app:id/btn_scan_qr|');
+    expect(created.fields.summary.endsWith('[a11y-3f9c2a1b]')).toBe(true);
     // a sub-task is not linked again, and the screenshot is attached
-    expect(calls.some((call) => call.path === '/rest/api/2/issueLink')).toBe(false);
+    expect(calls.some((call) => call.path.startsWith('/rest/api/2/issueLink'))).toBe(false);
     expect(calls.some((call) => call.path === '/rest/api/2/issue/PAY-77/attachments')).toBe(true);
     expect(calls[0].headers.Authorization).toBe(`Basic ${Buffer.from('qa@bank.ua:token').toString('base64')}`);
   });
@@ -150,5 +183,79 @@ describe('JiraBugService', function () {
 
     const unknownTask = await service(fetchImpl).prepare({...request, parentKey: 'PAY-1'});
     expect(unknownTask).toMatchObject({ok: false, error: expect.stringContaining('404')});
+  });
+
+  const found = (key, labels, extra = {}) => ({
+    key,
+    fields: {summary: `Bug ${key}`, status: {name: 'Open', statusCategory: {key: 'new'}}, labels, ...extra},
+  });
+
+  it('links an open bug Jira has for the problem instead of filing another, and marks it', async function () {
+    const {calls, fetchImpl} = fakeJira(() => [found('PAY-50', ['a11y-missing-label', 'a11y-component-btn_scan_qr'])]);
+    const result = await service(fetchImpl).file(request);
+    expect(result).toMatchObject({ok: true, key: 'PAY-50', alreadyFiled: true});
+    expect(calls.some((call) => call.path === '/rest/api/2/issue' && call.method === 'POST')).toBe(false);
+    const edit = calls.find((call) => call.path === '/rest/api/2/issue/PAY-50' && call.method === 'PUT');
+    expect(JSON.parse(edit.body).update.labels).toEqual([
+      ...problem.markers.map((label) => ({add: label})),
+      {remove: 'a11y-unlinked-3f9c2a1b'},
+    ]);
+  });
+
+  it('does not take a bug that was unlinked from the problem, nor a done one', async function () {
+    const unlinked = found('PAY-51', ['a11y-3f9c2a1b', 'a11y-unlinked-3f9c2a1b']);
+    const done = found('PAY-52', ['a11y-3f9c2a1b'], {status: {name: 'Done', statusCategory: {key: 'done'}}});
+    const {fetchImpl} = fakeJira(() => [unlinked, done]);
+    const result = await service(fetchImpl).file(request);
+    expect(result).toMatchObject({ok: true, key: 'PAY-77', alreadyFiled: false});
+    expect(result.warnings).toEqual(['a11y-3f9c2a1b was filed before as PAY-52 (done)']);
+  });
+
+  it('warns about a bug a colleague filed for the problem in the same moment', async function () {
+    const {fetchImpl} = fakeJira((jql) =>
+      jql.startsWith('labels = "a11y-3f9c2a1b" AND key !=') ? [found('PAY-78', ['a11y-3f9c2a1b'])] : [],
+    );
+    const result = await service(fetchImpl).file(request);
+    expect(result.duplicates).toEqual([{key: 'PAY-78', url: 'https://bank.atlassian.net/browse/PAY-78'}]);
+  });
+
+  it("looks a screen's problems up in one search, by id or by markers", async function () {
+    const {calls, fetchImpl} = fakeJira(() => [
+      found('PAY-60', ['a11y-missing-label', 'a11y-component-btn_scan_qr']),
+      found('PAY-61', ['a11y-0000aaaa']),
+    ]);
+    const other = {code: 'a11y-0000aaaa', markerQuery: null};
+    const result = await service(fetchImpl).lookup({
+      items: [
+        {group: 'g1', ...problem},
+        {group: 'g2', ...other},
+        {group: 'g3', code: 'a11y-ffffffff', markerQuery: null},
+      ],
+      unlinkedKeys: [],
+    });
+    expect(result).toEqual({
+      ok: true,
+      found: [
+        {group: 'g1', code: 'a11y-3f9c2a1b', key: 'PAY-60', url: 'https://bank.atlassian.net/browse/PAY-60'},
+        {group: 'g2', code: 'a11y-0000aaaa', key: 'PAY-61', url: 'https://bank.atlassian.net/browse/PAY-61'},
+      ],
+    });
+    expect(calls.filter((call) => call.path.startsWith('/rest/api/2/search/jql'))).toHaveLength(1);
+  });
+
+  it('unlinks a bug: takes the problem labels off and marks it unlinked', async function () {
+    const {calls, fetchImpl} = fakeJira(() => [
+      found('PAY-50', ['accessibility', 'a11y-3f9c2a1b', 'a11y-missing-label']),
+    ]);
+    expect(await service(fetchImpl).unlink({jiraKey: 'PAY-50', code: 'a11y-3f9c2a1b'})).toEqual({
+      ok: true,
+      warnings: [],
+    });
+    const edit = calls.find((call) => call.method === 'PUT');
+    expect(JSON.parse(edit.body).update.labels).toEqual([
+      {add: 'a11y-unlinked-3f9c2a1b'},
+      {remove: 'a11y-3f9c2a1b'},
+      {remove: 'a11y-missing-label'},
+    ]);
   });
 });

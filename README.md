@@ -26,6 +26,23 @@ locators, commands, gestures, the recorder and the cloud provider integrations.
    the Appium server's machine; Jira and AI stay in the desktop app, which keeps credentials in the
    system keychain.
 
+## No duplicate bugs
+
+Issues are grouped into **problems**, the way vision does it. A problem gets an id (`a11y-3f9c2a1b`) once,
+from the rule, the component (the Compose tag after `#`, or the resource id) and, for some rules, the
+measured value: a 38 × 38 dp tap area on `PbButton` is one problem on every screen, 38 × 40 is another.
+Elements without an id are problems of their screen, which is named by its title (`id:Appbar#Title` by
+default). When two issues are the same problem is set per rule, and problem classes (patterns on the
+element id, screen, class and label) can group or ignore issues; see Rules → Problems.
+
+Jira is what the team shares: a bug carries the problem id in its summary and labels, plus marker labels
+(`a11y-<rule>`, `a11y-component-…`, `a11y-value-…`, `a11y-class-…`). After each check, the screen's open
+problems are looked up in Jira by id or markers, so a bug filed by a colleague, from vision or by hand
+covers the problem here too. Right before filing, Jira is searched again and an open bug is linked
+instead of filing a new one. Unlinking takes the markers off a bug and labels it `a11y-unlinked-<id>`, so
+no lookup links it again. Setting vision's project id under Rules → Problems makes the ids the same as
+vision's.
+
 ## Command line and CI
 
 `npm run build:cli` builds `dist-cli/vision-inspector.mjs` (also installed as `vision-inspector`):

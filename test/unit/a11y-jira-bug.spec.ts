@@ -9,10 +9,8 @@ import {
   defaultIssueType,
   functionalBlock,
   inspectorBugText,
-  screenTitle,
 } from '../../app/common/renderer/lib/a11y/jira-bug';
 import type {A11yViolation} from '../../app/common/renderer/lib/a11y/types';
-import {parseUiTree} from '../../app/common/renderer/lib/a11y/ui-tree';
 
 const violation: A11yViolation = {
   id: 'touch-target|id:btn',
@@ -26,6 +24,8 @@ const violation: A11yViolation = {
   label: 'Надати дані',
   bounds: {x: 0, y: 0, width: 10, height: 10},
 };
+
+const problem = {code: 'a11y-3f9c2a1b', component: null, everyScreen: false};
 
 const field = (id: string, name: string, extra: Partial<JiraField> = {}): JiraField => ({
   id,
@@ -49,22 +49,12 @@ const parent = (
   fields,
 });
 
-describe('functionalBlock and screenTitle', () => {
+describe('functionalBlock', () => {
   it('takes the service from the check name before the first dot', () => {
     expect(functionalBlock('Кредитна сила - Кредит готівкою. Деталі договору - інфоблок')).toBe(
       'Кредитна сила - Кредит готівкою',
     );
     expect(functionalBlock('Login')).toBe('Login');
-  });
-
-  it('reads the screen title from the element tagged Appbar#Title', () => {
-    const xml = `<hierarchy width="1080" height="2400"><android.widget.FrameLayout class="android.widget.FrameLayout" bounds="[0,0][1080,2400]">
-      <android.view.View class="android.view.View" resource-id="Appbar#Title" bounds="[0,60][1080,200]">
-        <android.widget.TextView class="android.widget.TextView" text="Адреса проживання" bounds="[40,80][800,180]"/>
-      </android.view.View>
-    </android.widget.FrameLayout></hierarchy>`;
-    expect(screenTitle(parseUiTree(xml, {imageWidth: 1080, imageHeight: 2400}))).toBe('Адреса проживання');
-    expect(screenTitle(null)).toBeNull();
   });
 });
 
@@ -76,9 +66,10 @@ describe('bugText', () => {
       title: 'Адреса проживання',
       device: 'PIXEL_4_XL · 15',
       url: 'http://vision/x',
+      problem,
     });
     expect(text.summary).toBe(
-      '[A11y] Кредитна сила - Кредит готівкою. Адреса проживання: Touch target too small (Надати дані)',
+      '[A11y] Кредитна сила - Кредит готівкою. Адреса проживання: Touch target too small (Надати дані) [a11y-3f9c2a1b]',
     );
     expect(text.description).toContain('h3. Фактичний результат\n' + violation.message);
     expect(text.description).toContain('h3. Очікуваний результат\nОбласть натискання не менше 48 × 48 dp');
@@ -93,11 +84,12 @@ describe('bugText', () => {
       title: null,
       device: '',
       url: 'u',
+      problem,
     });
     expect(text.screen).toBe('Текст суми');
-    expect(bugText({violations: [violation], testName: 'Payments', title: null, device: '', url: 'u'}).summary).toBe(
-      '[A11y] Payments: Touch target too small (Надати дані)',
-    );
+    expect(
+      bugText({violations: [violation], testName: 'Payments', title: null, device: '', url: 'u', problem}).summary,
+    ).toBe('[A11y] Payments: Touch target too small (Надати дані) [a11y-3f9c2a1b]');
   });
 });
 
@@ -121,11 +113,45 @@ describe('bugText for one problem on several elements', () => {
       title: null,
       device: '',
       url: 'u',
+      problem,
     });
-    expect(text.summary).toBe('[A11y] Адреси. Екран: Touch target too small (Надати дані, Надати дані 2 +1)');
+    expect(text.summary).toBe(
+      '[A11y] Адреси. Екран: Touch target too small (Надати дані, Надати дані 2 +1) [a11y-3f9c2a1b]',
+    );
     expect(text.description).toContain('Та сама проблема на 3 елементах одного компонента:');
     expect(text.description).toContain('# Button 3 is 347 × 40 dp.');
     expect(text.description).toContain('проблемні елементи обведено');
+  });
+});
+
+describe('problem id in the bug', () => {
+  it('goes into the summary and the description, with the component', () => {
+    const text = bugText({
+      violations: [violation],
+      testName: 'Адреси. Екран',
+      title: null,
+      device: '',
+      url: 'u',
+      problem: {code: 'a11y-3f9c2a1b', component: 'PbButton', everyScreen: true},
+    });
+    expect(text.summary.endsWith(' [a11y-3f9c2a1b]')).toBe(true);
+    expect(text.description).toContain('||ID проблеми (Vision)|a11y-3f9c2a1b|');
+    expect(text.description).toContain('||Компонент|PbButton|');
+    expect(text.description).toContain('Проблема компонента PbButton');
+    expect(text.description).toContain('labels = a11y-3f9c2a1b');
+  });
+
+  it('keeps the id whole in a long summary', () => {
+    const long = bugText({
+      violations: [{...violation, label: 'x'.repeat(400)}],
+      testName: 'A',
+      title: null,
+      device: '',
+      url: 'u',
+      problem,
+    });
+    expect(long.summary.length).toBeLessThanOrEqual(250);
+    expect(long.summary.endsWith('[a11y-3f9c2a1b]')).toBe(true);
   });
 });
 
@@ -283,28 +309,46 @@ describe('copyValue', () => {
 });
 
 describe('inspectorBugText', () => {
+  const problem = {code: 'a11y-3f9c2a1b', component: 'PbButton', everyScreen: true};
+
   it('fills the template from the dialog and the session instead of a check name', () => {
     const text = inspectorBugText({
-      violation: {...violation, details: {element: 'Button', widthDp: 347, heightDp: 40}},
+      violations: [{...violation, details: {element: 'Button', widthDp: 347, heightDp: 40}}],
+      problem,
       block: 'Кредитна сила',
       screen: 'Деталі договору',
       device: 'iPhone 15 · iOS 17.0',
       app: 'ua.bank',
-      locator: 'id: ua.bank:id/btn',
+      locators: ['id: ua.bank:id/btn'],
       suggestedLabel: 'Надати дані',
     });
-    expect(text.summary).toBe('[A11y] Кредитна сила. Деталі договору: Touch target too small (Надати дані)');
+    expect(text.summary).toBe(
+      '[A11y] Кредитна сила. Деталі договору: Touch target too small (Надати дані) [a11y-3f9c2a1b]',
+    );
+    expect(text.description).toContain('||ID проблеми (Vision)|a11y-3f9c2a1b|');
+    expect(text.description).toContain('||Компонент|PbButton|');
     expect(text.description).toContain('||Застосунок|ua.bank|');
     expect(text.description).toContain('||Локатор|id: ua.bank:id/btn|');
     expect(text.description).toContain('||Рекомендована назва|"Надати дані"|');
     expect(text.description).toContain('* widthDp: 347');
     expect(text.description).not.toContain('* element:');
-    expect(text.description).toContain('Область натискання не менше 48 × 48 dp');
+    expect(text.description).toContain('Один баг на всі екрани.');
+    expect(text.description).toContain('labels = a11y-3f9c2a1b');
   });
 
-  it('uses the block as the screen when the screen has no title', () => {
-    const text = inspectorBugText({violation, block: 'Login', screen: null, device: '', app: ''});
+  it('lists every element of a problem on several elements', () => {
+    const text = inspectorBugText({
+      violations: [violation, {...violation, id: 'b', label: 'Далі', message: 'Button "Далі" is 300 × 40 dp.'}],
+      problem,
+      block: 'Login',
+      screen: null,
+      device: '',
+      app: '',
+      locators: ['id: a', 'id: b'],
+    });
     expect(text.summary.startsWith('[A11y] Login: ')).toBe(true);
+    expect(text.description).toContain('Та сама проблема на 2 елементах одного компонента:');
+    expect(text.description).toContain('||Локатори|id: a; id: b|');
     expect(text.description).toContain('||Пристрій|—|');
   });
 });

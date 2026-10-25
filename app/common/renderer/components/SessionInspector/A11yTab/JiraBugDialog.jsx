@@ -5,6 +5,9 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {JIRA_MEMORY} from '../../../../shared/setting-defs.js';
+import {problemForJira} from '../../../actions/A11y.js';
+import {mergeConfig} from '../../../lib/a11y/config';
+import {asStore, problemContextOf, unlinkedKeys} from '../../../lib/a11y/issues';
 import {backend, getSetting, openLink, setSetting} from '../../../polyfills.js';
 import {notification} from '../../../utils/notification.js';
 import JiraFieldInput from '../../Jira/JiraFieldInput.jsx';
@@ -20,7 +23,7 @@ const OUTLINE = {color: 'rgb(255, 0, 128)', width: 6, padding: 6};
  * The screenshot with the element outlined, as base64 PNG for the attachment
  * and as a data URL for the preview.
  */
-async function outlineScreenshot(base64Png, bounds) {
+async function outlineScreenshot(base64Png, rects) {
   const image = new Image();
   image.src = `data:image/png;base64,${base64Png}`;
   await image.decode();
@@ -32,12 +35,14 @@ async function outlineScreenshot(base64Png, bounds) {
   context.strokeStyle = OUTLINE.color;
   context.lineWidth = OUTLINE.width;
   const inset = OUTLINE.width / 2;
-  context.strokeRect(
-    bounds.x - OUTLINE.padding + inset,
-    bounds.y - OUTLINE.padding + inset,
-    bounds.width + 2 * OUTLINE.padding - OUTLINE.width,
-    bounds.height + 2 * OUTLINE.padding - OUTLINE.width,
-  );
+  for (const bounds of rects) {
+    context.strokeRect(
+      bounds.x - OUTLINE.padding + inset,
+      bounds.y - OUTLINE.padding + inset,
+      bounds.width + 2 * OUTLINE.padding - OUTLINE.width,
+      bounds.height + 2 * OUTLINE.padding - OUTLINE.width,
+    );
+  }
   const dataUrl = canvas.toDataURL('image/png');
   return {dataUrl, base64: dataUrl.slice(dataUrl.indexOf(',') + 1)};
 }
@@ -64,11 +69,15 @@ const mostUsed = (usage = {}, options) =>
   options.filter((option) => usage[option]).sort((a, b) => usage[b] - usage[a])[0] ?? null;
 
 /**
- * Files a Jira bug for one accessibility issue, the way vision does: under a
- * task, with the team's template; the task and choices are remembered per screen.
+ * Files one Jira bug for an accessibility problem, the way vision does: under
+ * a task, with the team's template, the problem's id and markers; when Jira
+ * has a bug for the problem already, that one is linked instead. The task and
+ * choices are remembered per screen.
  */
 const JiraBugDialog = ({
-  violation,
+  group,
+  a11yConfig,
+  a11yIssues,
   onClose,
   a11yScreen,
   a11yDevice,
@@ -95,7 +104,7 @@ const JiraBugDialog = ({
   const [showDescription, setShowDescription] = useState(false);
   const preparedFor = useRef('');
 
-  const open = !!violation;
+  const open = !!group;
   const screenKey = `${a11yDevice?.appId}::${a11yScreen?.key}`;
   const isIos = a11yScan?.format === 'appium-ios';
 
@@ -126,31 +135,44 @@ const JiraBugDialog = ({
       setError(null);
       preparedFor.current = '';
       if (screenshot) {
-        setPreview(await outlineScreenshot(screenshot, violation.bounds));
+        setPreview(
+          await outlineScreenshot(
+            screenshot,
+            group.violations.map((v) => v.bounds),
+          ),
+        );
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, violation, screenKey, screenshot, settingsOpen]);
+  }, [open, group, screenKey, screenshot, settingsOpen]);
 
   const configured = !!(settings?.url && settings?.email && hasToken);
   const keyValid = JIRA_KEY.test(parentKey.trim());
 
-  const request = useMemo(
-    () =>
-      violation && {
-        violation: {...violation, issue: undefined},
-        block: block.trim(),
-        screen: a11yScreen?.title ?? null,
-        device: deviceOf(sessionCaps ?? {}),
-        app: a11yDevice?.appId ?? '',
-        locator: locatorOf(violation, isIos),
-        suggestedLabel: violation.details?.suggestedLabel ?? null,
-        parentKey: parentKey.trim().toUpperCase(),
-      },
-    [violation, block, a11yScreen, sessionCaps, a11yDevice, isIos, parentKey],
-  );
+  const request = useMemo(() => {
+    if (!group) {
+      return null;
+    }
+    const context = problemContextOf({
+      config: a11yConfig ?? mergeConfig(null),
+      appId: a11yDevice?.appId ?? 'app',
+      screen: a11yScreen,
+    });
+    return {
+      violations: group.violations.map((violation) => ({...violation, issue: undefined})),
+      problem: problemForJira(group, context),
+      block: block.trim(),
+      screen: a11yScreen?.title ?? null,
+      device: deviceOf(sessionCaps ?? {}),
+      app: a11yDevice?.appId ?? '',
+      locators: group.violations.map((violation) => locatorOf(violation, isIos)),
+      suggestedLabel: group.violations.find((v) => v.details?.suggestedLabel)?.details.suggestedLabel ?? null,
+      parentKey: parentKey.trim().toUpperCase(),
+      unlinkedKeys: unlinkedKeys(asStore(a11yIssues)),
+    };
+  }, [group, block, a11yScreen, sessionCaps, a11yDevice, isIos, parentKey, a11yConfig, a11yIssues]);
 
   const inputs = prep?.inputs ?? [];
   const valueOf = (input) => chosen[input.id]?.value ?? input.value;
@@ -219,6 +241,7 @@ const JiraBugDialog = ({
   }, [open, configured, keyValid, request, issueTypeId, block, memory]);
 
   const issueType = prep?.issueTypes.find((type) => type.id === issueTypeId);
+  const openInJira = prep?.inJira?.find((issue) => !issue.done);
   const emptyRequired = inputs.filter(
     (input) => input.required && (valueOf(input) === undefined || valueOf(input) === null),
   );
@@ -254,9 +277,13 @@ const JiraBugDialog = ({
         return;
       }
       await remember();
-      await recordA11yDecision(violation, {status: 'reported', jiraKey: result.key, jiraUrl: result.url});
+      await recordA11yDecision(
+        group,
+        {status: 'reported', jiraKey: result.key, jiraUrl: result.url, code: result.code},
+        result.alreadyFiled ? 'found' : 'filed',
+      );
       notification.success({
-        title: t('jiraFiled', {key: result.key}),
+        title: result.alreadyFiled ? t('jiraLinkedExisting', {key: result.key}) : t('jiraFiled', {key: result.key}),
         description: (
           <Button
             type="link"
@@ -271,6 +298,13 @@ const JiraBugDialog = ({
       });
       for (const warning of result.warnings) {
         notification.warning({title: result.key, description: warning, duration: 8});
+      }
+      if (result.duplicates?.length) {
+        notification.warning({
+          title: t('jiraPossibleDuplicate', {keys: result.duplicates.map((bug) => bug.key).join(', ')}),
+          description: t('jiraPossibleDuplicateHint', {code: result.code}),
+          duration: 0,
+        });
       }
       onClose();
     } finally {
@@ -374,10 +408,24 @@ const JiraBugDialog = ({
             {cannotAsk.length > 0 && (
               <Alert type="warning" showIcon title={t('jiraCannotAsk', {fields: cannotAsk.join(', ')})} />
             )}
+            {openInJira && (
+              <Alert
+                type="info"
+                showIcon
+                className={styles.alert}
+                title={t('jiraHasBug', {key: openInJira.key, status: openInJira.status})}
+                description={t('jiraHasBugHint')}
+              />
+            )}
             <div className={styles.preview}>
               {preview && <img src={preview.dataUrl} alt="" className={styles.previewShot} />}
               <div className={styles.previewText}>
                 <div className={styles.previewSummary}>{prep.summary}</div>
+                <div className={styles.markers}>
+                  {prep.markers.map((marker) => (
+                    <code key={marker}>{marker}</code>
+                  ))}
+                </div>
                 {prep.filled.map((item) => (
                   <div key={item.field} className={styles.muted}>
                     {item.field}: <span className={styles.previewValue}>{item.value}</span>
@@ -437,7 +485,7 @@ const JiraBugDialog = ({
                   <Space>
                     <CancelBtn />
                     <Button type="primary" disabled={!canCreate} loading={filing} onClick={create}>
-                      {t('jiraCreate')}
+                      {openInJira ? t('jiraLinkInstead', {key: openInJira.key}) : t('jiraCreate')}
                     </Button>
                   </Space>
                 </Space>

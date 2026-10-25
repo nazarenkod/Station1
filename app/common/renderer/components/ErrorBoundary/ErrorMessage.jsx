@@ -24,9 +24,13 @@ const ErrorMessage = ({error, copyTrace}) => {
         showIcon
         description={
           <>
-            {t('Please report this issue at:')}&nbsp;
-            <a onClick={(e) => e.preventDefault() || openLink(LINKS.CREATE_ISSUE)}>{LINKS.CREATE_ISSUE}</a>
-            <br />
+            {LINKS.CREATE_ISSUE && (
+              <>
+                {t('Please report this issue at:')}&nbsp;
+                <a onClick={(e) => e.preventDefault() || openLink(LINKS.CREATE_ISSUE)}>{LINKS.CREATE_ISSUE}</a>
+                <br />
+              </>
+            )}
             {t('Full error trace:')}
             <Tooltip title={copyErrLabel}>
               <Button

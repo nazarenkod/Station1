@@ -1,4 +1,7 @@
+import {DEFAULT_SCREEN_TITLE_SELECTORS, screenTitle} from './problems';
 import type {UiTree} from './ui-tree.types';
+
+export {screenTitle};
 
 export interface ScreenIdentity {
   // what the screen is called, as people read it
@@ -7,29 +10,6 @@ export interface ScreenIdentity {
   source: 'title-tag' | 'navigation-bar' | 'activity' | 'structure';
   // the key decisions and filed bugs are stored under
   key: string;
-}
-
-/**
- * The screen's own title from the UI tree: the element tagged with the title
- * tag (as a resource id or label, Appbar#Title by default), or the text under it.
- * Same as screenTitle() in vision's jira-bug.ts, with the tag configurable.
- */
-export function screenTitle(tree: UiTree | null, tagPattern = 'appbar#title'): string | null {
-  if (!tree) {
-    return null;
-  }
-  const tag = new RegExp(tagPattern, 'i');
-  const tagged = tree.nodes.find((node) => tag.test(node.resourceId) || tag.test(node.label));
-  if (!tagged) {
-    return null;
-  }
-  const own = [tagged.text, tag.test(tagged.label) ? '' : tagged.label].find((value) => value?.trim());
-  if (own) {
-    return own.trim();
-  }
-  // the tag can sit on a container whose child holds the text
-  const child = tree.nodes.find((node) => node.parent === tagged.index && (node.text || node.label));
-  return child ? (child.text || child.label).trim() : null;
 }
 
 function navigationBarTitle(tree: UiTree): string | null {
@@ -52,11 +32,15 @@ function hash(text: string): string {
 }
 
 /**
- * Which screen this is. Decisions about its issues are kept per screen, so the
- * same screen opened again (on any device, in any build) shows what was filed.
+ * Which screen this is: its title by the project's selectors (vision's
+ * screenTitle), else, here only, the iOS navigation bar, the Android activity
+ * or the layout. Problems that are not a component's are kept per screen.
  */
-export function identifyScreen(tree: UiTree, options: {titleTag?: string; activity?: string} = {}): ScreenIdentity {
-  const tagged = screenTitle(tree, options.titleTag);
+export function identifyScreen(
+  tree: UiTree,
+  options: {titleSelectors?: string[]; activity?: string} = {},
+): ScreenIdentity {
+  const tagged = screenTitle(tree, options.titleSelectors ?? DEFAULT_SCREEN_TITLE_SELECTORS);
   if (tagged) {
     return {title: tagged, source: 'title-tag', key: `title:${tagged.toLowerCase()}`};
   }

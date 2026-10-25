@@ -4,9 +4,11 @@ import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {DEFAULT_A11Y_CONFIG, isValidPattern, mergeConfig} from '../../../lib/a11y/config';
+import {compilePattern} from '../../../lib/a11y/problems';
 import {A11Y_RULES} from '../../../lib/a11y/types';
 import {downloadText, pickFiles, readTextFromUploadedFiles} from '../../../utils/file-handling.js';
 import {notification} from '../../../utils/notification.js';
+import ProblemSettings from './ProblemSettings.jsx';
 
 const SEVERITIES = ['error', 'warning', 'info'];
 
@@ -33,7 +35,11 @@ const RulesModal = ({open, config, onClose, onSave}) => {
     }));
   const setPattern = (key, value) => setDraft((prev) => ({...prev, patterns: {...prev.patterns, [key]: value}}));
 
-  const patternsValid = Object.values(draft.patterns).every(isValidPattern);
+  const patternsValid =
+    Object.values(draft.patterns).every(isValidPattern) &&
+    draft.problems.classes.every((item) =>
+      Object.values(item.when ?? {}).every((values) => (values ?? []).every((pattern) => !!compilePattern(pattern))),
+    );
 
   const importConfig = async () => {
     const [file] = await readTextFromUploadedFiles(await pickFiles());
@@ -171,6 +177,16 @@ const RulesModal = ({open, config, onClose, onSave}) => {
           {key: 'rules', label: t('a11ySettingsRules'), children: rulesTab},
           {key: 'thresholds', label: t('a11ySettingsThresholds'), children: thresholdsTab},
           {key: 'patterns', label: t('a11ySettingsPatterns'), children: patternsTab},
+          {
+            key: 'problems',
+            label: t('a11ySettingsProblems'),
+            children: (
+              <ProblemSettings
+                problems={draft.problems}
+                onChange={(problems) => setDraft((prev) => ({...prev, problems}))}
+              />
+            ),
+          },
         ]}
       />
     </Modal>

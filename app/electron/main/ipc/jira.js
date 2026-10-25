@@ -38,13 +38,6 @@ export function setupJiraIPC() {
     return true;
   });
   ipcMain.handle('jira:test', async () => await service.test());
-  ipcMain.handle('jira:issue', async (_evt, key) => {
-    try {
-      return {ok: true, ...(await service.issue(key))};
-    } catch (error) {
-      return {ok: false, error: error.message};
-    }
-  });
   ipcMain.handle('jira:findUsers', async (_evt, query) => {
     try {
       return await service.findUsers(query);
@@ -54,4 +47,7 @@ export function setupJiraIPC() {
   });
   ipcMain.handle('jira:prepare', async (_evt, request) => await service.prepare(request));
   ipcMain.handle('jira:file', async (_evt, request) => await service.file(request));
+  ipcMain.handle('jira:lookup', async (_evt, request) => await service.lookup(request));
+  ipcMain.handle('jira:link', async (_evt, request) => await service.link(request));
+  ipcMain.handle('jira:unlink', async (_evt, request) => await service.unlink(request));
 }

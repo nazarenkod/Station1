@@ -1,7 +1,7 @@
 import {PNG} from 'pngjs';
 
 import {mergeConfig} from '../../renderer/lib/a11y/config';
-import {reviewScan} from '../../renderer/lib/a11y/issues';
+import {asStore, problemContextOf, reviewScan} from '../../renderer/lib/a11y/issues';
 import {scanScreen} from '../../renderer/lib/a11y/rules';
 import {identifyScreen} from '../../renderer/lib/a11y/screen';
 import {detectFormat, parseUiTree} from '../../renderer/lib/a11y/ui-tree';
@@ -73,8 +73,8 @@ export async function captureSession(baseUrl, sessionId) {
 }
 
 /**
- * Checks one screen. Decisions (an export from Vision Inspector) mark issues
- * that were filed or ignored, so only open ones count.
+ * Checks one screen. Decisions (an export from Vision Inspector) mark
+ * problems that were filed or ignored, on any screen, so only open ones count.
  */
 export function auditScreen({sourceXml, png, densityDpi, activity, appId = 'app', config, decisions}) {
   const rules = mergeConfig(config);
@@ -86,12 +86,14 @@ export function auditScreen({sourceXml, png, densityDpi, activity, appId = 'app'
     activity: activity ?? undefined,
   });
   const scan = scanScreen(tree, image ?? undefined, rules);
-  const screen = identifyScreen(tree, {titleTag: rules.patterns.screenTitleTag, activity: activity ?? undefined});
-  const reviewed = reviewScan(scan.violations, decisions ?? {}, appId, screen.key);
+  const screen = identifyScreen(tree, {titleSelectors: rules.problems.screenTitle, activity: activity ?? undefined});
+  const context = problemContextOf({config: rules, appId, screen});
+  const reviewed = reviewScan(scan.violations, asStore(decisions), context);
   return {
     scan: {...scan, scale: tree.scale, imageWidth: image?.width ?? 0, imageHeight: image?.height ?? 0},
     screen,
     reviewed,
+    context,
     appId,
   };
 }
@@ -102,4 +104,4 @@ const SEVERITY_RANK = {error: 0, warning: 1, info: 2};
  * Whether open issues reach the severity a build should fail on.
  */
 export const failsAt = (reviewed, failOn) =>
-  failOn !== 'none' && reviewed.open.some((v) => SEVERITY_RANK[v.severity] <= SEVERITY_RANK[failOn]);
+  failOn !== 'none' && reviewed.open.some((group) => SEVERITY_RANK[group.severity] <= SEVERITY_RANK[failOn]);

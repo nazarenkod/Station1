@@ -13,28 +13,31 @@ const SEVERITY_COLOR = {error: '#F43F5E', warning: '#F59E0B', info: '#3B82F6'};
  * it, and the list of issues: something to attach or send without the app.
  */
 export function buildHtmlReport({t, scan, reviewed, screen, device, screenshot, score}) {
-  const issues = [...(reviewed?.open ?? []), ...(reviewed?.reported ?? [])];
+  const problems = [...(reviewed?.open ?? []), ...(reviewed?.reported ?? [])];
   const width = scan?.imageWidth || 1;
   const height = scan?.imageHeight || 1;
   const pct = (value, total) => `${((value / total) * 100).toFixed(3)}%`;
 
-  const boxes = issues
-    .map((v, i) => {
-      const {x, y, width: w, height: h} = v.bounds;
-      return `<div class="box" style="left:${pct(x, width)};top:${pct(y, height)};width:${pct(w, width)};height:${pct(h, height)};--c:${SEVERITY_COLOR[v.severity]}"><span>${i + 1}</span></div>`;
-    })
+  const boxes = problems
+    .flatMap((group, i) =>
+      group.violations.map((v) => {
+        const {x, y, width: w, height: h} = v.bounds;
+        return `<div class="box" style="left:${pct(x, width)};top:${pct(y, height)};width:${pct(w, width)};height:${pct(h, height)};--c:${SEVERITY_COLOR[group.severity]}"><span>${i + 1}</span></div>`;
+      }),
+    )
     .join('');
 
-  const rows = issues
-    .map((v, i) => {
-      const {title, message, fix} = violationText(t, v);
-      const filed = v.issue?.jiraKey ? `<span class="filed">${escapeHtml(v.issue.jiraKey)}</span>` : '';
-      return `<li style="--c:${SEVERITY_COLOR[v.severity]}">
+  const rows = problems
+    .map((group, i) => {
+      const {title, fix} = violationText(t, group.violations[0]);
+      const messages = group.violations.map((v) => violationText(t, v).message);
+      const filed = group.issue?.jiraKey ? `<span class="filed">${escapeHtml(group.issue.jiraKey)}</span>` : '';
+      return `<li style="--c:${SEVERITY_COLOR[group.severity]}">
         <div class="num">${i + 1}</div>
         <div><div class="title">${escapeHtml(title)} ${filed}</div>
-        <div class="msg">${escapeHtml(message)}</div>
+        ${messages.map((message) => `<div class="msg">${escapeHtml(message)}</div>`).join('')}
         ${fix ? `<div class="fix">${escapeHtml(t('a11yHowToFix'))}: ${escapeHtml(fix)}</div>` : ''}
-        <code>${escapeHtml(v.resourceId || v.className)}</code></div></li>`;
+        <code>${escapeHtml(group.code)}${group.component ? ` · ${escapeHtml(group.component)}` : ''}</code></div></li>`;
     })
     .join('');
 
@@ -61,7 +64,7 @@ code{font-size:12px;color:var(--muted)}.filed{font-size:11px;padding:1px 8px;bor
 footer{padding:0 32px 28px;color:var(--muted);font-size:12px}
 </style></head><body>
 <header><div class="score">${score}</div><div><h1>${escapeHtml(screen?.title ?? t('a11yScreenUnknown'))}</h1>
-<p>${escapeHtml(device?.appId ?? '')} · ${escapeHtml(t('a11yReportIssues', {count: issues.length}))} · ${new Date().toLocaleString()}</p></div></header>
+<p>${escapeHtml(device?.appId ?? '')} · ${escapeHtml(t('a11yReportIssues', {count: problems.length}))} · ${new Date().toLocaleString()}</p></div></header>
 <main><div class="shot">${screenshot ? `<img src="data:image/png;base64,${screenshot}" alt="">` : ''}${boxes}</div>
 <ol>${rows || `<li style="--c:#22C55E"><div class="title">${escapeHtml(t('a11yAllClear'))}</div></li>`}</ol></main>
 <footer>Vision Inspector</footer></body></html>`;

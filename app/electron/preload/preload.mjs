@@ -43,10 +43,12 @@ window.electronIPC = {
     hasToken: async () => await ipcRenderer.invoke('jira:hasToken'),
     setToken: async (token) => await ipcRenderer.invoke('jira:setToken', token),
     test: async () => await ipcRenderer.invoke('jira:test'),
-    issue: async (key) => await ipcRenderer.invoke('jira:issue', key),
     findUsers: async (query) => await ipcRenderer.invoke('jira:findUsers', query),
     prepare: async (request) => await ipcRenderer.invoke('jira:prepare', request),
     file: async (request) => await ipcRenderer.invoke('jira:file', request),
+    lookup: async (request) => await ipcRenderer.invoke('jira:lookup', request),
+    link: async (request) => await ipcRenderer.invoke('jira:link', request),
+    unlink: async (request) => await ipcRenderer.invoke('jira:unlink', request),
   },
   ai: {
     status: async () => await ipcRenderer.invoke('ai:status'),

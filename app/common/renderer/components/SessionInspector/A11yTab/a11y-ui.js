@@ -1,6 +1,7 @@
 // How accessibility issues read and weigh in the UI
 
-import {reviewScan} from '../../../lib/a11y/issues';
+import {mergeConfig} from '../../../lib/a11y/config';
+import {asStore, problemContextOf, reviewScan} from '../../../lib/a11y/issues';
 
 const PENALTY = {error: 12, warning: 5, info: 1};
 
@@ -36,14 +37,14 @@ export function violationText(t, violation) {
 }
 
 /**
- * Plain-text summary of an issue to paste into a chat or a bug.
+ * Plain-text summary of a problem to paste into a chat or a bug.
  */
-export function violationAsText(t, violation, screen) {
-  const {title, message, fix} = violationText(t, violation);
+export function problemAsText(t, group, screen) {
+  const {title, fix} = violationText(t, group.violations[0]);
   return [
-    `[A11y] ${screen?.title ? `${screen.title}: ` : ''}${title}`,
-    message,
-    violation.resourceId ? `id: ${violation.resourceId}` : `class: ${violation.className}`,
+    `[A11y] ${screen?.title ? `${screen.title}: ` : ''}${title} [${group.code}]`,
+    ...group.violations.map((v) => violationText(t, v).message),
+    ...group.violations.map((v) => (v.resourceId ? `id: ${v.resourceId}` : `class: ${v.className}`)),
     fix ? `${t('a11yHowToFix')}: ${fix}` : '',
   ]
     .filter(Boolean)
@@ -51,12 +52,12 @@ export function violationAsText(t, violation, screen) {
 }
 
 /**
- * The scan with the team's decisions applied, and the issues the current
- * filter shows. The list and the screenshot overlay show the same ones.
+ * The screen's problems with the team's decisions applied, and the ones the
+ * current filter shows. The list and the screenshot overlay show the same.
  */
-export function visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi}) {
+export function visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi, a11yConfig}) {
   if (!a11yScan || !a11yScreen || !a11yDevice) {
-    return {reviewed: null, visible: []};
+    return {reviewed: null, visible: [], context: null};
   }
   // the model's findings and suggested labels belong to the screen they were asked about
   const ai = a11yAi?.status === 'done' && a11yAi.screenKey === a11yScreen.key ? a11yAi : null;
@@ -66,12 +67,22 @@ export function visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11
     ),
     ...(ai?.violations ?? []),
   ];
-  const reviewed = reviewScan(violations, a11yIssues ?? {}, a11yDevice.appId, a11yScreen.key);
+  const context = problemContextOf({
+    config: a11yConfig ?? mergeConfig(null),
+    appId: a11yDevice.appId,
+    screen: a11yScreen,
+  });
+  const reviewed = reviewScan(violations, asStore(a11yIssues), context);
   const byStatus = {open: reviewed.open, reported: reviewed.reported, ignored: reviewed.ignored, resolved: []};
   const visible = (byStatus[a11yFilter.status] ?? []).filter(
-    (v) =>
-      (a11yFilter.severity === 'all' || v.severity === a11yFilter.severity) &&
-      (a11yFilter.rule === 'all' || v.rule === a11yFilter.rule),
+    (group) =>
+      (a11yFilter.severity === 'all' || group.severity === a11yFilter.severity) &&
+      (a11yFilter.rule === 'all' || group.rule === a11yFilter.rule),
   );
-  return {reviewed, visible};
+  return {reviewed, visible, context};
 }
+
+/**
+ * A problem's score weight, like an issue's: every problem not ignored counts once.
+ */
+export const problemsForScore = (reviewed) => [...(reviewed?.open ?? []), ...(reviewed?.reported ?? [])];

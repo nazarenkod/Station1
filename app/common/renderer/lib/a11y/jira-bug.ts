@@ -2,7 +2,6 @@
 
 import type {JiraField, JiraIssueType, JiraParentIssue, JiraUser} from '../../../node/jira/client';
 import type {A11yRule, A11yViolation} from './types';
-import type {UiTree} from './ui-tree.types';
 
 /** The functional block, or service, is what a check's name says before its first dot. */
 export function functionalBlock(testName: string): string {
@@ -14,29 +13,6 @@ export function functionalBlock(testName: string): string {
 function nameAfterBlock(testName: string): string {
   const index = testName.indexOf('.');
   return index > 0 ? testName.slice(index + 1).trim() : '';
-}
-
-const TITLE_TAG = /appbar#title/i;
-
-/**
- * The screen's own title from the UI tree: the element tagged Appbar#Title
- * (as a resource id or content description), or the text under it.
- */
-export function screenTitle(tree: UiTree | null): string | null {
-  if (!tree) {
-    return null;
-  }
-  const tagged = tree.nodes.find((node) => TITLE_TAG.test(node.resourceId) || TITLE_TAG.test(node.label));
-  if (!tagged) {
-    return null;
-  }
-  const own = [tagged.text, TITLE_TAG.test(tagged.label) ? '' : tagged.label].find((value) => value?.trim());
-  if (own) {
-    return own.trim();
-  }
-  // the tag can sit on a container whose child holds the text
-  const child = tree.nodes.find((node) => node.parent === tagged.index && (node.text || node.label));
-  return child ? (child.text || child.label).trim() : null;
 }
 
 const EXPECTED: Record<A11yRule, string> = {
@@ -73,6 +49,45 @@ const EXPECTED_AI: Record<string, string> = {
 
 const escapeWiki = (value: string) => value.replace(/\|/g, '/').replace(/[{}]/g, '');
 
+/** The problem a bug is filed for: its id, and its component when it is a component's (same on every screen). */
+export interface BugProblem {
+  code: string;
+  component: string | null;
+  everyScreen: boolean;
+}
+
+const expectedOf = (rule: string) =>
+  (EXPECTED as Record<string, string>)[rule] ?? EXPECTED_AI[rule] ?? 'Елемент відповідає вимогам доступності.';
+
+const elementsOf = (violations: A11yViolation[]) => {
+  const names = violations.map((violation) => violation.label || violation.resourceId || violation.className);
+  return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
+};
+
+// the id goes last and whole, so a text search for it always finds the bug
+const summaryWithCode = (text: string, code: string) => {
+  const tail = ` [${code}]`;
+  return text.slice(0, 250 - tail.length) + tail;
+};
+
+const actualOf = (violations: A11yViolation[]) =>
+  violations.length === 1
+    ? [violations[0].message]
+    : [
+        `Та сама проблема на ${violations.length} елементах одного компонента:`,
+        ...violations.map((v) => `# ${v.message}`),
+      ];
+
+const problemNotes = (problem: BugProblem, count: number) => [
+  ...(problem.everyScreen
+    ? [`Проблема компонента ${problem.component}: та сама на кожному екрані, де він є. Один баг на всі екрани.`, '']
+    : []),
+  `Знайти всі баги цієї проблеми: labels = ${problem.code} або текст "${problem.code}".`,
+  count === 1
+    ? 'На скріншоті у вкладенні проблемний елемент обведено.'
+    : 'На скріншоті у вкладенні проблемні елементи обведено.',
+];
+
 /** Summary and description of the bug, following the team's bug template. */
 export function bugText(input: {
   // one problem: the same rule on one or more elements of a component
@@ -81,16 +96,17 @@ export function bugText(input: {
   title: string | null;
   device: string;
   url: string;
+  problem: BugProblem;
 }): {summary: string; description: string; block: string; screen: string} {
-  const {violations, testName, title, device, url} = input;
+  const {violations, testName, title, device, url, problem} = input;
   const [first] = violations;
   const block = functionalBlock(testName);
   const screen = title || nameAfterBlock(testName) || testName;
-  const names = violations.map((violation) => violation.label || violation.resourceId || violation.className);
-  const elements = names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
   const where = screen === block ? block : `${block}. ${screen}`;
-  const summary = `[A11y] ${where}: ${first.title} (${elements})`.slice(0, 250);
+  const summary = summaryWithCode(`[A11y] ${where}: ${first.title} (${elementsOf(violations)})`, problem.code);
   const rows: Array<[string, string]> = [
+    ['ID проблеми (Vision)', problem.code],
+    ...(problem.component ? ([['Компонент', problem.component]] as Array<[string, string]>) : []),
     ['Сервіс / функціональний блок', block],
     ['Екран', screen],
     ['Перевірка', testName],
@@ -103,79 +119,79 @@ export function bugText(input: {
         ] as Array<[string, string]>)
       : []),
   ];
-  const actual =
-    violations.length === 1
-      ? [first.message]
-      : [
-          `Та сама проблема на ${violations.length} елементах одного компонента:`,
-          ...violations.map((v) => `# ${v.message}`),
-        ];
   const details =
     violations.length === 1 ? Object.entries(first.details ?? {}).map(([key, value]) => `* ${key}: ${value}`) : [];
   const description = [
     'h3. Фактичний результат',
-    ...actual,
+    ...actualOf(violations),
     '',
     'h3. Очікуваний результат',
-    EXPECTED[first.rule] ?? 'Елемент відповідає вимогам доступності.',
+    expectedOf(first.rule),
     '',
     ...rows.map(([key, value]) => `||${key}|${escapeWiki(value)}|`),
     ...(details.length ? ['', '*Деталі*', ...details] : []),
     '',
-    violations.length === 1
-      ? 'На скріншоті у вкладенні проблемний елемент обведено.'
-      : 'На скріншоті у вкладенні проблемні елементи обведено.',
+    ...problemNotes(problem, violations.length),
     `[Відкрити у Vision|${url}]`,
   ].join('\n');
   return {summary, description, block, screen};
 }
 
 /**
- * The same bug text for an issue found in Vision Inspector: the block is picked
- * in the dialog instead of read from a check name, the screen comes from its
- * title, and the locator and app take the place of the link to Vision.
+ * The same bug text for a problem found in Vision Inspector: the block is
+ * picked in the dialog instead of read from a check name, the screen comes
+ * from its title, and the locator and app take the place of the link to Vision.
  */
 export function inspectorBugText(input: {
-  violation: A11yViolation;
+  violations: A11yViolation[];
+  problem: BugProblem;
   block: string;
   screen: string | null;
   device: string;
   app: string;
-  locator?: string | null;
+  locators?: string[];
   suggestedLabel?: string | null;
 }): {summary: string; description: string; block: string; screen: string} {
-  const {violation, block, device, app, locator, suggestedLabel} = input;
+  const {violations, problem, block, device, app, locators = [], suggestedLabel} = input;
+  const [first] = violations;
   const screen = input.screen || block;
-  const element = violation.label || violation.resourceId || violation.className;
   const where = screen === block ? block : `${block}. ${screen}`;
-  const title = violation.title;
-  const summary = `[A11y] ${where}: ${title} (${element})`.slice(0, 250);
+  const summary = summaryWithCode(`[A11y] ${where}: ${first.title} (${elementsOf(violations)})`, problem.code);
   const rows: Array<[string, string]> = [
+    ['ID проблеми (Vision)', problem.code],
+    ...(problem.component ? ([['Компонент', problem.component]] as Array<[string, string]>) : []),
     ['Сервіс / функціональний блок', block],
     ['Екран', screen],
     ['Застосунок', app || '—'],
     ['Пристрій', device || '—'],
-    ['Елемент', `${violation.className}${violation.resourceId ? ` (${violation.resourceId})` : ''}`],
-    ...(locator ? ([['Локатор', locator]] as Array<[string, string]>) : []),
-    ['Озвучується як', violation.label ? `"${violation.label}"` : 'нічого'],
-    ['Правило', `${title} (${violation.rule})`],
+    ['Правило', `${first.title} (${first.rule})`],
+    ...(violations.length === 1
+      ? ([
+          ['Елемент', `${first.className}${first.resourceId ? ` (${first.resourceId})` : ''}`],
+          ...(locators[0] ? [['Локатор', locators[0]]] : []),
+          ['Озвучується як', first.label ? `"${first.label}"` : 'нічого'],
+        ] as Array<[string, string]>)
+      : ([['Локатори', locators.join('; ')]] as Array<[string, string]>)),
     ...(suggestedLabel ? ([['Рекомендована назва', `"${suggestedLabel}"`]] as Array<[string, string]>) : []),
   ];
   // the element is in the table already
-  const details = Object.entries(violation.details ?? {})
-    .filter(([key]) => !['element', 'reader', 'fix'].includes(key))
-    .map(([key, value]) => `* ${key}: ${value}`);
+  const details =
+    violations.length === 1
+      ? Object.entries(first.details ?? {})
+          .filter(([key]) => !['element', 'reader', 'fix'].includes(key))
+          .map(([key, value]) => `* ${key}: ${value}`)
+      : [];
   const description = [
     'h3. Фактичний результат',
-    violation.message,
+    ...actualOf(violations),
     '',
     'h3. Очікуваний результат',
-    EXPECTED[violation.rule] ?? EXPECTED_AI[violation.rule] ?? 'Елемент відповідає вимогам доступності.',
+    expectedOf(first.rule),
     '',
     ...rows.map(([key, value]) => `||${key}|${escapeWiki(value)}|`),
     ...(details.length ? ['', '*Деталі*', ...details] : []),
     '',
-    'На скріншоті у вкладенні проблемний елемент обведено.',
+    ...problemNotes(problem, violations.length),
     '_Знайдено у Vision Inspector._',
   ].join('\n');
   return {summary, description, block, screen};

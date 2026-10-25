@@ -6,18 +6,18 @@ import {
   IconScan,
   IconSparkles,
 } from '@tabler/icons-react';
-import {Alert, Button, Dropdown, Empty, Segmented, Select, Space, Spin, Tooltip} from 'antd';
+import {Alert, Button, Dropdown, Empty, Segmented, Select, Space, Spin, Tag, Tooltip} from 'antd';
 import {AnimatePresence, motion} from 'motion/react';
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {A11Y_RULES} from '../../../lib/a11y/types';
-import {backend} from '../../../polyfills.js';
+import {backend, openLink} from '../../../polyfills.js';
 import {downloadText, pickFiles, readTextFromUploadedFiles} from '../../../utils/file-handling.js';
 import {notification} from '../../../utils/notification.js';
 import AiSettingsModal from '../../AiSettings/AiSettingsModal.jsx';
 import JiraSettingsModal from '../../Jira/JiraSettingsModal.jsx';
-import {a11yScore, violationAsText, visibleIssues} from './a11y-ui.js';
+import {a11yScore, problemAsText, problemsForScore, visibleIssues} from './a11y-ui.js';
 import AiPanel from './AiPanel.jsx';
 import DecisionModal from './DecisionModal.jsx';
 import {buildHtmlReport} from './html-report.js';
@@ -49,6 +49,7 @@ const A11yTab = (props) => {
     a11yFilter,
     a11yConfig,
     a11yIssues,
+    a11yJiraLookup,
     a11yStress,
     endA11yStress,
     a11yAi,
@@ -60,6 +61,7 @@ const A11yTab = (props) => {
     setA11yFilter,
     saveA11yConfig,
     recordA11yDecision,
+    linkA11yProblem,
     forgetA11yDecision,
     importA11yDecisions,
     selectElement,
@@ -84,8 +86,8 @@ const A11yTab = (props) => {
   }, [sourceXML, screenshot, runA11yScan]);
 
   const {reviewed, visible} = useMemo(
-    () => visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi}),
-    [a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi],
+    () => visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi, a11yConfig}),
+    [a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi, a11yConfig],
   );
 
   // the overlay scrolls the list to the issue clicked on the screenshot
@@ -104,7 +106,7 @@ const A11yTab = (props) => {
     ignored: reviewed?.ignored ?? [],
     resolved: [],
   };
-  const score = a11yScore([...(reviewed?.open ?? []), ...(reviewed?.reported ?? [])]);
+  const score = a11yScore(problemsForScore(reviewed));
   const counts = {
     open: reviewed?.summary.open ?? 0,
     reported: reviewed?.summary.reported ?? 0,
@@ -115,22 +117,21 @@ const A11yTab = (props) => {
     (acc, v) => ({...acc, [v.severity]: (acc[v.severity] ?? 0) + 1}),
     {error: 0, warning: 0, info: 0},
   );
-  const rulesPresent = new Set(shownByStatus[a11yFilter.status].map((v) => v.rule));
+  const rulesPresent = new Set(shownByStatus[a11yFilter.status].map((group) => group.rule));
 
-  const copy = async (violation) => {
-    await navigator.clipboard.writeText(violationAsText(t, violation, a11yScreen));
+  const copy = async (group) => {
+    await navigator.clipboard.writeText(problemAsText(t, group, a11yScreen));
     notification.success({title: t('a11yCopied'), duration: 2});
   };
 
   const confirmDecision = async (value) => {
-    const {kind, violation} = decision;
+    const {kind, group} = decision;
     setDecision(null);
-    await recordA11yDecision(
-      violation,
-      kind === 'link'
-        ? {status: 'reported', jiraKey: value, jiraUrl: null}
-        : {status: 'ignored', comment: value || null},
-    );
+    if (kind === 'link') {
+      await linkA11yProblem(group, value);
+    } else {
+      await recordA11yDecision(group, {status: 'ignored', comment: value || null});
+    }
   };
 
   const exportDecisions = () => downloadText('vision-a11y-decisions.json', JSON.stringify(a11yIssues ?? {}, null, 2));
@@ -186,6 +187,12 @@ const A11yTab = (props) => {
           <div className={styles.screenMeta}>
             {a11yScreen && <span>{t(`a11yScreenSource_${a11yScreen.source}`)}</span>}
             {a11yDevice?.appId && <code>{a11yDevice.appId}</code>}
+            {a11yJiraLookup?.status === 'running' && (
+              <span className={styles.jiraLookup}>
+                <IconRefresh size={12} className={styles.spinning} />
+                {t('a11yCheckingJira')}
+              </span>
+            )}
           </div>
           <div className={styles.severityChips}>
             {['error', 'warning', 'info'].map((severity) => (
@@ -317,20 +324,20 @@ const A11yTab = (props) => {
             <ResolvedList resolved={reviewed?.resolved ?? []} />
           ) : (
             <AnimatePresence mode="popLayout">
-              {visible.map((violation, index) => (
+              {visible.map((group, index) => (
                 <IssueCard
-                  key={violation.id}
-                  ref={(el) => (el ? cardRefs.current.set(violation.id, el) : cardRefs.current.delete(violation.id))}
+                  key={group.key}
+                  ref={(el) => (el ? cardRefs.current.set(group.key, el) : cardRefs.current.delete(group.key))}
                   index={index}
-                  violation={violation}
-                  highlighted={a11yHighlight === violation.id}
-                  underStress={!!a11yStress && !a11yStress.baselineIds.includes(violation.id)}
+                  group={group}
+                  highlighted={a11yHighlight === group.key}
+                  underStress={!!a11yStress && group.violations.some((v) => !a11yStress.baselineIds.includes(v.id))}
                   onHover={setA11yHighlight}
-                  onShow={(v) => selectElement(v.elementPath)}
-                  onIgnore={(v) => setDecision({kind: 'ignore', violation: v})}
-                  onLink={(v) => setDecision({kind: 'link', violation: v})}
-                  onFileBug={(v) => setBugFor(v)}
-                  onUndo={(v) => forgetA11yDecision(v.id)}
+                  onShow={(g) => selectElement(g.violations[0].elementPath)}
+                  onIgnore={(g) => setDecision({kind: 'ignore', group: g})}
+                  onLink={(g) => setDecision({kind: 'link', group: g})}
+                  onFileBug={(g) => setBugFor(g)}
+                  onUndo={(g) => forgetA11yDecision(g)}
                   onCopy={copy}
                 />
               ))}
@@ -353,7 +360,7 @@ const A11yTab = (props) => {
           notification.success({title: t('a11ySettingsSaved'), duration: 2});
         }}
       />
-      <JiraBugDialog {...props} violation={bugFor} onClose={() => setBugFor(null)} />
+      <JiraBugDialog {...props} group={bugFor} onClose={() => setBugFor(null)} />
       <JiraSettingsModal open={jiraOpen} onClose={() => setJiraOpen(false)} />
       <AiSettingsModal open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
@@ -381,19 +388,28 @@ const ResolvedList = ({resolved}) => {
   if (!resolved.length) {
     return <EmptyState allClear={false} />;
   }
-  return resolved.map((state) => (
+  return resolved.map((problem) => (
     <motion.div
-      key={state.violationId}
+      key={problem.code}
       className={`${styles.issueCard} ${styles.sev_resolved}`}
       layout
       initial={{opacity: 0}}
       animate={{opacity: 1}}
     >
       <div className={styles.issueHead}>
-        <div className={styles.issueTitle}>{t(`a11yRule_${state.rule}`, {defaultValue: state.rule})}</div>
-        {state.jiraKey && <code>{state.jiraKey}</code>}
+        <div className={styles.issueTitle}>
+          {t(`a11yRule_${problem.facets[0]?.rule}`, {defaultValue: problem.facets[0]?.rule ?? ''})}
+        </div>
+        {problem.jiraKey && (
+          <Tag color="green" className={styles.jiraTag} onClick={() => problem.jiraUrl && openLink(problem.jiraUrl)}>
+            {problem.jiraKey}
+          </Tag>
+        )}
       </div>
-      <div className={styles.issueMessage}>{state.element}</div>
+      <div className={styles.problemMeta}>
+        <code className={styles.problemCode}>{problem.code}</code>
+        {problem.facets[0]?.component && <span className={styles.problemChip}>{problem.facets[0].component}</span>}
+      </div>
       <div className={styles.issueNote}>{t('a11yResolvedHint')}</div>
     </motion.div>
   ));

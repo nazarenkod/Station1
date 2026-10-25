@@ -18,9 +18,31 @@ export function t(key, params = {}) {
 
 const score = (reviewed) => {
   const penalty = {error: 12, warning: 5, info: 1};
-  const weight = [...reviewed.open, ...reviewed.reported].reduce((sum, v) => sum + (penalty[v.severity] ?? 0), 0);
+  const weight = [...reviewed.open, ...reviewed.reported].reduce(
+    (sum, group) => sum + (penalty[group.severity] ?? 0),
+    0,
+  );
   return Math.max(0, 100 - weight);
 };
+
+const problemJson = (group) => ({
+  code: group.code,
+  rule: group.rule,
+  severity: group.severity,
+  component: group.component,
+  everyScreen: group.everyScreen,
+  ...(group.problemClass ? {problemClass: group.problemClass} : {}),
+  title: violationText(t, group.violations[0]).title,
+  elements: group.violations.map((v) => ({
+    message: violationText(t, v).message,
+    resourceId: v.resourceId,
+    className: v.className,
+    label: v.label,
+    bounds: v.bounds,
+    details: v.details,
+  })),
+  fix: violationText(t, group.violations[0]).fix,
+});
 
 export function toJson({scan, screen, reviewed, appId}) {
   return JSON.stringify(
@@ -29,10 +51,18 @@ export function toJson({scan, screen, reviewed, appId}) {
       appId,
       score: score(reviewed),
       summary: reviewed.summary,
-      issues: reviewed.open.map((v) => ({...v, ...violationText(t, v)})),
-      reported: reviewed.reported.map((v) => ({id: v.id, rule: v.rule, jiraKey: v.issue?.jiraKey ?? null})),
-      ignored: reviewed.ignored.map((v) => ({id: v.id, rule: v.rule, comment: v.issue?.comment ?? null})),
-      resolved: reviewed.resolved,
+      problems: reviewed.open.map(problemJson),
+      reported: reviewed.reported.map((group) => ({
+        code: group.code,
+        rule: group.rule,
+        jiraKey: group.issue?.jiraKey ?? null,
+      })),
+      ignored: reviewed.ignored.map((group) => ({
+        code: group.code,
+        rule: group.rule,
+        comment: group.issue?.comment ?? null,
+      })),
+      resolved: reviewed.resolved.map((problem) => ({code: problem.code, jiraKey: problem.jiraKey})),
       readingOrder: scan.readingOrder,
     },
     null,
@@ -45,33 +75,38 @@ const SEVERITY_MARK = {error: '✖', warning: '▲', info: '•'};
 export function toText({screen, reviewed, appId}) {
   const lines = [
     `${screen.title ?? 'Untitled screen'} (${appId}) — score ${score(reviewed)}`,
-    `${reviewed.summary.errors} error(s), ${reviewed.summary.warnings} warning(s), ${reviewed.open.length} open, ${reviewed.summary.reported} filed, ${reviewed.summary.ignored} ignored`,
+    `${reviewed.summary.errors} error(s), ${reviewed.summary.warnings} warning(s), ${reviewed.open.length} open problem(s), ${reviewed.summary.reported} filed, ${reviewed.summary.ignored} ignored`,
     '',
   ];
-  for (const v of reviewed.open) {
-    const {title, message} = violationText(t, v);
-    lines.push(`${SEVERITY_MARK[v.severity]} ${title} [${v.rule}]`, `    ${message}`);
+  for (const group of reviewed.open) {
+    const {title} = violationText(t, group.violations[0]);
+    lines.push(
+      `${SEVERITY_MARK[group.severity]} ${title} [${group.rule}] ${group.code}${group.component ? ` (${group.component})` : ''}`,
+      ...group.violations.map((v) => `    ${violationText(t, v).message}`),
+    );
   }
   return lines.join('\n');
 }
 
 /**
- * JUnit XML: one test case per rule, failing with the open issues it found,
+ * JUnit XML: one test case per rule, failing with the open problems it found,
  * so CI shows accessibility next to the other tests.
  */
 export function toJunit({screen, reviewed, appId}, rules) {
   const suite = escapeXml(`a11y: ${screen.title ?? screen.key}`);
   const byRule = new Map();
-  for (const v of reviewed.open) {
-    byRule.set(v.rule, [...(byRule.get(v.rule) ?? []), v]);
+  for (const group of reviewed.open) {
+    byRule.set(group.rule, [...(byRule.get(group.rule) ?? []), group]);
   }
   const cases = rules.map((rule) => {
-    const found = (byRule.get(rule) ?? []).filter((v) => v.severity !== 'info');
+    const found = (byRule.get(rule) ?? []).filter((group) => group.severity !== 'info');
     if (!found.length) {
       return `    <testcase classname="${suite}" name="${rule}"/>`;
     }
-    const body = found.map((v) => violationText(t, v).message).join('\n');
-    return `    <testcase classname="${suite}" name="${rule}">\n      <failure message="${found.length} issue(s)">${escapeXml(body)}</failure>\n    </testcase>`;
+    const body = found
+      .map((group) => `${group.code}: ${group.violations.map((v) => violationText(t, v).message).join(' ')}`)
+      .join('\n');
+    return `    <testcase classname="${suite}" name="${rule}">\n      <failure message="${found.length} problem(s)">${escapeXml(body)}</failure>\n    </testcase>`;
   });
   const failures = cases.filter((c) => c.includes('<failure')).length;
   return [

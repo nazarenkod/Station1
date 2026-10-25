@@ -2,7 +2,18 @@ import {A11Y_CONFIG, A11Y_ISSUE_STATES, AI_CONFIG} from '../../shared/setting-de
 import i18n from '../i18next.js';
 import {aiElements, auditPrompt, labelsPrompt, parseAuditAnswer, parseLabelsAnswer, screenTexts} from '../lib/a11y/ai';
 import {mergeConfig} from '../lib/a11y/config';
-import {forgetDecision, importDecisions, recordDecision} from '../lib/a11y/issues';
+import {
+  asStore,
+  decide,
+  forget,
+  importStore,
+  lookupCandidates,
+  problemContextOf,
+  reviewScan,
+  unlinkedKeys,
+} from '../lib/a11y/issues';
+import {JIRA_LOOKUP_TTL_MS} from '../lib/a11y/jira-problems';
+import {markerQuery, problemMarkers} from '../lib/a11y/problems';
 import {scanScreen} from '../lib/a11y/rules';
 import {identifyScreen} from '../lib/a11y/screen';
 import {parseUiTree} from '../lib/a11y/ui-tree';
@@ -21,6 +32,7 @@ export const SET_A11Y_ISSUES = 'SET_A11Y_ISSUES';
 export const SET_A11Y_FILTER = 'SET_A11Y_FILTER';
 export const SET_A11Y_STRESS = 'SET_A11Y_STRESS';
 export const SET_A11Y_AI = 'SET_A11Y_AI';
+export const SET_A11Y_JIRA_LOOKUP = 'SET_A11Y_JIRA_LOOKUP';
 
 // the longest side of the screenshot a model gets, and of each control crop
 const AI_SCREEN_MAX_SIDE = 1280;
@@ -83,7 +95,7 @@ export function loadA11ySettings() {
   return async (dispatch) => {
     const [config, issues] = await Promise.all([getSetting(A11Y_CONFIG), getSetting(A11Y_ISSUE_STATES)]);
     dispatch({type: SET_A11Y_CONFIG, config: mergeConfig(config)});
-    dispatch({type: SET_A11Y_ISSUES, issues: issues ?? {}});
+    dispatch({type: SET_A11Y_ISSUES, issues: asStore(issues)});
   };
 }
 
@@ -115,7 +127,7 @@ export function runA11yScan({force = false} = {}) {
         activity: device.activity ?? undefined,
       });
       const scan = scanScreen(tree, image ?? undefined, config);
-      const screen = identifyScreen(tree, {titleTag: config.patterns.screenTitleTag, activity: device.activity});
+      const screen = identifyScreen(tree, {titleSelectors: config.problems.screenTitle, activity: device.activity});
       dispatch({
         type: A11Y_SCAN_DONE,
         scan: {...scan, scale: tree.scale, imageWidth: image?.width ?? 0, imageHeight: image?.height ?? 0},
@@ -123,6 +135,8 @@ export function runA11yScan({force = false} = {}) {
         device,
         scannedAt: Date.now(),
       });
+      // what colleagues filed meanwhile shows up without filing it again
+      dispatch(lookUpA11yInJira());
     } catch (error) {
       log.error(error);
       dispatch({type: A11Y_SCAN_FAILED, error: error.message});
@@ -156,35 +170,128 @@ const storeIssues = (issues) => async (dispatch) => {
   dispatch({type: SET_A11Y_ISSUES, issues});
 };
 
+const contextOf = (inspector) =>
+  problemContextOf({
+    config: inspector.a11yConfig ?? mergeConfig(null),
+    appId: inspector.a11yDevice?.appId ?? 'app',
+    screen: inspector.a11yScreen,
+  });
+
 /**
- * Remembers what was decided about an issue on this screen: filed as a bug or ignored.
+ * The problem's id and its Jira markers, as the bug and searches need them.
  */
-export function recordA11yDecision(violation, decision) {
-  return async (dispatch, getState) => {
-    const {a11yIssues, a11yScreen, a11yDevice} = getState().inspector;
-    const issues = recordDecision(a11yIssues ?? {}, {
-      appId: a11yDevice.appId,
-      screenKey: a11yScreen.key,
-      screenTitle: a11yScreen.title,
-      violationId: violation.id,
-      rule: violation.rule,
-      element: violation.details?.element ?? violation.className,
-      ...decision,
-    });
-    await dispatch(storeIssues(issues));
+export function problemForJira(group, context) {
+  return {
+    code: group.code,
+    component: group.component,
+    everyScreen: group.everyScreen,
+    markers: problemMarkers(group.code, group.facets[0], context.settings),
+    markerQuery: markerQuery(group.facets[0], context.settings),
   };
 }
 
-export function forgetA11yDecision(violationId) {
+/**
+ * Records a decision on a problem for the whole app: a bug filed, found or
+ * linked, or a false positive. It holds on every screen the problem shows on.
+ */
+export function recordA11yDecision(group, decision, action = decision.status === 'ignored' ? 'ignored' : 'linked') {
   return async (dispatch, getState) => {
-    const {a11yIssues, a11yScreen, a11yDevice} = getState().inspector;
-    await dispatch(storeIssues(forgetDecision(a11yIssues ?? {}, a11yDevice.appId, a11yScreen.key, violationId)));
+    const {inspector} = getState();
+    await dispatch(storeIssues(decide(asStore(inspector.a11yIssues), group, decision, action, contextOf(inspector))));
+  };
+}
+
+/**
+ * Links an existing Jira issue to a problem, putting the problem's markers on it.
+ */
+export function linkA11yProblem(group, jiraKey) {
+  return async (dispatch, getState) => {
+    const context = contextOf(getState().inspector);
+    let jiraUrl = null;
+    let key = jiraKey;
+    if (backend.jira && (await backend.jira.hasToken())) {
+      const problem = problemForJira(group, context);
+      const result = await backend.jira.link({jiraKey, code: problem.code, markers: problem.markers});
+      if (!result.ok) {
+        notification.error({title: jiraKey, description: result.error});
+        return;
+      }
+      ({key, url: jiraUrl} = result);
+      result.warnings.forEach((warning) => notification.warning({title: key, description: warning}));
+    }
+    await dispatch(recordA11yDecision(group, {status: 'reported', jiraKey: key, jiraUrl}, 'linked'));
+  };
+}
+
+/**
+ * Forgets the decision on a problem on every screen; an unlinked bug loses
+ * the problem's markers in Jira and is marked unlinked.
+ */
+export function forgetA11yDecision(group) {
+  return async (dispatch, getState) => {
+    const {inspector} = getState();
+    const {store, unlinked} = forget(asStore(inspector.a11yIssues), group, contextOf(inspector));
+    await dispatch(storeIssues(store));
+    if (backend.jira && unlinked.length && (await backend.jira.hasToken())) {
+      for (const bug of unlinked) {
+        const result = await backend.jira.unlink(bug);
+        (result.warnings ?? []).forEach((warning) => notification.warning({title: bug.jiraKey, description: warning}));
+      }
+    }
   };
 }
 
 export function importA11yDecisions(imported) {
   return async (dispatch, getState) => {
-    await dispatch(storeIssues(importDecisions(getState().inspector.a11yIssues ?? {}, imported)));
+    await dispatch(storeIssues(importStore(asStore(getState().inspector.a11yIssues), imported)));
+  };
+}
+
+// when each problem was last looked up in Jira, so a screen checked again does not ask again
+const lookedUp = {};
+
+/**
+ * Looks the screen's open problems up in Jira and records the open bugs found
+ * as filed: a bug a colleague filed, by hand or from vision, covers the
+ * problem here too.
+ */
+export function lookUpA11yInJira({force = false} = {}) {
+  return async (dispatch, getState) => {
+    const {inspector} = getState();
+    if (!backend.jira || !inspector.a11yScan || !inspector.a11yScreen || !(await backend.jira.hasToken())) {
+      return;
+    }
+    const context = contextOf(inspector);
+    const store = asStore(inspector.a11yIssues);
+    const {open} = reviewScan(inspector.a11yScan.violations, store, context);
+    const candidates = lookupCandidates(open, lookedUp, Date.now(), force ? 0 : JIRA_LOOKUP_TTL_MS);
+    if (!candidates.length) {
+      return;
+    }
+    dispatch({type: SET_A11Y_JIRA_LOOKUP, status: 'running'});
+    const result = await backend.jira.lookup({
+      items: candidates.map((group) => ({group: group.key, ...problemForJira(group, context)})),
+      unlinkedKeys: unlinkedKeys(store),
+    });
+    const now = Date.now();
+    candidates.forEach((group) => (lookedUp[group.code] = now));
+    dispatch({type: SET_A11Y_JIRA_LOOKUP, status: result.ok ? 'done' : 'failed', found: result.found?.length ?? 0});
+    if (!result.ok || !result.found.length) {
+      return;
+    }
+    let next = asStore(getState().inspector.a11yIssues);
+    for (const bug of result.found) {
+      const group = candidates.find((item) => item.key === bug.group);
+      next = decide(
+        next,
+        group,
+        {status: 'reported', jiraKey: bug.key, jiraUrl: bug.url, comment: 'Found in Jira', code: bug.code},
+        'found',
+        context,
+      );
+    }
+    await dispatch(storeIssues(next));
+    notification.info({title: i18n.t('a11yFoundInJira', {count: result.found.length}), duration: 4});
   };
 }
 

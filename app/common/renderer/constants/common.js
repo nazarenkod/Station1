@@ -8,7 +8,8 @@ export const WINDOW_DIMENSIONS = {
 };
 
 export const LINKS = {
-  CREATE_ISSUE: 'https://github.com/appium/appium-inspector/issues/new/choose',
+  // set once Vision Inspector has its own repository
+  CREATE_ISSUE: null,
   CAPS_DOCS: 'https://appium.io/docs/en/latest/guides/caps/',
   ADD_CAPS_DOCS:
     'https://appium.github.io/appium-inspector/latest/quickstart/starting-a-session/#adding-session-details',
