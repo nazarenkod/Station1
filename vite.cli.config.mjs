@@ -5,9 +5,11 @@ import {defineConfig} from 'vite';
 
 const {version} = JSON.parse(readFileSync(join(import.meta.dirname, 'package.json'), 'utf8'));
 
-// The command line tool: one Node.js file with the a11y engine, the doctor and the MCP server
+// The command line tool: one Node.js file with the a11y engine, the doctor and the MCP server,
+// its dependencies bundled in, so Node.js is all it needs
 export default defineConfig({
   define: {__VERSION__: JSON.stringify(version)},
+  ssr: {noExternal: true},
   build: {
     ssr: join(import.meta.dirname, 'app', 'cli', 'vision-inspector.js'),
     outDir: join(import.meta.dirname, 'dist-cli'),
