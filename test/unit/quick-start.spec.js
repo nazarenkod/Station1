@@ -2,7 +2,8 @@ import {describe, expect, it, vi} from 'vitest';
 
 vi.mock('../../app/common/renderer/polyfills.js', () => ({backend: {}, getSetting: vi.fn(), setSetting: vi.fn()}));
 
-const {quickCapabilities} = await import('../../app/common/renderer/components/SessionBuilder/QuickStart.jsx');
+const {endSessionsOnDevice, quickCapabilities} =
+  await import('../../app/common/renderer/components/SessionBuilder/QuickStart.jsx');
 
 const emulator = {platformName: 'Android', capabilities: {platformName: 'Android', 'appium:udid': 'emulator-5554'}};
 const simulator = {platformName: 'iOS', capabilities: {platformName: 'iOS', 'appium:udid': 'ABC'}};
@@ -38,5 +39,30 @@ describe('quick start on a real iPhone', function () {
     expect(quickCapabilities(phone, null, {keepData: true, signing})).toMatchObject(signing);
     const own = {...phone, capabilities: {...phone.capabilities, 'appium:xcodeOrgId': 'OWN'}};
     expect(quickCapabilities(own, null, {keepData: true, signing})['appium:xcodeOrgId']).toBe('OWN');
+  });
+});
+
+describe('sessions left on the device', function () {
+  it('ends ours on this device only, and lets a server that does not answer be', async function () {
+    const calls = [];
+    vi.stubGlobal('fetch', async (url, options = {}) => {
+      calls.push(`${options.method ?? 'GET'} ${url}`);
+      return {
+        json: async () => ({
+          value: [
+            {id: 'old', capabilities: {udid: 'SIM-1'}},
+            {id: 'other', capabilities: {udid: 'SIM-2'}},
+          ],
+        }),
+      };
+    });
+    expect(await endSessionsOnDevice(4723, 'SIM-1')).toBe(1);
+    expect(calls).toEqual(['GET http://127.0.0.1:4723/appium/sessions', 'DELETE http://127.0.0.1:4723/session/old']);
+
+    vi.stubGlobal('fetch', async () => {
+      throw new Error('ECONNREFUSED');
+    });
+    expect(await endSessionsOnDevice(4723, 'SIM-1')).toBe(0);
+    vi.unstubAllGlobals();
   });
 });

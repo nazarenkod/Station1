@@ -36,6 +36,30 @@ async function iosSigning() {
 }
 
 /**
+ * Ends the sessions our own Appium server still holds on this device: left by
+ * a window closed or reloaded mid-session, they keep WebDriverAgent or
+ * UiAutomator2 busy and the new session hangs on it.
+ */
+export async function endSessionsOnDevice(port, udid) {
+  const base = `http://127.0.0.1:${port}`;
+  try {
+    const listed = await (await fetch(`${base}/appium/sessions`, {signal: AbortSignal.timeout(5000)})).json();
+    const stale = (listed.value ?? []).filter((session) => session.capabilities?.udid === udid);
+    await Promise.all(
+      stale.map((session) =>
+        fetch(`${base}/session/${session.id}`, {method: 'DELETE', signal: AbortSignal.timeout(30000)}).catch(
+          () => null,
+        ),
+      ),
+    );
+    return stale.length;
+  } catch {
+    // an older server without the list, or one that does not answer: start as before
+    return 0;
+  }
+}
+
+/**
  * Capabilities for the device and app picked in the title bar.
  */
 export function quickCapabilities(device, app, {keepData, signing = null}) {
@@ -113,6 +137,11 @@ const QuickStart = ({loadNewSession, applyLocalServer, onAdvanced}) => {
       }
       await applyLocalServer({hostname: '127.0.0.1', port, path: ''});
       setBusy('session');
+      // only on our own server: one we found running may be in the middle of someone's test run
+      const udid = device.capabilities?.['appium:udid'];
+      if (udid && !appium?.external) {
+        await endSessionsOnDevice(port, udid);
+      }
       await loadNewSession(toCapList(quickCapabilities(device, app, {keepData, signing})));
     } finally {
       setBusy(null);
