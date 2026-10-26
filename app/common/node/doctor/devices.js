@@ -121,13 +121,14 @@ export function parseSimctlDevices(json) {
 }
 
 /**
- * Whether a paired iPhone is reachable now. The CoreDevice tunnel opens on
+ * Whether a paired iPhone is connected now. The CoreDevice tunnel opens on
  * demand and closes when idle, so a phone on the cable often shows
- * "disconnected"; what tells it is there is a transport (wired or network).
- * A phone that is gone has no transport and an "unavailable" tunnel.
+ * "disconnected"; the cable is what tells it is there. A phone only seen on
+ * the Wi-Fi network (paired earlier, lying on a desk nearby) is not
+ * connected until a tunnel to it is open.
  */
 export function isIosDeviceConnected(connection = {}) {
-  return !!connection.transportType && connection.tunnelState !== 'unavailable';
+  return connection.transportType === 'wired' || connection.tunnelState === 'connected';
 }
 
 /**

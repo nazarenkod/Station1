@@ -9,11 +9,17 @@ import A11yTab from '../SessionInspector/A11yTab/A11yTab.jsx';
 import Screenshot from '../SessionInspector/Screenshot/Screenshot.jsx';
 import {useInspector} from '../SessionInspector/use-inspector.js';
 import EmptyState from '../Workstation/EmptyState.jsx';
+import {useScreenFollower} from './screen-follower.js';
+import {useScreenHistory} from './screen-history.js';
+import ScreenStrip from './ScreenStrip.jsx';
 
 import inspectorStyles from '../SessionInspector/SessionInspector.module.css';
 import styles from './A11yTool.module.css';
 
 const MAX_SCREENSHOT_WIDTH_PERCENT = `${WINDOW_DIMENSIONS.MAX_SCREENSHOT_PANEL_WIDTH_FRACTION * 100}%`;
+
+// following the screen stays as chosen while the app runs, across tools
+let followPreference = true;
 
 /**
  * Without a session there is no screen to check: a way to start one.
@@ -45,6 +51,9 @@ const A11yTool = () => {
   const {props, showScreenshot, hasSession} = useInspector();
   const [panelWidth, setPanelWidth] = useState(WINDOW_DIMENSIONS.INITIAL_SCREENSHOT_PANEL_WIDTH_PX);
   const resizedManually = useRef(false);
+  const [follow, setFollow] = useState(followPreference);
+  const {viewingKey} = useScreenHistory();
+  const follower = useScreenFollower({enabled: hasSession && follow, paused: !!viewingKey});
 
   if (!hasSession) {
     return <NoSession />;
@@ -61,6 +70,14 @@ const A11yTool = () => {
 
   return (
     <div className={styles.tool}>
+      <ScreenStrip
+        follow={follow}
+        follower={follower}
+        onFollowChange={(value) => {
+          followPreference = value;
+          setFollow(value);
+        }}
+      />
       <Splitter
         className={inspectorStyles.inspectorSplitter}
         onResize={(widths) => {

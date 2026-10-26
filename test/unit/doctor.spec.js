@@ -123,7 +123,7 @@ describe('doctor: devices', function () {
     ]);
   });
 
-  it('sees a phone on the cable while its CoreDevice tunnel is idle, and not one that is gone', function () {
+  it('sees a phone on the cable while its CoreDevice tunnel is idle, not one only on the Wi-Fi or gone', function () {
     const phone = (connectionProperties) => ({
       connectionProperties,
       deviceProperties: {name: 'iPhone 17 Pro', osVersionNumber: '27.0'},
@@ -134,11 +134,12 @@ describe('doctor: devices', function () {
         devices: [
           phone({tunnelState: 'disconnected', transportType: 'wired', pairingState: 'paired'}),
           phone({tunnelState: 'disconnected', transportType: 'localNetwork', pairingState: 'paired'}),
+          phone({tunnelState: 'connected', transportType: 'localNetwork', pairingState: 'paired'}),
           phone({tunnelState: 'unavailable', pairingState: 'paired'}),
         ],
       },
     }).map((device) => device.state);
-    expect(states).toEqual(['running', 'running', 'disconnected']);
+    expect(states).toEqual(['running', 'disconnected', 'running', 'disconnected']);
   });
 
   it('puts the devices that can be used now first, real phones before emulators', function () {

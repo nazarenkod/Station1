@@ -15,6 +15,7 @@ import {A11Y_RULES} from '../../../lib/a11y/types';
 import {backend, openLink} from '../../../polyfills.js';
 import {downloadText, pickFiles, readTextFromUploadedFiles} from '../../../utils/file-handling.js';
 import {notification} from '../../../utils/notification.js';
+import {recordScreen} from '../../A11yTool/screen-history.js';
 import AiSettingsModal from '../../AiSettings/AiSettingsModal.jsx';
 import JiraSettingsModal from '../../Jira/JiraSettingsModal.jsx';
 import {a11yScore, problemAsText, problemsForScore, visibleIssues} from './a11y-ui.js';
@@ -56,6 +57,9 @@ const A11yTab = (props) => {
     runA11yAi,
     loadA11ySettings,
     runA11yScan,
+    refreshA11yScreen,
+    methodCallInProgress,
+    driver,
     setA11yHighlight,
     setA11yOverlay,
     setA11yFilter,
@@ -73,6 +77,7 @@ const A11yTab = (props) => {
   const [jiraOpen, setJiraOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const cardRefs = useRef(new Map());
+  const recordedScan = useRef(null);
 
   useEffect(() => {
     loadA11ySettings();
@@ -89,6 +94,28 @@ const A11yTab = (props) => {
     () => visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi, a11yConfig}),
     [a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi, a11yConfig],
   );
+
+  // each screen checked joins the session's history of screens
+  useEffect(() => {
+    if (a11yStatus !== 'done' || !reviewed || !a11yScan || recordedScan.current === a11yScan) {
+      return;
+    }
+    recordedScan.current = a11yScan;
+    const open = reviewed.open ?? [];
+    const counts = open.reduce((acc, v) => ({...acc, [v.severity]: (acc[v.severity] ?? 0) + 1}), {
+      error: 0,
+      warning: 0,
+      info: 0,
+    });
+    recordScreen({
+      sessionId: driver?.sessionId,
+      screen: a11yScreen,
+      sourceXML,
+      screenshot,
+      score: a11yScore(problemsForScore(reviewed)),
+      counts,
+    });
+  }, [a11yStatus, a11yScan, reviewed, a11yScreen, sourceXML, screenshot, driver]);
 
   // the overlay scrolls the list to the issue clicked on the screenshot
   useEffect(() => {
@@ -215,7 +242,7 @@ const A11yTab = (props) => {
           </div>
         </div>
         <Space orientation="vertical" size={6} className={styles.summaryActions}>
-          <Space size={6}>
+          <Space size={6} wrap>
             {backend.ai && (
               <Button
                 className={styles.aiButton}
@@ -228,13 +255,18 @@ const A11yTab = (props) => {
             )}
             <Button
               type="primary"
-              icon={<IconRefresh size={16} className={a11yStatus === 'scanning' ? styles.spinning : ''} />}
-              onClick={() => runA11yScan({force: true})}
+              icon={
+                <IconRefresh
+                  size={16}
+                  className={a11yStatus === 'scanning' || methodCallInProgress ? styles.spinning : ''}
+                />
+              }
+              onClick={() => refreshA11yScreen()}
             >
               {t('a11yRescan')}
             </Button>
           </Space>
-          <Space size={6}>
+          <Space size={6} wrap>
             <Tooltip title={t('a11yOverlayIssues')}>
               <Button
                 type={a11yOverlay.issues ? 'primary' : 'default'}

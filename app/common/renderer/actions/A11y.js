@@ -20,7 +20,8 @@ import {parseUiTree} from '../lib/a11y/ui-tree';
 import {backend, getSetting, setSetting} from '../polyfills.js';
 import {log} from '../utils/logger.js';
 import {notification} from '../utils/notification.js';
-import {applyClientMethod} from './SessionInspector.js';
+import {xmlToJSON} from '../utils/source-parsing.js';
+import {applyClientMethod, SET_SOURCE_AND_SCREENSHOT} from './SessionInspector.js';
 
 export const A11Y_SCAN_REQUESTED = 'A11Y_SCAN_REQUESTED';
 export const A11Y_SCAN_DONE = 'A11Y_SCAN_DONE';
@@ -141,6 +142,39 @@ export function runA11yScan({force = false} = {}) {
       log.error(error);
       dispatch({type: A11Y_SCAN_FAILED, error: error.message});
     }
+  };
+}
+
+/**
+ * The screen as the device shows it now: a fresh source and screenshot, then
+ * the check. The same screen as before is checked again all the same.
+ */
+export function refreshA11yScreen() {
+  return async (dispatch, getState) => {
+    const before = getState().inspector.sourceXML;
+    await dispatch(applyClientMethod({methodName: 'getPageSource'}));
+    if (getState().inspector.sourceXML === before) {
+      await dispatch(runA11yScan({force: true}));
+    }
+  };
+}
+
+/**
+ * A screen seen earlier in the session, shown and checked again from what
+ * was kept of it, while the device may show another one.
+ */
+export function showStoredA11yScreen({sourceXML, screenshot}) {
+  return (dispatch, getState) => {
+    const {inspector} = getState();
+    dispatch({
+      type: SET_SOURCE_AND_SCREENSHOT,
+      contexts: inspector.contexts,
+      currentContext: inspector.currentContext,
+      sourceJSON: xmlToJSON(sourceXML),
+      sourceXML,
+      screenshot,
+      windowSize: inspector.windowSize,
+    });
   };
 }
 
