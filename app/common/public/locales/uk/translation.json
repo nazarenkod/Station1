@@ -1392,5 +1392,13 @@
   "buildsPipelineAllRules": "Усі правила",
   "buildsPipelineMissing": "Джоби ще не з’явились у пайплайні, чекаю",
   "buildsPipelinePickDevices": "Оберіть пристрої: збірка для симулятора й для реального пристрою може бути різна",
-  "buildsPipelineRule": "Правило:"
+  "buildsPipelineRule": "Правило:",
+  "proxyViewList": "Список",
+  "proxyViewHosts": "За доменами",
+  "proxyNoHost": "без домену",
+  "proxyHostRequests": "{{count}} запит(ів)",
+  "proxyOnlyHost": "Лише цей домен",
+  "proxyHideHost": "Сховати домен",
+  "proxyChipOnly": "лише {{host}}",
+  "proxyChipHidden": "{{host}}"
 }

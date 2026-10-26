@@ -1392,5 +1392,13 @@
   "buildsPipelineAllRules": "All rules",
   "buildsPipelineMissing": "The jobs are not in the pipeline yet, waiting",
   "buildsPipelinePickDevices": "Pick devices: the build for a simulator and for a real device may differ",
-  "buildsPipelineRule": "Rule:"
+  "buildsPipelineRule": "Rule:",
+  "proxyViewList": "List",
+  "proxyViewHosts": "By domain",
+  "proxyNoHost": "no domain",
+  "proxyHostRequests": "{{count}} requests",
+  "proxyOnlyHost": "Only this domain",
+  "proxyHideHost": "Hide domain",
+  "proxyChipOnly": "only {{host}}",
+  "proxyChipHidden": "{{host}}"
 }

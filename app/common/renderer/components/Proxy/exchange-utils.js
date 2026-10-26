@@ -94,3 +94,41 @@ export function matchesFilter(exchange, filter) {
   }
   return exchange.flags?.includes(filter);
 }
+
+/**
+ * The requests by domain, the busiest first: how many, how many failed or
+ * were slow, how long they took on average and how much came back.
+ */
+export function groupByHost(exchanges) {
+  const groups = new Map();
+  for (const exchange of exchanges) {
+    const {host} = hostAndPath(exchange.url);
+    const group = groups.get(host) ?? {
+      host,
+      exchanges: [],
+      errors: 0,
+      slow: 0,
+      totalMs: 0,
+      timed: 0,
+      size: 0,
+      lastAt: 0,
+    };
+    group.exchanges.push(exchange);
+    group.errors += statusTone(exchange) === 'error' ? 1 : 0;
+    group.slow += exchange.flags?.includes('slow') ? 1 : 0;
+    if (exchange.durationMs) {
+      group.totalMs += exchange.durationMs;
+      group.timed += 1;
+    }
+    group.size += exchange.responseSize ?? 0;
+    group.lastAt = Math.max(group.lastAt, exchange.startedAt ?? 0);
+    groups.set(host, group);
+  }
+  return [...groups.values()]
+    .map(({totalMs, timed, ...group}) => ({
+      ...group,
+      count: group.exchanges.length,
+      avgMs: timed ? totalMs / timed : null,
+    }))
+    .sort((a, b) => b.count - a.count || a.host.localeCompare(b.host));
+}

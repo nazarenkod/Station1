@@ -1,8 +1,14 @@
 import {
   IconAdjustmentsHorizontal,
   IconArrowsExchange,
+  IconChevronRight,
   IconDots,
   IconDownload,
+  IconEyeOff,
+  IconFilter,
+  IconList,
+  IconWorld,
+  IconX,
   IconPlayerPause,
   IconPower,
   IconSearch,
@@ -10,8 +16,8 @@ import {
   IconTrash,
   IconWand,
 } from '@tabler/icons-react';
-import {Alert, Button, Dropdown, Input, Spin, Splitter, Tooltip} from 'antd';
-import {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import {Alert, Button, Dropdown, Input, Segmented, Spin, Splitter, Tooltip} from 'antd';
+import {Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
 
@@ -19,7 +25,15 @@ import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {backend} from '../../polyfills.js';
 import EmptyState from '../Workstation/EmptyState.jsx';
 import ConnectDrawer from './ConnectDrawer.jsx';
-import {FILTERS, formatDuration, formatSize, hostAndPath, matchesFilter, statusTone} from './exchange-utils.js';
+import {
+  FILTERS,
+  formatDuration,
+  formatSize,
+  groupByHost,
+  hostAndPath,
+  matchesFilter,
+  statusTone,
+} from './exchange-utils.js';
 import ExchangeDetail from './ExchangeDetail.jsx';
 import {clearTraffic, resumePause, saveProxyConfig, startProxy, stopProxy, useProxy} from './proxy-store.js';
 import RulesDrawer from './RulesDrawer.jsx';
@@ -31,10 +45,68 @@ const ROW_HEIGHT = 30;
 const OVERSCAN = 15;
 const FLAG_ORDER = ['paused', 'held', 'error', 'slow', 'dupe', 'mock', 'replay', 'ignored'];
 
+// how the traffic was last shown, for when the tool is opened again in this run
+const memory = {view: 'list', expanded: new Set(), hiddenHosts: new Set()};
+
+/**
+ * A domain's line in the grouped list: open or closed, with what its
+ * requests add up to, and its own quick filters.
+ */
+const HostRow = ({group, open, onToggle, onOnly, onHide}) => {
+  const {t} = useTranslation();
+  return (
+    <div
+      role="button"
+      tabIndex={-1}
+      style={{height: ROW_HEIGHT}}
+      className={`${styles.row} ${styles.hostRow}`}
+      aria-expanded={open}
+      onClick={onToggle}
+      onKeyDown={(e) => e.key === 'Enter' && onToggle()}
+    >
+      <IconChevronRight size={14} className={`${styles.hostChevron} ${open ? styles.hostChevronOpen : ''}`} />
+      <span className={styles.hostName}>{group.host || t('proxyNoHost')}</span>
+      <span className={styles.hostStat}>{t('proxyHostRequests', {count: group.count})}</span>
+      {group.errors > 0 && <span className={`${styles.flag} ${styles.flag_error}`}>{group.errors}</span>}
+      {group.slow > 0 && <span className={`${styles.flag} ${styles.flag_slow}`}>{group.slow}</span>}
+      <span className={styles.hostStat}>{group.avgMs ? `⌀ ${formatDuration(group.avgMs)}` : ''}</span>
+      <span className={styles.hostStat}>{formatSize(group.size)}</span>
+      <span className={styles.hostActions}>
+        <Tooltip title={t('proxyOnlyHost')}>
+          <button
+            type="button"
+            className={styles.hostAction}
+            aria-label={t('proxyOnlyHost')}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOnly();
+            }}
+          >
+            <IconFilter size={13} />
+          </button>
+        </Tooltip>
+        <Tooltip title={t('proxyHideHost')}>
+          <button
+            type="button"
+            className={styles.hostAction}
+            aria-label={t('proxyHideHost')}
+            onClick={(e) => {
+              e.stopPropagation();
+              onHide();
+            }}
+          >
+            <IconEyeOff size={13} />
+          </button>
+        </Tooltip>
+      </span>
+    </div>
+  );
+};
+
 /**
  * The captured requests, drawn only where the viewport is.
  */
-const ExchangeList = ({rows, selected, onSelect, maxDuration}) => {
+const ExchangeList = ({rows, selected, onSelect, maxDuration, hostRow}) => {
   const {t} = useTranslation();
   const scroller = useRef(null);
   const [view, setView] = useState({top: 0, height: 600});
@@ -96,6 +168,9 @@ const ExchangeList = ({rows, selected, onSelect, maxDuration}) => {
         <div style={{height: rows.length * ROW_HEIGHT, position: 'relative'}}>
           <div style={{position: 'absolute', top: first * ROW_HEIGHT, left: 0, right: 0}}>
             {rows.slice(first, last).map((x) => {
+              if (x.kind === 'host') {
+                return <Fragment key={`host-${x.host}`}>{hostRow(x)}</Fragment>;
+              }
               const {host, path} = hostAndPath(x.url);
               const tone = statusTone(x);
               const share = x.durationMs ? Math.max(2, Math.min(100, (x.durationMs / maxDuration) * 100)) : 0;
@@ -157,6 +232,10 @@ const ProxyTool = () => {
   const device = activeDevice(workstation);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
+  const [view, setView] = useState(memory.view);
+  const [expanded, setExpanded] = useState(memory.expanded);
+  const [onlyHosts, setOnlyHosts] = useState(() => new Set());
+  const [hiddenHosts, setHiddenHosts] = useState(memory.hiddenHosts);
   const [selected, setSelected] = useState(null);
   const [connectOpen, setConnectOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -184,15 +263,30 @@ const ProxyTool = () => {
   );
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return all.filter(
-      (x) =>
+    return all.filter((x) => {
+      const {host} = hostAndPath(x.url);
+      if ((onlyHosts.size && !onlyHosts.has(host)) || hiddenHosts.has(host)) {
+        return false;
+      }
+      return (
         matchesFilter(x, filter) &&
         (!needle ||
           x.url.toLowerCase().includes(needle) ||
           x.method.toLowerCase() === needle ||
-          String(x.status) === needle),
-    );
-  }, [all, filter, query]);
+          String(x.status) === needle)
+      );
+    });
+  }, [all, filter, query, onlyHosts, hiddenHosts]);
+  // by domain: each domain's line, and its requests under it while it is open
+  const groups = useMemo(() => (view === 'hosts' ? groupByHost(rows) : []), [view, rows]);
+  const items = useMemo(
+    () =>
+      view === 'hosts'
+        ? groups.flatMap((group) => [{kind: 'host', ...group}, ...(expanded.has(group.host) ? group.exchanges : [])])
+        : rows,
+    [view, groups, rows, expanded],
+  );
+  const visibleRows = useMemo(() => items.filter((item) => item.kind !== 'host'), [items]);
   // what the rule editor suggests instead of typing: every path seen so far
   const knownUrls = useMemo(() => {
     const seen = new Set();
@@ -263,15 +357,44 @@ const ProxyTool = () => {
       return;
     }
     const step = {ArrowDown: 1, j: 1, ArrowUp: -1, k: -1}[event.key];
-    if (step && rows.length) {
+    if (step && visibleRows.length) {
       event.preventDefault();
-      const index = rows.findIndex((x) => x.id === selected);
-      const next = index < 0 ? (step > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, index + step));
-      setSelected(rows[next].id);
+      const index = visibleRows.findIndex((x) => x.id === selected);
+      const next =
+        index < 0
+          ? step > 0
+            ? 0
+            : visibleRows.length - 1
+          : Math.min(visibleRows.length - 1, Math.max(0, index + step));
+      setSelected(visibleRows[next].id);
     } else if (event.key === 'Escape' && selected) {
       setSelected(null);
     }
   };
+
+  const chooseView = (value) => {
+    memory.view = value;
+    setView(value);
+  };
+  const toggleHost = (host) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (!next.delete(host)) {
+        next.add(host);
+      }
+      return (memory.expanded = next);
+    });
+  const onlyHost = (host) => {
+    setOnlyHosts(new Set([host]));
+    setExpanded((current) => (memory.expanded = new Set([...current, host])));
+  };
+  const hideHost = (host) => setHiddenHosts((current) => (memory.hiddenHosts = new Set([...current, host])));
+  const unhideHost = (host) =>
+    setHiddenHosts((current) => (memory.hiddenHosts = new Set([...current].filter((h) => h !== host))));
+  const hostChips = [
+    ...[...onlyHosts].map((host) => ({key: `only-${host}`, host, off: false, clear: () => setOnlyHosts(new Set())})),
+    ...[...hiddenHosts].map((host) => ({key: `hide-${host}`, host, off: true, clear: () => unhideHost(host)})),
+  ];
 
   return (
     <div className={styles.tool} ref={toolRef} tabIndex={-1} onKeyDown={onKeyDown}>
@@ -285,6 +408,28 @@ const ProxyTool = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className={styles.search}
+        />
+        <Segmented
+          value={view}
+          onChange={chooseView}
+          options={[
+            {
+              value: 'list',
+              label: (
+                <Tooltip title={t('proxyViewList')}>
+                  <IconList size={15} aria-label={t('proxyViewList')} className={styles.viewIcon} />
+                </Tooltip>
+              ),
+            },
+            {
+              value: 'hosts',
+              label: (
+                <Tooltip title={t('proxyViewHosts')}>
+                  <IconWorld size={15} aria-label={t('proxyViewHosts')} className={styles.viewIcon} />
+                </Tooltip>
+              ),
+            },
+          ]}
         />
         <div className={styles.chips} role="group" aria-label={t('findingsFilter')}>
           {FILTERS.map((key) =>
@@ -375,6 +520,34 @@ const ProxyTool = () => {
         </div>
       </div>
 
+      {hostChips.length > 0 && (
+        <div className={styles.hostChips}>
+          {hostChips.map((chip) => (
+            <span key={chip.key} className={`${styles.hostChip} ${chip.off ? styles.hostChipOff : ''}`}>
+              {chip.off ? t('proxyChipHidden', {host: chip.host}) : t('proxyChipOnly', {host: chip.host})}
+              <button
+                type="button"
+                className={styles.hostChipClear}
+                aria-label={t('logsChipClear')}
+                onClick={() => chip.clear()}
+              >
+                <IconX size={12} />
+              </button>
+            </span>
+          ))}
+          <Button
+            size="small"
+            type="link"
+            onClick={() => {
+              setOnlyHosts(new Set());
+              setHiddenHosts((memory.hiddenHosts = new Set()));
+            }}
+          >
+            {t('logsResetFilters')}
+          </Button>
+        </div>
+      )}
+
       {tlsFailures.length > 0 && (
         <Alert
           className={styles.banner}
@@ -430,7 +603,21 @@ const ProxyTool = () => {
         <Splitter className={styles.body}>
           <Splitter.Panel min={420} className={styles.listPane}>
             <section className={styles.listSection} aria-label={t('proxyTraffic')}>
-              <ExchangeList rows={rows} selected={selected} onSelect={setSelected} maxDuration={maxDuration} />
+              <ExchangeList
+                rows={items}
+                selected={selected}
+                onSelect={setSelected}
+                maxDuration={maxDuration}
+                hostRow={(group) => (
+                  <HostRow
+                    group={group}
+                    open={expanded.has(group.host)}
+                    onToggle={() => toggleHost(group.host)}
+                    onOnly={() => onlyHost(group.host)}
+                    onHide={() => hideHost(group.host)}
+                  />
+                )}
+              />
               <div className={styles.keys} aria-hidden="true">
                 <span>
                   <kbd>↑</kbd>

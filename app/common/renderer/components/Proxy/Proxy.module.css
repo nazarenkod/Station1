@@ -32,7 +32,7 @@
 }
 
 /* the search gives way first; only a narrow window takes a second row */
-@media (max-width: 1040px) {
+@media (max-width: 1240px) {
   .toolbar {
     flex-wrap: wrap;
   }
@@ -977,4 +977,114 @@
   .cDuration {
     flex-basis: 56px;
   }
+}
+
+/* traffic by domain */
+.hostRow {
+  gap: 10px;
+  font-weight: 600;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.hostChevron {
+  flex-shrink: 0;
+  color: var(--ant-color-text-tertiary);
+  transition: transform 0.15s var(--vi-ease);
+}
+
+.hostChevronOpen {
+  transform: rotate(90deg);
+}
+
+.hostName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--ant-font-family-code);
+  font-size: 12px;
+}
+
+.hostStat {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ant-color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hostActions {
+  display: none;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.hostRow:hover .hostActions {
+  display: inline-flex;
+}
+
+.hostAction {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--ant-color-border);
+  border-radius: 6px;
+  background: var(--ant-color-bg-container);
+  color: var(--ant-color-text-secondary);
+  cursor: pointer;
+}
+
+.hostAction:hover {
+  color: var(--vi-violet);
+  border-color: var(--vi-violet);
+}
+
+.hostChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--vi-hairline);
+}
+
+.hostChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 4px 0 10px;
+  border-radius: 999px;
+  font-family: var(--ant-font-family-code);
+  font-size: 12px;
+  background: var(--ant-color-primary-bg);
+  color: var(--ant-color-primary-text);
+  border: 1px solid var(--ant-color-primary-border);
+}
+
+.hostChipOff {
+  background: var(--ant-color-fill-quaternary);
+  color: var(--ant-color-text-secondary);
+  border-color: var(--ant-color-border);
+  text-decoration: line-through;
+}
+
+.hostChipClear {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.viewIcon {
+  display: block;
+  margin: 5px 0;
 }
