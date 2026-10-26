@@ -6,7 +6,7 @@ import {useDispatch} from 'react-redux';
 import {refreshA11yScreen, showStoredA11yScreen} from '../../actions/A11y.js';
 import {stopViewing, useScreenHistory, viewScreen} from './screen-history.js';
 
-import styles from './A11yTool.module.css';
+import styles from './ScreenStrip.module.css';
 
 const time = (at) => new Date(at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
 

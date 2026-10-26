@@ -15,7 +15,6 @@ import {A11Y_RULES} from '../../../lib/a11y/types';
 import {backend, openLink} from '../../../polyfills.js';
 import {downloadText, pickFiles, readTextFromUploadedFiles} from '../../../utils/file-handling.js';
 import {notification} from '../../../utils/notification.js';
-import {recordScreen} from '../../A11yTool/screen-history.js';
 import AiSettingsModal from '../../AiSettings/AiSettingsModal.jsx';
 import JiraSettingsModal from '../../Jira/JiraSettingsModal.jsx';
 import {a11yScore, problemAsText, problemsForScore, visibleIssues} from './a11y-ui.js';
@@ -59,7 +58,6 @@ const A11yTab = (props) => {
     runA11yScan,
     refreshA11yScreen,
     methodCallInProgress,
-    driver,
     setA11yHighlight,
     setA11yOverlay,
     setA11yFilter,
@@ -77,7 +75,6 @@ const A11yTab = (props) => {
   const [jiraOpen, setJiraOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const cardRefs = useRef(new Map());
-  const recordedScan = useRef(null);
 
   useEffect(() => {
     loadA11ySettings();
@@ -94,28 +91,6 @@ const A11yTab = (props) => {
     () => visibleIssues({a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi, a11yConfig}),
     [a11yScan, a11yScreen, a11yDevice, a11yIssues, a11yFilter, a11yAi, a11yConfig],
   );
-
-  // each screen checked joins the session's history of screens
-  useEffect(() => {
-    if (a11yStatus !== 'done' || !reviewed || !a11yScan || recordedScan.current === a11yScan) {
-      return;
-    }
-    recordedScan.current = a11yScan;
-    const open = reviewed.open ?? [];
-    const counts = open.reduce((acc, v) => ({...acc, [v.severity]: (acc[v.severity] ?? 0) + 1}), {
-      error: 0,
-      warning: 0,
-      info: 0,
-    });
-    recordScreen({
-      sessionId: driver?.sessionId,
-      screen: a11yScreen,
-      sourceXML,
-      screenshot,
-      score: a11yScore(problemsForScore(reviewed)),
-      counts,
-    });
-  }, [a11yStatus, a11yScan, reviewed, a11yScreen, sourceXML, screenshot, driver]);
 
   // the overlay scrolls the list to the issue clicked on the screenshot
   useEffect(() => {

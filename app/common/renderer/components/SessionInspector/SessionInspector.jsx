@@ -2,6 +2,10 @@ import {Splitter} from 'antd';
 import {useRef, useState} from 'react';
 
 import {WINDOW_DIMENSIONS} from '../../constants/common.js';
+import {useScreenFollower} from '../A11yTool/screen-follower.js';
+import {useScreenHistory} from '../A11yTool/screen-history.js';
+import {useScreenRecorder} from '../A11yTool/screen-recorder.js';
+import ScreenStrip from '../A11yTool/ScreenStrip.jsx';
 import ToolBar from '../Workstation/ToolBar.jsx';
 import HeaderButtons from './Header/HeaderButtons.jsx';
 import Screenshot from './Screenshot/Screenshot.jsx';
@@ -12,11 +16,21 @@ import styles from './SessionInspector.module.css';
 
 const MAX_SCREENSHOT_WIDTH_PERCENT = `${WINDOW_DIMENSIONS.MAX_SCREENSHOT_PANEL_WIDTH_FRACTION * 100}%`;
 
+// following the screen stays as chosen while the app runs
+let followPreference = true;
+
 /**
- * The root component of the Session Inspector screen.
+ * The Inspector: the running session's screen next to its elements, its
+ * accessibility check, commands and recorder. It follows the device, so a
+ * new screen is read and checked by itself, and keeps the screens the
+ * session went through.
  */
 const Inspector = () => {
-  const {props, quitSessionAndReturn, showScreenshot} = useInspector();
+  const {props, quitSessionAndReturn, showScreenshot, hasSession} = useInspector();
+  const [follow, setFollow] = useState(followPreference);
+  const {viewingKey} = useScreenHistory();
+  const follower = useScreenFollower({enabled: hasSession && follow, paused: !!viewingKey});
+  useScreenRecorder();
 
   const [screenshotPanelWidth, setScreenshotPanelWidth] = useState(WINDOW_DIMENSIONS.INITIAL_SCREENSHOT_PANEL_WIDTH_PX);
   const screenshotPanelResizedManually = useRef(false);
@@ -46,6 +60,16 @@ const Inspector = () => {
       <ToolBar>
         <HeaderButtons {...props} quitSessionAndReturn={quitSessionAndReturn} />
       </ToolBar>
+      <div className={styles.screenStrip}>
+        <ScreenStrip
+          follow={follow}
+          follower={follower}
+          onFollowChange={(value) => {
+            followPreference = value;
+            setFollow(value);
+          }}
+        />
+      </div>
       <Splitter className={styles.inspectorSplitter} onResize={setPanelWidthManually}>
         <Splitter.Panel
           min={WINDOW_DIMENSIONS.MIN_IMG_WIDTH_PX}

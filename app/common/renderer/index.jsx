@@ -6,7 +6,7 @@ import {createRoot} from 'react-dom/client';
 import {Provider} from 'react-redux';
 import {MemoryRouter, Route, Routes} from 'react-router';
 
-import A11yTool from './components/A11yTool/A11yTool.jsx';
+import OpenA11y from './components/A11yTool/OpenA11y.jsx';
 import BuildsTool from './components/Builds/BuildsTool.jsx';
 import Desk from './components/Desk/Desk.jsx';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.jsx';
@@ -37,7 +37,7 @@ createRoot(container).render(
                 <Route path="/" element={<Home />} />
                 <Route path="/session" element={<SessionBuilderPage />} />
                 <Route path="/inspector" element={<SessionInspectorPage />} />
-                <Route path="/a11y" element={<A11yTool />} />
+                <Route path="/a11y" element={<OpenA11y />} />
                 <Route path="/proxy" element={<ProxyTool />} />
                 <Route path="/logs" element={<LogsTool />} />
                 <Route path="/builds" element={<BuildsTool />} />

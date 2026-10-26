@@ -1,11 +1,4 @@
-import {
-  IconAccessible,
-  IconArrowsExchange,
-  IconFocus2,
-  IconLayoutDashboard,
-  IconPackage,
-  IconTerminal2,
-} from '@tabler/icons-react';
+import {IconArrowsExchange, IconFocus2, IconLayoutDashboard, IconPackage, IconTerminal2} from '@tabler/icons-react';
 
 /**
  * The workstation's tools, in tab order. A tool owns one or more routes;
@@ -13,8 +6,8 @@ import {
  */
 export const TOOLS = [
   {key: 'home', path: '/', paths: ['/'], icon: IconLayoutDashboard, ready: true},
-  {key: 'inspector', path: '/session', paths: ['/session', '/inspector'], icon: IconFocus2, ready: true},
-  {key: 'a11y', path: '/a11y', paths: ['/a11y'], icon: IconAccessible, ready: true},
+  // the accessibility check is a tab of the Inspector; /a11y opens it there
+  {key: 'inspector', path: '/session', paths: ['/session', '/inspector', '/a11y'], icon: IconFocus2, ready: true},
   {key: 'proxy', path: '/proxy', paths: ['/proxy'], icon: IconArrowsExchange, ready: true},
   {key: 'logs', path: '/logs', paths: ['/logs'], icon: IconTerminal2, ready: true},
   {key: 'builds', path: '/builds', paths: ['/builds'], icon: IconPackage, ready: true},

@@ -15,10 +15,14 @@ const ToolTabs = () => {
   const {t} = useTranslation();
   const {pathname} = useLocation();
   const hasSession = useSelector((state) => !!state.inspector.driver);
-  const a11yOpen = useSelector((state) => state.inspector.a11yScan?.violations?.length ?? 0);
+  // errors and warnings only: the hints would make every screen look broken
+  const a11yOpen = useSelector(
+    (state) => state.inspector.a11yScan?.violations?.filter((v) => v.severity !== 'info').length ?? 0,
+  );
   const current = toolOf(pathname)?.key;
 
-  const badges = {a11y: a11yOpen || null};
+  // the problems the accessibility check found on this screen, on the Inspector it lives in
+  const badges = {inspector: a11yOpen || null};
 
   return (
     <nav className={styles.tabs} aria-label={t('wsToolsLabel')}>

@@ -1,23 +1,3 @@
-.tool {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 12px;
-  min-height: 0;
-}
-
-.tool > :global(.ant-splitter) {
-  flex: 1;
-  min-height: 0;
-}
-
-.audit {
-  height: 100%;
-  overflow-y: auto;
-  padding: 0 4px 0 8px;
-}
-
 /* the screens of the session */
 .strip {
   flex-shrink: 0;

@@ -51,6 +51,9 @@ const SessionInspectorTabs = (props) => {
 
   const getItemColspan = (breakpoints) => calculateItemColspan(breakpoints, tabWidth);
 
+  // errors and warnings, as on the Inspector's tab above
+  const a11yProblems = props.a11yScan?.violations?.filter((v) => v.severity !== 'info').length ?? 0;
+
   const inspectorTabItems = [
     {
       label: t('Source'),
@@ -63,6 +66,7 @@ const SessionInspectorTabs = (props) => {
         <span className={styles.a11yTabLabel}>
           <IconAccessible size={16} />
           {t('a11yTab')}
+          {a11yProblems > 0 && <span className={styles.a11yTabCount}>{a11yProblems}</span>}
         </span>
       ),
       key: INSPECTOR_TABS.A11Y,
