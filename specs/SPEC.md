@@ -82,6 +82,7 @@
 |---|---|---|
 | Вкладки, шапка, робочий стіл, назва й значок | [station.shell](station.shell/spec.md) | implemented |
 | Налаштування: інтеграції, збірки, пристрої | [settings.integrations](settings.integrations/spec.md) | implemented |
+| Збереження, експорт та імпорт налаштувань без секретів | [settings.backup](settings.backup/spec.md) | draft |
 | Встановлення на Mac і поширення | [dist.mac](dist.mac/spec.md) | implemented |
 
 Заплановано: остаточна назва продукту.
@@ -146,7 +147,8 @@
 | Червоний: 4xx/5xx, обриви, тайм-аути | [proxy.traffic](proxy.traffic/spec.md) | implemented |
 | Червоний: креші, ANR, винятки в логах | [logs.stream](logs.stream/spec.md) | implemented |
 | Жовтий: повільно, поріг на ендпоінт | [proxy.traffic](proxy.traffic/spec.md) | implemented |
-| Дублі запитів | [proxy.traffic](proxy.traffic/spec.md) | implemented |
+| Дублі запитів | [proxy.traffic](proxy.traffic/spec.md) | implemented; що вважати дублем — draft |
+| Контракт: обовʼязкові заголовки й поля | [proxy.traffic](proxy.traffic/spec.md) | draft |
 
 Заплановано: N+1 і запити після виходу з екрана, baseline-порівняння, контракт API (OpenAPI), пояснення прапорця ШІ — v1–v2.
 
