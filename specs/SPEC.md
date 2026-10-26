@@ -82,7 +82,7 @@
 |---|---|---|
 | Вкладки, шапка, робочий стіл, назва й значок | [station.shell](station.shell/spec.md) | implemented |
 | Налаштування: інтеграції, збірки, пристрої | [settings.integrations](settings.integrations/spec.md) | implemented |
-| Збереження, експорт та імпорт налаштувань без секретів | [settings.backup](settings.backup/spec.md) | draft |
+| Профілі проєктів, збереження, експорт та імпорт налаштувань без секретів | [settings.backup](settings.backup/spec.md) | draft |
 | Встановлення на Mac і поширення | [dist.mac](dist.mac/spec.md) | implemented |
 
 Заплановано: остаточна назва продукту.
