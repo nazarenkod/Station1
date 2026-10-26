@@ -1,9 +1,12 @@
+import {App} from 'antd';
 import {AnimatePresence} from 'motion/react';
 import {useEffect} from 'react';
+import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 import {useLocation, useNavigate, useOutlet} from 'react-router';
 
 import {activeDevice, initWorkstation, isDeviceRunning} from '../../actions/Workstation.js';
+import {profileForApp, startProfiles, switchProfile} from '../../lib/settings/profiles-store.js';
 import {loadSessionFileIfOpened} from '../../polyfills.js';
 import {PageTransition} from '../AppShell/motion.jsx';
 import {startPipelineWatches} from '../Builds/pipeline-watch.js';
@@ -48,6 +51,30 @@ const LogsFollower = () => {
 };
 
 /**
+ * An app picked in the title bar that belongs to another project turns that
+ * project's profile on.
+ */
+const ProfileFollower = () => {
+  const {t} = useTranslation();
+  const {message} = App.useApp();
+  const appId = useSelector((state) => state.workstation.app?.id ?? null);
+  useEffect(() => {
+    let current = true;
+    (async () => {
+      const owner = await profileForApp(appId);
+      if (owner && current) {
+        await switchProfile(owner.id);
+        message.info(t('wsProfileSwitched', {name: owner.name, app: appId}));
+      }
+    })();
+    return () => {
+      current = false;
+    };
+  }, [appId, message, t]);
+  return null;
+};
+
+/**
  * The QA engineer's workstation: a title bar with the tools and the shared
  * device and app, and the open tool below.
  */
@@ -60,6 +87,8 @@ const Workstation = () => {
 
   useEffect(() => {
     dispatch(initWorkstation());
+    // the project profile and the tools that follow its settings
+    startProfiles(store);
     // the pipelines followed for builds go on whichever tool is open
     startPipelineWatches(store);
     // a session file or a shared session link opens straight in the Inspector
@@ -81,6 +110,7 @@ const Workstation = () => {
       </div>
       <SessionKeepAlive />
       <LogsFollower />
+      <ProfileFollower />
     </div>
   );
 };

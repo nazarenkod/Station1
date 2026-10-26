@@ -22,6 +22,7 @@ import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
 
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
+import {proxyView} from '../../lib/settings/views.js';
 import {backend} from '../../polyfills.js';
 import EmptyState from '../Workstation/EmptyState.jsx';
 import ConnectDrawer from './ConnectDrawer.jsx';
@@ -44,9 +45,6 @@ import styles from './Proxy.module.css';
 const ROW_HEIGHT = 30;
 const OVERSCAN = 15;
 const FLAG_ORDER = ['paused', 'held', 'error', 'slow', 'dupe', 'contract', 'mock', 'replay', 'ignored'];
-
-// how the traffic was last shown, for when the tool is opened again in this run
-const memory = {view: 'list', expanded: new Set(), hiddenHosts: new Set()};
 
 /**
  * A domain's line in the grouped list: open or closed, with what its
@@ -232,10 +230,13 @@ const ProxyTool = () => {
   const device = activeDevice(workstation);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
-  const [view, setView] = useState(memory.view);
-  const [expanded, setExpanded] = useState(memory.expanded);
-  const [onlyHosts, setOnlyHosts] = useState(() => new Set());
-  const [hiddenHosts, setHiddenHosts] = useState(memory.hiddenHosts);
+  // how the traffic is shown stays with the profile, across restarts
+  const saved = proxyView.use();
+  const view = saved.view;
+  const expanded = useMemo(() => new Set(saved.expanded), [saved.expanded]);
+  const onlyHosts = useMemo(() => new Set(saved.onlyHosts), [saved.onlyHosts]);
+  const hiddenHosts = useMemo(() => new Set(saved.hiddenHosts), [saved.hiddenHosts]);
+  const setOnlyHosts = (hosts) => proxyView.update({onlyHosts: [...hosts]});
   const [selected, setSelected] = useState(null);
   const [connectOpen, setConnectOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -372,25 +373,19 @@ const ProxyTool = () => {
     }
   };
 
-  const chooseView = (value) => {
-    memory.view = value;
-    setView(value);
-  };
+  const chooseView = (value) => proxyView.update({view: value});
   const toggleHost = (host) =>
-    setExpanded((current) => {
-      const next = new Set(current);
-      if (!next.delete(host)) {
-        next.add(host);
-      }
-      return (memory.expanded = next);
-    });
-  const onlyHost = (host) => {
-    setOnlyHosts(new Set([host]));
-    setExpanded((current) => (memory.expanded = new Set([...current, host])));
-  };
-  const hideHost = (host) => setHiddenHosts((current) => (memory.hiddenHosts = new Set([...current, host])));
+    proxyView.update((current) => ({
+      expanded: current.expanded.includes(host)
+        ? current.expanded.filter((h) => h !== host)
+        : [...current.expanded, host],
+    }));
+  const onlyHost = (host) =>
+    proxyView.update((current) => ({onlyHosts: [host], expanded: [...new Set([...current.expanded, host])]}));
+  const hideHost = (host) =>
+    proxyView.update((current) => ({hiddenHosts: [...new Set([...current.hiddenHosts, host])]}));
   const unhideHost = (host) =>
-    setHiddenHosts((current) => (memory.hiddenHosts = new Set([...current].filter((h) => h !== host))));
+    proxyView.update((current) => ({hiddenHosts: current.hiddenHosts.filter((h) => h !== host)}));
   const hostChips = [
     ...[...onlyHosts].map((host) => ({key: `only-${host}`, host, off: false, clear: () => setOnlyHosts(new Set())})),
     ...[...hiddenHosts].map((host) => ({key: `hide-${host}`, host, off: true, clear: () => unhideHost(host)})),
@@ -535,14 +530,7 @@ const ProxyTool = () => {
               </button>
             </span>
           ))}
-          <Button
-            size="small"
-            type="link"
-            onClick={() => {
-              setOnlyHosts(new Set());
-              setHiddenHosts((memory.hiddenHosts = new Set()));
-            }}
-          >
+          <Button size="small" type="link" onClick={() => proxyView.update({onlyHosts: [], hiddenHosts: []})}>
             {t('logsResetFilters')}
           </Button>
         </div>

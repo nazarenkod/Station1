@@ -39,6 +39,12 @@ export const LOG_RULES_CONFIG = 'LOG_RULES_CONFIG';
 export const PROXY_CONFIG = 'PROXY_CONFIG';
 // how WebDriverAgent is signed for a real iPhone: the development team and its bundle id
 export const IOS_SIGNING = 'IOS_SIGNING';
+// what the proxy shows: list or domains, the hidden domains, the only ones, the open ones
+export const PROXY_VIEW = 'PROXY_VIEW';
+// what the log shows: the app or the whole device, the lowest level, the search, the tags
+export const LOGS_VIEW = 'LOGS_VIEW';
+// the project profiles: their names, apps and settings, and which one is on
+export const PROFILES = 'PROFILES';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -77,4 +83,7 @@ export const DEFAULT_SETTINGS = {
   [LOG_RULES_CONFIG]: {overrides: {}, custom: []},
   [IOS_SIGNING]: {teamId: null, bundleId: ''},
   [PROXY_CONFIG]: {port: 8890, mockRules: [], trafficRules: {}, mocksEnabled: true, breakpointsEnabled: true},
+  [PROXY_VIEW]: {view: 'list', hiddenHosts: [], onlyHosts: [], expanded: []},
+  [LOGS_VIEW]: {scope: 'app', minLevel: 'V', query: '', tags: [], hiddenTags: []},
+  [PROFILES]: null,
 };

@@ -117,5 +117,10 @@ export async function saveRules(rules) {
 }
 
 export async function loadSavedRules() {
-  publish({rules: await loadRules()});
+  const rules = await loadRules();
+  publish({rules});
+  // a running log follows the rules of the profile just turned on
+  if (state.started) {
+    await backend.logs?.setRules(rules);
+  }
 }

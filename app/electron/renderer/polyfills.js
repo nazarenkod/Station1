@@ -51,6 +51,9 @@ const backend = {
   get proxy() {
     return window.electronIPC.proxy;
   },
+  get settings() {
+    return window.electronIPC.settings;
+  },
 };
 
 export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};

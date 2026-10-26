@@ -1,10 +1,10 @@
 import {App, ConfigProvider, Layout} from 'antd';
 import {MotionConfig} from 'motion/react';
-import {createContext, useMemo, useState} from 'react';
+import {createContext, useEffect, useMemo, useState} from 'react';
 
 import {PREFERRED_THEME} from '../../shared/setting-defs.js';
 import Notification from '../components/Notification.jsx';
-import {getSetting, setSetting, setTheme} from '../polyfills.js';
+import {backend, getSetting, setSetting, setTheme} from '../polyfills.js';
 import {buildThemeConfig} from '../theme/brand.js';
 
 import darkTheme from '../assets/stylesheets/prism-dark.css?url';
@@ -37,6 +37,19 @@ export const ThemeContext = createContext(null);
 
 export const ThemeProvider = ({children}) => {
   const [preferredTheme, setPreferredTheme] = useState(savedTheme);
+
+  // an import or a restored backup can bring another theme
+  useEffect(
+    () =>
+      backend.settings?.onChanged(async ({keys}) => {
+        if (keys.includes(PREFERRED_THEME)) {
+          const theme = await getSetting(PREFERRED_THEME);
+          setTheme(theme);
+          setPreferredTheme(theme);
+        }
+      }),
+    [],
+  );
 
   const isDarkTheme = preferredTheme === 'dark' || (preferredTheme === 'system' && systemPrefersDarkTheme);
 

@@ -78,6 +78,7 @@ const backend = isPlugin
       builds: null,
       logs: null,
       proxy: null,
+      settings: null,
     }
   : {
       available: false,
@@ -89,6 +90,7 @@ const backend = isPlugin
       builds: null,
       logs: null,
       proxy: null,
+      settings: null,
     };
 
 export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};

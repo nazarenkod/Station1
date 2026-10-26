@@ -122,3 +122,15 @@ export async function saveProxyConfig(patch) {
 
 export const resumePause = (pauseId, decision) => backend.proxy.resume(pauseId, decision);
 export const clearTraffic = () => backend.proxy.clear();
+
+/**
+ * Reads the proxy settings again (another profile, an import) and gives the
+ * running proxy the new rules.
+ */
+export async function reloadProxyConfig() {
+  const config = {...DEFAULT_PROXY_CONFIG, ...((await getSetting(PROXY_CONFIG)) ?? {})};
+  publish({config});
+  if (state.started) {
+    await pushConfig(config);
+  }
+}

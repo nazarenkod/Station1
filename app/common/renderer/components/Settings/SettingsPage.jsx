@@ -20,10 +20,12 @@ import ToggleTheme from '../SessionBuilder/AppSettings/ToggleTheme.jsx';
 import BuildSourcesSettings from './BuildSourcesSettings.jsx';
 import {GitLabSettingsFields, useGitLabSettings} from './GitLabSettings.jsx';
 import IosSigningSettings from './IosSigningSettings.jsx';
+import ProfilesSettings from './ProfilesSettings.jsx';
+import StationTransfer from './StationTransfer.jsx';
 
 import styles from './SettingsPage.module.css';
 
-const SECTIONS = ['integrations', 'builds', 'devices', 'general'];
+const SECTIONS = ['integrations', 'profiles', 'builds', 'devices', 'general'];
 
 /**
  * One outside service as a single line: what it is, what it is connected to
@@ -221,6 +223,24 @@ const General = () => {
           </Form>
         </div>
       </StaggerItem>
+      <StaggerItem>
+        <StationTransfer />
+      </StaggerItem>
+    </Stagger>
+  );
+};
+
+const Profiles = () => {
+  const {t} = useTranslation();
+  return (
+    <Stagger className={styles.section}>
+      <StaggerItem>
+        <h2 className={styles.sectionTitle}>{t('settingsProfiles')}</h2>
+        <p className={styles.sectionText}>{t('settingsProfilesText')}</p>
+      </StaggerItem>
+      <StaggerItem className={styles.section}>
+        <ProfilesSettings />
+      </StaggerItem>
     </Stagger>
   );
 };
@@ -240,10 +260,11 @@ const Builds = ({openProject}) => {
   );
 };
 
-const PAGES = {integrations: Integrations, builds: Builds, devices: Devices, general: General};
+const PAGES = {integrations: Integrations, profiles: Profiles, builds: Builds, devices: Devices, general: General};
 
 /**
- * The workstation's settings: outside services and their keys, language and look.
+ * The workstation's settings: outside services and their keys, project
+ * profiles, language and look, export, import and backups.
  */
 const SettingsPage = () => {
   const {t} = useTranslation();

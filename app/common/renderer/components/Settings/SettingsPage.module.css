@@ -292,3 +292,79 @@ button.cardHead:hover {
 .ruleBody > :first-child {
   align-self: stretch;
 }
+
+.mono {
+  font-family: var(--vi-font-mono);
+}
+
+/* profiles, export and import */
+.profileActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profileApps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profileHint {
+  color: var(--vi-text-3);
+  font-size: var(--vi-text-sm);
+}
+
+.groupChecks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin: 8px 0 4px;
+}
+
+.groupLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.groupTag {
+  margin: 0;
+  font-size: var(--vi-text-xs);
+}
+
+.importBlock {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--vi-border);
+}
+
+.importHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.backups {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 16px;
+}
+
+.backupsTitle {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.backupRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 30px;
+}
+
+.backupRow > :last-child {
+  margin-left: auto;
+}

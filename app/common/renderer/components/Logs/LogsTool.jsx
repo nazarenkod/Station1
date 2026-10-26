@@ -24,6 +24,7 @@ import {useNavigate} from 'react-router';
 import {SEVERITIES, severityRank} from '../../../shared/findings/findings.js';
 import {LOG_LEVELS} from '../../../shared/findings/log-rules.js';
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
+import {logsView} from '../../lib/settings/views.js';
 import {backend} from '../../polyfills.js';
 import {SeverityTag} from '../Findings/FindingsList.jsx';
 import EmptyState from '../Workstation/EmptyState.jsx';
@@ -37,8 +38,8 @@ const OVERSCAN = 20;
 // the levels people pick from: everything, info and up, warnings and up, errors
 const LEVEL_PRESETS = ['V', 'I', 'W', 'E'];
 
-// how the tool was left, for when it is opened again in this run of the app
-const memory = {scope: 'app', minLevel: 'V', query: '', sideOpen: true};
+// whether the side panel is open, for when the tool is opened again in this run of the app
+const memory = {sideOpen: true};
 
 /**
  * State the tool keeps between visits: a choice made once stays made.
@@ -53,6 +54,29 @@ function useRemembered(key) {
     [key],
   );
   return [value, remember];
+}
+
+/**
+ * A filter of the log kept with the profile, across restarts.
+ */
+function useSavedFilter(key) {
+  const value = logsView.use()[key];
+  const set = useCallback((next) => logsView.update({[key]: next}), [key]);
+  return [value, set];
+}
+
+// a set kept as a list in the settings; the setter takes a set or a function of the current set
+function useSavedSet(key) {
+  const list = logsView.use()[key];
+  const value = useMemo(() => new Set(list), [list]);
+  const set = useCallback(
+    (next) =>
+      logsView.update((current) => ({
+        [key]: [...(typeof next === 'function' ? next(new Set(current[key])) : next)],
+      })),
+    [key],
+  );
+  return [value, set];
 }
 
 const typingIn = (target) => ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName) || target?.isContentEditable;
@@ -368,11 +392,11 @@ const LogsTool = () => {
   const logs = useLogs();
   const searchRef = useRef(null);
 
-  const [scope, setScope] = useRemembered('scope');
-  const [minLevel, setMinLevel] = useRemembered('minLevel');
-  const [queryText, setQuery] = useRemembered('query');
-  const [tags, setTags] = useState(() => new Set());
-  const [hiddenTags, setHiddenTags] = useState(() => new Set());
+  const [scope, setScope] = useSavedFilter('scope');
+  const [minLevel, setMinLevel] = useSavedFilter('minLevel');
+  const [queryText, setQuery] = useSavedFilter('query');
+  const [tags, setTags] = useSavedSet('tags');
+  const [hiddenTags, setHiddenTags] = useSavedSet('hiddenTags');
   const [ruleFilter, setRuleFilter] = useState(null);
   const [follow, setFollow] = useState(true);
   const [frozen, setFrozen] = useState(null);
