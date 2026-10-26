@@ -82,3 +82,28 @@ describe('the build taken out of the archive', function () {
     expect(chooseCandidate(two, {platforms: ['android']})).toBeNull();
   });
 });
+
+describe('the rules of where builds come from', function () {
+  const project = 'DN001R000005/dn001r000005_0/p24-front-end-mob/android/ap24v6';
+
+  it('finds the rule by the whole path, its end, or a pattern, the closest first', async function () {
+    const {ruleFor} = await import('../../app/common/shared/builds/pipelines.js');
+    const rules = [{project: 'p24-front-end-mob/*'}, {project: 'android/ap24v6'}, {project: 'ios/*'}];
+    expect(ruleFor(rules, project).project).toBe('android/ap24v6');
+    expect(ruleFor([rules[0]], project).project).toBe('p24-front-end-mob/*');
+    expect(ruleFor([rules[2]], project)).toBeNull();
+    expect(ruleFor([{project}, rules[1]], project).project).toBe(project);
+  });
+
+  it('gives a real device the simulator’s jobs when it has none, and knows the kinds of device', async function () {
+    const {deviceKind, fitsFilePattern, jobsFor} = await import('../../app/common/shared/builds/pipelines.js');
+    const rule = {virtual: {jobs: ['build']}, real: {jobs: []}};
+    expect(jobsFor(rule, 'real')).toEqual(['build']);
+    expect(jobsFor({...rule, real: {jobs: ['build_ipa']}}, 'real')).toEqual(['build_ipa']);
+    expect(deviceKind({kind: 'ios-simulator'})).toBe('virtual');
+    expect(deviceKind({kind: 'android-emulator'})).toBe('virtual');
+    expect(deviceKind({kind: 'ios-device'})).toBe('real');
+    expect(fitsFilePattern('app-universal-release.apk', '*universal*.apk')).toBe(true);
+    expect(fitsFilePattern('app-arm64.apk', '*universal*.apk')).toBe(false);
+  });
+});

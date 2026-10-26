@@ -3,130 +3,127 @@ import {
   IconBrandApple,
   IconBrandGitlab,
   IconCircleCheck,
+  IconDeviceDesktop,
+  IconDeviceMobile,
   IconExternalLink,
   IconPencil,
   IconPlayerPlay,
   IconRefresh,
   IconX,
 } from '@tabler/icons-react';
-import {Alert, Button, Checkbox, Input, Progress, Select, Spin, Switch, Tooltip} from 'antd';
+import {Alert, Button, Input, Progress, Select, Spin, Switch, Tooltip} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
+import {likelyArtifactJobs} from '../../../shared/builds/pipelines.js';
 import {openBuild} from '../../actions/Builds.js';
 import {openLink} from '../../polyfills.js';
+import BuildRuleEditor, {emptyRule} from './BuildRuleEditor.jsx';
 import {
   addWatch,
   chooseBuild,
-  editJobs,
   install,
   playJob,
   refresh,
   removeWatch,
-  saveProjectJobs,
+  saveBuildSources,
   setAutoInstall,
   setTargets,
+  targetsOf,
   usePipelineWatches,
 } from './pipeline-watch.js';
 
 import styles from './PipelinePanel.module.css';
 
 const shortProject = (project) => project.split('/').slice(-2).join('/');
+const KIND_ICON = {virtual: IconDeviceDesktop, real: IconDeviceMobile};
 
 /**
- * The choice of jobs a project's builds come from, made once per project.
+ * The rule for a project met for the first time, written right on the card.
  */
-const JobsChoice = ({watch, onSave}) => {
+const FirstRule = ({watch, rules}) => {
   const {t} = useTranslation();
-  const [names, setNames] = useState(watch.suggested ?? []);
-  const all = [...new Map((watch.jobs ?? []).map((job) => [job.name, job])).values()];
+  const navigate = useNavigate();
+  const [rule, setRule] = useState(() => ({
+    ...emptyRule(watch.link.project),
+    virtual: {jobs: watch.suggested ?? likelyArtifactJobs(watch.jobs ?? []), file: ''},
+  }));
+  const jobNames = [...new Set((watch.jobs ?? []).map((job) => job.name))];
   return (
     <div className={styles.choice}>
-      <div className={styles.choiceText}>
-        {t('buildsPipelineChooseJobs', {project: shortProject(watch.link.project)})}
+      <div className={styles.choiceText}>{t('buildsPipelineNoRule', {project: shortProject(watch.link.project)})}</div>
+      <BuildRuleEditor rule={rule} onChange={setRule} jobNames={jobNames} />
+      <div className={styles.stateRow}>
+        <Button
+          type="primary"
+          size="small"
+          disabled={!rule.project.trim() || !(rule.virtual.jobs.length || rule.real.jobs.length)}
+          onClick={() => saveBuildSources([...rules, rule])}
+        >
+          {t('buildsPipelineSaveRule')}
+        </Button>
+        <Button size="small" type="link" onClick={() => navigate('/settings', {state: {section: 'builds'}})}>
+          {t('buildsPipelineAllRules')}
+        </Button>
       </div>
-      <Checkbox.Group
-        className={styles.jobList}
-        value={names}
-        onChange={setNames}
-        options={all.map((job) => ({
-          value: job.name,
-          label: (
-            <span className={styles.jobOption}>
-              <span className="vi-mono">{job.name}</span>
-              <span className={styles.dim}>
-                {job.stage}
-                {job.downstream ? ` · ${t('buildsPipelineDownstream')}` : ''} ·{' '}
-                {t(`buildsJobStatus_${job.status}`, {defaultValue: job.status})}
-              </span>
-            </span>
-          ),
-        }))}
-      />
-      <Button type="primary" size="small" disabled={!names.length} onClick={() => onSave(names)}>
-        {t('buildsPipelineSaveJobs')}
-      </Button>
     </div>
   );
 };
 
 /**
- * Where one pipeline is, from waiting for its job to the build installed on
- * the devices it was sent to.
+ * Where the build for one kind of device is: its job, its download, the
+ * build itself and its installs.
  */
-const WatchCard = ({watch, jobNames}) => {
+const KindRow = ({watch, kind, build}) => {
   const {t} = useTranslation();
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const devices = useSelector((state) => state.workstation.devices);
-  const job = watch.artifactJob;
-  const deviceOptions = devices
-    .filter((device) => device.state === 'running' || watch.targets.includes(device.id))
-    .map((device) => ({value: device.id, label: device.name}));
+  const Icon = KIND_ICON[kind];
+  const job = build.job;
+  const jobStatus = job ? t(`buildsJobStatus_${job.status}`, {defaultValue: job.status}) : '';
+  const targets = targetsOf(watch, kind);
 
-  let body;
-  switch (watch.status) {
-    case 'loading':
-      body = (
+  let state;
+  switch (build.status) {
+    case 'waiting':
+      state = (
         <span className={styles.state}>
-          <Spin size="small" /> {t('buildsPipelineLoading')}
+          <Spin size="small" /> {t('buildsPipelineWaiting', {job: job?.name, status: jobStatus})}
         </span>
       );
       break;
-    case 'configure':
-      body = <JobsChoice watch={watch} onSave={(names) => saveProjectJobs(watch.link.project, names)} />;
-      break;
-    case 'waiting':
-      body = (
+    case 'missing':
+      state = (
         <span className={styles.state}>
-          <Spin size="small" />
-          {t('buildsPipelineWaiting', {
-            job: job?.name,
-            status: t(`buildsJobStatus_${job?.status}`, {defaultValue: job?.status}),
-          })}
+          <Spin size="small" /> {t('buildsPipelineMissing')}
         </span>
       );
       break;
     case 'manual':
-      body = (
+      state = (
         <div className={styles.stateRow}>
           <span>{t('buildsPipelineManual', {job: job?.name})}</span>
-          <Button size="small" type="primary" icon={<IconPlayerPlay size={14} />} onClick={() => playJob(watch.id)}>
+          <Button
+            size="small"
+            type="primary"
+            icon={<IconPlayerPlay size={14} />}
+            onClick={() => playJob(watch.id, kind)}
+          >
             {t('buildsPipelinePlay')}
           </Button>
         </div>
       );
       break;
     case 'downloading':
-      body = (
+      state = (
         <div className={styles.progress}>
           <span>{t('buildsPipelineDownloading', {job: job?.name})}</span>
           <Progress
             size="small"
             percent={
-              watch.progress?.total ? Math.round((watch.progress.received / watch.progress.total) * 100) : undefined
+              build.progress?.total ? Math.round((build.progress.received / build.progress.total) * 100) : undefined
             }
             status="active"
           />
@@ -134,22 +131,22 @@ const WatchCard = ({watch, jobNames}) => {
       );
       break;
     case 'extracting':
-      body = (
+      state = (
         <span className={styles.state}>
           <Spin size="small" /> {t('buildsPipelineExtracting')}
         </span>
       );
       break;
     case 'choose':
-      body = (
+      state = (
         <div className={styles.choice}>
           <div className={styles.choiceText}>{t('buildsPipelineChooseBuild')}</div>
-          {watch.candidates.map((candidate) => (
+          {build.candidates.map((candidate) => (
             <Button
               key={candidate.entry}
               size="small"
               className="vi-mono"
-              onClick={() => chooseBuild(watch.id, candidate)}
+              onClick={() => chooseBuild(watch.id, kind, candidate)}
             >
               {candidate.name}
             </Button>
@@ -158,39 +155,131 @@ const WatchCard = ({watch, jobNames}) => {
       );
       break;
     case 'noJobs':
-      body = <Alert type="warning" showIcon title={t('buildsPipelineNoJobs')} />;
+      state = <span className={styles.warn}>{t('buildsPipelineNoJobs')}</span>;
       break;
     case 'noArtifacts':
-      body = <Alert type="warning" showIcon title={t('buildsPipelineNoArtifacts', {job: job?.name})} />;
+      state = <span className={styles.warn}>{t('buildsPipelineNoArtifacts', {job: job?.name})}</span>;
       break;
     case 'failed':
-      body = (
-        <Alert
-          type="error"
-          showIcon
-          title={
-            job && !watch.error
-              ? t('buildsPipelineJobFailed', {job: job.name})
-              : t(`buildsPipelineError_${watch.errorCode}`, {defaultValue: watch.error})
-          }
-          action={
-            ['notSetUp', 'otherSite'].includes(watch.errorCode) ? (
-              <Button size="small" onClick={() => navigate('/settings')}>
-                {t('buildsPipelineSetUpGitlab')}
-              </Button>
-            ) : null
-          }
-        />
-      );
+      state = <span className={styles.bad}>{build.error ?? t('buildsPipelineJobFailed', {job: job?.name})}</span>;
       break;
     case 'retry':
-      body = <Alert type="warning" showIcon title={t('buildsPipelineRetry', {error: watch.error})} />;
+      state = <span className={styles.warn}>{t('buildsPipelineRetry', {error: build.error})}</span>;
       break;
     default:
-      body = null;
+      state = null;
   }
 
-  const build = watch.build;
+  return (
+    <div className={styles.kind}>
+      <div className={styles.kindHead}>
+        <Icon size={16} stroke={1.7} />
+        <span className={styles.kindTitle}>{t(`buildRuleKind_${kind}`)}</span>
+        {job && <span className={`vi-mono ${styles.dim}`}>{job.name}</span>}
+      </div>
+      {state}
+      {build.build && (
+        <div className={styles.build}>
+          {build.build.platform === 'ios' ? <IconBrandApple size={18} /> : <IconBrandAndroid size={18} />}
+          <span className="vi-mono">{build.build.appId}</span>
+          <span className={styles.dim}>
+            {build.build.version} {build.build.build ? `(${build.build.build})` : ''}
+          </span>
+          <Button
+            size="small"
+            type="link"
+            onClick={() =>
+              dispatch(
+                openBuild(build.file, {kind: 'gitlab', jobId: job?.id, job: job?.name, ref: watch.pipeline?.ref}),
+              )
+            }
+          >
+            {t('buildsPipelineAnalyze')}
+          </Button>
+          <span className={styles.grow} />
+          <Button
+            size="small"
+            type={build.status === 'installed' ? 'default' : 'primary'}
+            loading={build.status === 'installing'}
+            disabled={!targets.length}
+            onClick={() => install(watch.id, {kind})}
+          >
+            {build.status === 'installed' ? t('buildsPipelineInstallAgain') : t('buildsPipelineInstall')}
+          </Button>
+        </div>
+      )}
+      {Object.keys(build.installs ?? {}).length > 0 && (
+        <ul className={styles.installs}>
+          {Object.entries(build.installs).map(([deviceId, result]) => (
+            <li key={deviceId} className={styles.install}>
+              {result.status === 'done' ? (
+                <IconCircleCheck size={15} className={styles.ok} />
+              ) : result.status === 'installing' ? (
+                <Spin size="small" />
+              ) : (
+                <span className="vi-dot vi-tone-danger" />
+              )}
+              <span>{devices.find((device) => device.id === deviceId)?.name ?? deviceId}</span>
+              <span className={styles.dim}>
+                {t(`buildsPipelineInstall_${result.status}`, {
+                  reason: result.reason ? t(`buildsInstallFail_${result.reason}`, {defaultValue: result.error}) : '',
+                })}
+              </span>
+              {result.reason === 'signatureMismatch' && (
+                <Button size="small" danger onClick={() => install(watch.id, {kind, deviceId, replace: true})}>
+                  {t('buildsPipelineReplace')}
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+/**
+ * One pipeline followed: where its builds are, for each kind of device they
+ * go to, and the devices they go to.
+ */
+const WatchCard = ({watch, rules}) => {
+  const {t} = useTranslation();
+  const navigate = useNavigate();
+  const devices = useSelector((state) => state.workstation.devices);
+  const deviceOptions = devices
+    .filter((device) => device.state === 'running' || watch.targets.includes(device.id))
+    .map((device) => ({value: device.id, label: device.name}));
+  const kinds = ['virtual', 'real'].filter((kind) => watch.builds[kind]);
+
+  let body = null;
+  if (watch.status === 'loading') {
+    body = (
+      <span className={styles.state}>
+        <Spin size="small" /> {t('buildsPipelineLoading')}
+      </span>
+    );
+  } else if (watch.status === 'configure') {
+    body = <FirstRule watch={watch} rules={rules} />;
+  } else if (watch.status === 'retry') {
+    body = <Alert type="warning" showIcon title={t('buildsPipelineRetry', {error: watch.error})} />;
+  } else if (watch.status === 'failed') {
+    body = (
+      <Alert
+        type="error"
+        showIcon
+        title={t(`buildsPipelineError_${watch.errorCode}`, {defaultValue: watch.error})}
+        action={
+          ['notSetUp', 'otherSite'].includes(watch.errorCode) ? (
+            <Button size="small" onClick={() => navigate('/settings')}>
+              {t('buildsPipelineSetUpGitlab')}
+            </Button>
+          ) : null
+        }
+      />
+    );
+  } else if (!kinds.length) {
+    body = <span className={styles.dim}>{t('buildsPipelinePickDevices')}</span>;
+  }
 
   return (
     <section className={styles.card} aria-label={`#${watch.pipeline?.id ?? ''}`}>
@@ -218,29 +307,6 @@ const WatchCard = ({watch, jobNames}) => {
         </Tooltip>
       </div>
 
-      {body}
-
-      {build && (
-        <div className={styles.build}>
-          {build.platform === 'ios' ? <IconBrandApple size={18} /> : <IconBrandAndroid size={18} />}
-          <span className="vi-mono">{build.appId}</span>
-          <span className={styles.dim}>
-            {build.version} {build.build ? `(${build.build})` : ''}
-          </span>
-          <Button
-            size="small"
-            type="link"
-            onClick={() =>
-              dispatch(
-                openBuild(watch.file, {kind: 'gitlab', jobId: job?.id, job: job?.name, ref: watch.pipeline?.ref}),
-              )
-            }
-          >
-            {t('buildsPipelineAnalyze')}
-          </Button>
-        </div>
-      )}
-
       <div className={styles.targets}>
         <span className={styles.label}>{t('buildsPipelineTargets')}</span>
         <Select
@@ -256,55 +322,23 @@ const WatchCard = ({watch, jobNames}) => {
           <Switch size="small" checked={watch.autoInstall} onChange={(value) => setAutoInstall(watch.id, value)} />
           {t('buildsPipelineAuto')}
         </label>
-        {build && (
-          <Button
-            size="small"
-            type={watch.status === 'installed' ? 'default' : 'primary'}
-            loading={watch.status === 'installing'}
-            disabled={!watch.targets.length}
-            onClick={() => install(watch.id)}
-          >
-            {watch.status === 'installed' ? t('buildsPipelineInstallAgain') : t('buildsPipelineInstall')}
-          </Button>
-        )}
       </div>
 
-      {Object.keys(watch.installs ?? {}).length > 0 && (
-        <ul className={styles.installs}>
-          {Object.entries(watch.installs).map(([deviceId, result]) => {
-            const name = devices.find((device) => device.id === deviceId)?.name ?? deviceId;
-            return (
-              <li key={deviceId} className={styles.install}>
-                {result.status === 'done' ? (
-                  <IconCircleCheck size={15} className={styles.ok} />
-                ) : result.status === 'installing' ? (
-                  <Spin size="small" />
-                ) : (
-                  <span className="vi-dot vi-tone-danger" />
-                )}
-                <span>{name}</span>
-                <span className={styles.dim}>
-                  {t(`buildsPipelineInstall_${result.status}`, {
-                    reason: result.reason ? t(`buildsInstallFail_${result.reason}`, {defaultValue: result.error}) : '',
-                  })}
-                </span>
-                {result.reason === 'signatureMismatch' && (
-                  <Button size="small" danger onClick={() => install(watch.id, {deviceId, replace: true})}>
-                    {t('buildsPipelineReplace')}
-                  </Button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {body}
+      {watch.status === 'tracking' &&
+        kinds.map((kind) => <KindRow key={kind} watch={watch} kind={kind} build={watch.builds[kind]} />)}
 
-      {watch.status !== 'configure' && (
+      {watch.rule && (
         <div className={styles.foot}>
           <span className={styles.dim}>
-            {t('buildsPipelineJobsFrom')} <span className="vi-mono">{(jobNames ?? []).join(', ') || '—'}</span>
+            {t('buildsPipelineRule')} <span className="vi-mono">{watch.rule}</span>
           </span>
-          <Button size="small" type="link" icon={<IconPencil size={12} />} onClick={() => editJobs(watch.id)}>
+          <Button
+            size="small"
+            type="link"
+            icon={<IconPencil size={12} />}
+            onClick={() => navigate('/settings', {state: {section: 'builds', project: watch.rule}})}
+          >
             {t('buildsPipelineEditJobs')}
           </Button>
         </div>
@@ -315,11 +349,11 @@ const WatchCard = ({watch, jobNames}) => {
 
 /**
  * Builds from GitLab by link: paste a pipeline (or job) of any project, say
- * where its build goes, and it is installed there when the job is done.
+ * where its builds go, and they are installed there when their jobs are done.
  */
 const PipelinePanel = () => {
   const {t} = useTranslation();
-  const {watches, jobs} = usePipelineWatches();
+  const {watches, sources} = usePipelineWatches();
   const [text, setText] = useState('');
   const [error, setError] = useState(null);
 
@@ -356,7 +390,7 @@ const PipelinePanel = () => {
       />
       {error && <span className={styles.error}>{t(error)}</span>}
       {watches.map((watch) => (
-        <WatchCard key={watch.id} watch={watch} jobNames={jobs[watch.link.project]?.jobs} />
+        <WatchCard key={watch.id} watch={watch} rules={sources.rules} />
       ))}
     </section>
   );

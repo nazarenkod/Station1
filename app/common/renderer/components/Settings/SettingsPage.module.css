@@ -239,3 +239,56 @@ button.cardHead:hover {
 .cardAlert {
   margin-bottom: 16px;
 }
+
+/* the rules of where builds come from */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.rule {
+  border: 1px solid var(--vi-hairline);
+  border-radius: 12px;
+}
+
+.ruleHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ruleHead:hover {
+  background: var(--vi-hover);
+}
+
+.ruleText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.ruleBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 12px 12px;
+}
+
+.ruleBody > :first-child {
+  align-self: stretch;
+}

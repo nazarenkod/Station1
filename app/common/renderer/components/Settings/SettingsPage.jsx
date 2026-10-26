@@ -17,12 +17,13 @@ import {Stagger, StaggerItem} from '../AppShell/motion.jsx';
 import {JiraSettingsFields, useJiraSettings} from '../Jira/JiraSettingsModal.jsx';
 import ChangeLanguage from '../SessionBuilder/AppSettings/ChangeLanguage.jsx';
 import ToggleTheme from '../SessionBuilder/AppSettings/ToggleTheme.jsx';
+import BuildSourcesSettings from './BuildSourcesSettings.jsx';
 import {GitLabSettingsFields, useGitLabSettings} from './GitLabSettings.jsx';
 import IosSigningSettings from './IosSigningSettings.jsx';
 
 import styles from './SettingsPage.module.css';
 
-const SECTIONS = ['integrations', 'devices', 'general'];
+const SECTIONS = ['integrations', 'builds', 'devices', 'general'];
 
 /**
  * One outside service as a single line: what it is, what it is connected to
@@ -224,7 +225,22 @@ const General = () => {
   );
 };
 
-const PAGES = {integrations: Integrations, devices: Devices, general: General};
+const Builds = ({openProject}) => {
+  const {t} = useTranslation();
+  return (
+    <Stagger className={styles.section}>
+      <StaggerItem>
+        <h2 className={styles.sectionTitle}>{t('settingsBuilds')}</h2>
+        <p className={styles.sectionText}>{t('settingsBuildsText')}</p>
+      </StaggerItem>
+      <StaggerItem>
+        <BuildSourcesSettings openProject={openProject} />
+      </StaggerItem>
+    </Stagger>
+  );
+};
+
+const PAGES = {integrations: Integrations, builds: Builds, devices: Devices, general: General};
 
 /**
  * The workstation's settings: outside services and their keys, language and look.
@@ -253,7 +269,7 @@ const SettingsPage = () => {
           ))}
         </nav>
         <div className={styles.content}>
-          <Page />
+          <Page openProject={state?.project ?? null} />
         </div>
       </div>
     </div>

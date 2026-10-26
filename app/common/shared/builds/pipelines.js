@@ -73,16 +73,70 @@ export function likelyArtifactJobs(jobs) {
 
 const normalized = (name) => name.toLowerCase().replace(/\d+/g, '#');
 
+// a pattern with * for any characters, matched whole and without regard to case
+const wildcard = (pattern) =>
+  new RegExp(
+    `^${pattern
+      .trim()
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')}$`,
+    'i',
+  );
+
+/**
+ * Whether a file in the artifacts fits a rule's pattern (`*.ipa`,
+ * `*universal*.apk`); an empty pattern fits every file.
+ */
+export const fitsFilePattern = (name, pattern) => !pattern?.trim() || wildcard(pattern).test(name);
+
+/**
+ * The kind of device a build is made for: a simulator or emulator, or a real one.
+ */
+export const deviceKind = (device) => (/simulator|emulator|avd/i.test(device?.kind ?? '') ? 'virtual' : 'real');
+
+export const DEVICE_KINDS = ['virtual', 'real'];
+
+/**
+ * The rule for a project's builds: one written for its path (whole, or its
+ * end like `android/ap24v6`), else the one whose pattern (with *) fits it
+ * most closely.
+ */
+export function ruleFor(rules, project) {
+  // a rule may name the end of the path, without the groups before it
+  const tails = project.split('/').map((_, i, parts) => parts.slice(i).join('/'));
+  const fitting = (rules ?? []).filter(
+    (rule) => rule.project?.trim() && tails.some((tail) => wildcard(rule.project).test(tail)),
+  );
+  const exact = fitting.find((rule) => !rule.project.includes('*'));
+  return (
+    exact ??
+    fitting.sort((a, b) => b.project.replace(/\*/g, '').length - a.project.replace(/\*/g, '').length)[0] ??
+    null
+  );
+}
+
+/**
+ * The jobs a kind of device takes its build from, by a rule: its own, or the
+ * other kind's when it has none (an APK is the same for both).
+ */
+export function jobsFor(rule, kind) {
+  const own = rule?.[kind]?.jobs ?? [];
+  const other = rule?.[kind === 'virtual' ? 'real' : 'virtual']?.jobs ?? [];
+  return own.length ? own : other;
+}
+
+export const filePatternFor = (rule, kind) => rule?.[kind]?.file || '';
+
 /**
  * The build to take out of an archive for the devices it goes to: what the
  * devices can install (APK for Android; an .app for a simulator, an IPA for
  * an iPhone), the one picked last time for this project, then a universal
  * or the smallest name. Null when it is not clear: then a person chooses.
  */
-export function chooseCandidate(candidates, {platforms = [], simulator = false, remembered = null} = {}) {
+export function chooseCandidate(candidates, {platforms = [], simulator = false, remembered = null, file = ''} = {}) {
   const installable = candidates.filter((candidate) => {
     const name = candidate.name.toLowerCase();
-    if (name.endsWith('.aab')) {
+    if (name.endsWith('.aab') || !fitsFilePattern(candidate.name, file)) {
       return false;
     }
     if (!platforms.length) {

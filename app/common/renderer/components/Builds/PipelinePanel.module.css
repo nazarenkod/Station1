@@ -205,3 +205,38 @@
   align-items: center;
   gap: 4px;
 }
+
+/* the build of one kind of device: simulators and emulators, or real devices */
+.kind {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--vi-hairline);
+  background: var(--ant-color-bg-container);
+}
+
+.kindHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kindTitle {
+  font-weight: 600;
+}
+
+.warn {
+  font-size: 13px;
+  color: var(--vi-warn-fg);
+}
+
+.bad {
+  font-size: 13px;
+  color: var(--ant-color-error);
+}
+
+.grow {
+  flex: 1;
+}
