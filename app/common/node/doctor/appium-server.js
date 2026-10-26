@@ -26,6 +26,24 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * An Appium server Vision Inspector runs itself: the one found on PATH, or one
  * it installs into its own folder (with drivers in its own APPIUM_HOME).
  */
+/**
+ * How the managed server is started: on this machine only, since Appium
+ * has no sign-in and whoever reaches it drives the devices (and a server on
+ * every interface makes the macOS firewall ask); with CORS for the web
+ * build of the Inspector, and session discovery so the doctor can list the
+ * server's sessions (Appium 3 keeps it off by default).
+ */
+export const appiumArgs = (port, extraArgs = []) => [
+  '--address',
+  '127.0.0.1',
+  '--port',
+  String(port),
+  '--allow-cors',
+  '--allow-insecure',
+  '*:session_discovery',
+  ...extraArgs,
+];
+
 export class ManagedAppium {
   constructor({dataDir, onLog = () => {}, onState = () => {}}) {
     this.installDir = path.join(dataDir, 'appium');
@@ -165,9 +183,7 @@ export class ManagedAppium {
       this.setState({status: SERVER_STATUS.FAILED, error: 'notInstalled'});
       return this.state;
     }
-    // --allow-cors: the web build of the Inspector talks to the server from a browser page
-    // session_discovery lets the doctor list the server's sessions (Appium 3 keeps it off by default)
-    const args = ['--port', String(port), '--allow-cors', '--allow-insecure', '*:session_discovery', ...extraArgs];
+    const args = appiumArgs(port, extraArgs);
     this.setState({status: SERVER_STATUS.STARTING, port, binary: resolved.binary, local: resolved.local, error: null});
     this.log(`$ appium ${args.join(' ')}`, 'cmd');
 

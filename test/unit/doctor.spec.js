@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
+import {appiumArgs} from '../../app/common/node/doctor/appium-server.js';
 import {
   capabilitiesFor,
   DEVICE_KIND,
@@ -245,5 +246,14 @@ describe('doctor: shell environment', function () {
   it('adds the Android SDK tool folders', function () {
     expect(androidToolDirs({ANDROID_SDK_ROOT: '/sdk'})).toEqual(['/sdk/platform-tools', '/sdk/emulator']);
     expect(androidToolDirs({})).toEqual([]);
+  });
+});
+
+describe('the Appium server the station starts', function () {
+  it('listens on this machine only, so the network cannot drive the devices', function () {
+    const args = appiumArgs(4723);
+    expect(args.slice(0, 4)).toEqual(['--address', '127.0.0.1', '--port', '4723']);
+    expect(args).toContain('--allow-cors');
+    expect(appiumArgs(4724, ['--log-level', 'debug']).slice(-2)).toEqual(['--log-level', 'debug']);
   });
 });
