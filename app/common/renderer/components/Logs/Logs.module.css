@@ -94,7 +94,176 @@
 }
 
 .search {
-  width: 260px;
+  flex: 1 1 260px;
+  max-width: 420px;
+  min-width: 180px;
+}
+
+.kbd {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  border: 1px solid var(--ant-color-border);
+  font-family: var(--ant-font-family-code);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  color: var(--ant-color-text-tertiary);
+}
+
+.scopeOption {
+  display: inline-block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  font-family: var(--ant-font-family-code);
+  font-size: 12px;
+}
+
+.levelOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.levelCount {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.levelCount_W {
+  background: #f59e0b;
+}
+
+.levelCount_E {
+  background: #e11d48;
+}
+
+.rulesCount {
+  margin-left: 6px;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 17px;
+  color: #fff;
+  background: #e11d48;
+}
+
+/* the filters in force, each a click away from going */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--vi-hairline);
+  flex-shrink: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 4px 0 10px;
+  border-radius: 999px;
+  font-family: var(--ant-font-family-code);
+  font-size: 12px;
+  background: var(--ant-color-primary-bg);
+  color: var(--ant-color-primary-text);
+  border: 1px solid var(--ant-color-primary-border);
+}
+
+.chipOff {
+  background: var(--ant-color-fill-quaternary);
+  color: var(--ant-color-text-secondary);
+  border-color: var(--ant-color-border);
+  text-decoration: line-through;
+}
+
+.chipClear {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chipClear:hover {
+  background: var(--ant-color-fill-secondary);
+}
+
+.found {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: rgba(250, 204, 21, 0.45);
+  color: inherit;
+}
+
+/* under the stream: what streams, what is shown, and the app */
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 34px;
+  padding: 4px 16px;
+  border-top: 1px solid var(--vi-hairline);
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  flex-shrink: 0;
+}
+
+.statusApp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.keys {
+  color: var(--ant-color-text-tertiary);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .keys {
+    display: none;
+  }
+}
+
+.noRows {
+  position: absolute;
+  top: 40%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--ant-color-text-tertiary);
+  pointer-events: none;
+}
+
+.noRows :global(.ant-btn) {
+  pointer-events: auto;
 }
 
 .status {
@@ -175,6 +344,36 @@
 
 .row:hover {
   background: var(--ant-color-fill-quaternary);
+}
+
+/* a line's quick filters show on hover, at its end */
+.rowActions {
+  display: none;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.row:hover .rowActions {
+  display: inline-flex;
+}
+
+.rowAction {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--ant-color-border);
+  border-radius: 6px;
+  background: var(--ant-color-bg-container);
+  color: var(--ant-color-text-secondary);
+  cursor: pointer;
+}
+
+.rowAction:hover {
+  color: var(--vi-violet);
+  border-color: var(--vi-violet);
 }
 
 .rowSystem {
@@ -333,9 +532,14 @@
   box-shadow: var(--vi-shadow-card);
 }
 
+/* above the line's details, not on them */
+.toBottomRaised {
+  bottom: calc(min(40%, 260px) + 12px);
+}
+
 .detail {
   flex-shrink: 0;
-  max-height: 40%;
+  max-height: min(40%, 260px);
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--vi-hairline);
@@ -362,7 +566,7 @@
 }
 
 .side {
-  flex: 0 0 340px;
+  flex: 0 0 320px;
   min-width: 0;
   overflow-y: auto;
   display: flex;

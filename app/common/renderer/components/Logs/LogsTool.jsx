@@ -1,7 +1,11 @@
 import {
   IconArrowDown,
+  IconCopy,
   IconDeviceFloppy,
   IconDeviceMobile,
+  IconEyeOff,
+  IconFilter,
+  IconLayoutSidebarRight,
   IconPlayerPause,
   IconPlayerPlay,
   IconPlus,
@@ -9,8 +13,9 @@ import {
   IconSearch,
   IconTerminal2,
   IconTrash,
+  IconX,
 } from '@tabler/icons-react';
-import {Alert, App, Button, Input, Select, Switch, Tooltip} from 'antd';
+import {Alert, App, Button, Input, Segmented, Select, Switch, Tooltip} from 'antd';
 import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
@@ -22,13 +27,35 @@ import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {backend} from '../../polyfills.js';
 import {SeverityTag} from '../Findings/FindingsList.jsx';
 import EmptyState from '../Workstation/EmptyState.jsx';
+import {highlightParts, isEmptyQuery, matchesEntry, parseQuery, patternFromLine} from './log-filter.js';
 import {clearLogs, saveRules, startLogs, useLogs} from './logs-store.js';
 
 import styles from './Logs.module.css';
 
 const ROW_HEIGHT = 24;
 const OVERSCAN = 20;
-const LEVEL_NAMES = {V: 'Verbose', D: 'Debug', I: 'Info', W: 'Warning', E: 'Error', F: 'Fatal'};
+// the levels people pick from: everything, info and up, warnings and up, errors
+const LEVEL_PRESETS = ['V', 'I', 'W', 'E'];
+
+// how the tool was left, for when it is opened again in this run of the app
+const memory = {scope: 'app', minLevel: 'V', query: '', sideOpen: true};
+
+/**
+ * State the tool keeps between visits: a choice made once stays made.
+ */
+function useRemembered(key) {
+  const [value, setValue] = useState(memory[key]);
+  const remember = useCallback(
+    (next) => {
+      memory[key] = next;
+      setValue(next);
+    },
+    [key],
+  );
+  return [value, remember];
+}
+
+const typingIn = (target) => ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName) || target?.isContentEditable;
 
 const firstLine = (message) => {
   const end = message.indexOf('\n');
@@ -46,7 +73,7 @@ const extraLines = (message) => {
  * The lines on screen, drawn only where the viewport is: a log of twenty
  * thousand lines scrolls like one of twenty.
  */
-const LogList = ({rows, selected, onSelect, follow, onFollowChange, ruleNames}) => {
+const LogList = ({rows, selected, onSelect, follow, onFollowChange, ruleNames, query, onOnlyTag, onHideTag}) => {
   const {t} = useTranslation();
   const scroller = useRef(null);
   const [scroll, setScroll] = useState({top: 0, height: 600});
@@ -93,18 +120,31 @@ const LogList = ({rows, selected, onSelect, follow, onFollowChange, ruleNames}) 
                 <span className={styles.markerLine} />
               </div>
             ) : (
-              <button
+              <div
                 key={entry.seq}
+                role="button"
+                tabIndex={-1}
                 className={`${styles.row} ${entry.hits?.length ? styles.rowHit : ''} ${selected === entry.seq ? styles.rowSelected : ''} ${entry.app ? '' : styles.rowSystem}`}
                 style={{height: ROW_HEIGHT}}
                 onClick={() => onSelect(entry.seq)}
+                onKeyDown={(e) => e.key === 'Enter' && onSelect(entry.seq)}
               >
                 <span className={styles.time}>{entry.time}</span>
                 <span className={styles.pid}>{entry.pid}</span>
                 <span className={`${styles.level} ${styles[`level_${entry.level}`]}`}>{entry.level}</span>
                 <span className={styles.tag}>{entry.tag}</span>
                 <span className={`${styles.message} ${styles[`msg_${entry.level}`] ?? ''}`}>
-                  {firstLine(entry.message)}
+                  {highlightParts(firstLine(entry.message), query).map(([text, found], i) =>
+                    found ? (
+                      // the parts of one line never move: their order is their identity
+                      // oxlint-disable-next-line react/no-array-index-key
+                      <mark key={i} className={styles.found}>
+                        {text}
+                      </mark>
+                    ) : (
+                      text
+                    ),
+                  )}
                 </span>
                 {extraLines(entry.message) > 0 && <span className={styles.more}>+{extraLines(entry.message)}</span>}
                 {entry.hits?.map((rule) => (
@@ -112,7 +152,35 @@ const LogList = ({rows, selected, onSelect, follow, onFollowChange, ruleNames}) 
                     {ruleNames[rule] ?? rule}
                   </span>
                 ))}
-              </button>
+                <span className={styles.rowActions}>
+                  <Tooltip title={t('logsOnlyTag', {tag: entry.tag})}>
+                    <button
+                      type="button"
+                      className={styles.rowAction}
+                      aria-label={t('logsOnlyTag', {tag: entry.tag})}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOnlyTag(entry.tag);
+                      }}
+                    >
+                      <IconFilter size={13} />
+                    </button>
+                  </Tooltip>
+                  <Tooltip title={t('logsHideTag', {tag: entry.tag})}>
+                    <button
+                      type="button"
+                      className={styles.rowAction}
+                      aria-label={t('logsHideTag', {tag: entry.tag})}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHideTag(entry.tag);
+                      }}
+                    >
+                      <IconEyeOff size={13} />
+                    </button>
+                  </Tooltip>
+                </span>
+              </div>
             ),
           )}
         </div>
@@ -175,10 +243,11 @@ const NEW_RULE = {name: '', pattern: '', tag: '', minLevel: 'V', severity: 'medi
  * The project's own patterns: a name, a regular expression, optionally a tag
  * and a level from which the line counts.
  */
-const CustomRules = ({rules}) => {
+export const NEW_RULE_DRAFT = NEW_RULE;
+
+const CustomRules = ({rules, draft, setDraft}) => {
   const {t} = useTranslation();
   const {message} = App.useApp();
-  const [draft, setDraft] = useState(null);
 
   const save = async (custom) => saveRules({...rules, custom});
   const patternError = useMemo(() => {
@@ -297,14 +366,19 @@ const LogsTool = () => {
   const device = activeDevice(workstation);
   const appId = workstation.app?.id ?? null;
   const logs = useLogs();
+  const searchRef = useRef(null);
 
-  const [onlyApp, setOnlyApp] = useState(true);
-  const [minLevel, setMinLevel] = useState('V');
-  const [query, setQuery] = useState('');
+  const [scope, setScope] = useRemembered('scope');
+  const [minLevel, setMinLevel] = useRemembered('minLevel');
+  const [queryText, setQuery] = useRemembered('query');
+  const [tags, setTags] = useState(() => new Set());
+  const [hiddenTags, setHiddenTags] = useState(() => new Set());
   const [ruleFilter, setRuleFilter] = useState(null);
   const [follow, setFollow] = useState(true);
   const [frozen, setFrozen] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [sideOpen, setSideOpen] = useRemembered('sideOpen');
+  const [draft, setDraft] = useState(null);
 
   const running = isDeviceRunning(device);
   useEffect(() => {
@@ -325,44 +399,38 @@ const LogsTool = () => {
     return names;
   }, [logs.findings, logs.rules, t]);
 
+  // without an app there is only the whole device to show
+  const effectiveScope = logs.appId ? scope : 'device';
+  const query = useMemo(() => parseQuery(queryText), [queryText]);
+
   // a paused view keeps the lines it had; the stream goes on underneath
   const shownVersion = frozen?.version ?? logs.version;
-  const filterApp = onlyApp && !!logs.appId;
   const rows = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const levelFrom = LOG_LEVELS.indexOf(minLevel);
+    const filters = {scope: effectiveScope, minLevel, tags, hiddenTags, rule: ruleFilter, query};
+    const searching = !!ruleFilter || !isEmptyQuery(query) || tags.size > 0;
     return logs.entries.filter((entry) => {
       if (frozen && entry.seq > frozen.seq) {
         return false;
       }
       if (entry.kind === 'marker') {
-        return !ruleFilter && !needle;
+        return !searching;
       }
-      if (filterApp && !entry.forApp) {
-        return false;
-      }
-      if (LOG_LEVELS.indexOf(entry.level) < levelFrom) {
-        return false;
-      }
-      if (ruleFilter && !entry.hits?.includes(ruleFilter)) {
-        return false;
-      }
-      return !needle || entry.tag.toLowerCase().includes(needle) || entry.message.toLowerCase().includes(needle);
+      return matchesEntry(entry, filters);
     });
     // the entry list grows in place: the version says when to look again
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownVersion, query, minLevel, ruleFilter, filterApp]);
+  }, [shownVersion, query, minLevel, ruleFilter, effectiveScope, tags, hiddenTags]);
 
   const levelCounts = useMemo(() => {
     const counts = Object.fromEntries(LOG_LEVELS.map((level) => [level, 0]));
     for (const entry of logs.entries) {
-      if (entry.kind !== 'marker' && (!filterApp || entry.forApp)) {
+      if (entry.kind !== 'marker' && (effectiveScope === 'device' || entry.forApp)) {
         counts[entry.level]++;
       }
     }
     return counts;
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [logs.version, filterApp]);
+  }, [logs.version, effectiveScope]);
 
   const selectedEntry = useMemo(
     () => (selected === null ? null : logs.entries.find((entry) => entry.seq === selected)),
@@ -372,13 +440,62 @@ const LogsTool = () => {
 
   const findings = useMemo(() => {
     const all = [...logs.findings.values()];
-    return filterApp ? all.filter((finding) => finding.forApp) : all;
-  }, [logs.findings, filterApp]);
+    return effectiveScope === 'app' ? all.filter((finding) => finding.forApp) : all;
+  }, [logs.findings, effectiveScope]);
 
   const togglePause = useCallback(
     () => setFrozen((current) => (current ? null : {version: logs.version, seq: logs.entries.at(-1)?.seq ?? 0})),
     [logs],
   );
+
+  const onlyTag = (tag) => {
+    setTags(new Set([tag]));
+    setHiddenTags((current) => new Set([...current].filter((t2) => t2 !== tag)));
+  };
+  const hideTag = (tag) => {
+    setHiddenTags((current) => new Set([...current, tag]));
+    setTags((current) => new Set([...current].filter((t2) => t2 !== tag)));
+    if (selectedEntry?.tag === tag) {
+      setSelected(null);
+    }
+  };
+  const resetFilters = () => {
+    setTags(new Set());
+    setHiddenTags(new Set());
+    setRuleFilter(null);
+    setQuery('');
+    setMinLevel('V');
+  };
+  const ruleFromLine = (entry) => {
+    setSideOpen(true);
+    setDraft({
+      ...NEW_RULE_DRAFT,
+      name: entry.tag,
+      tag: entry.tag,
+      pattern: patternFromLine(entry.message),
+      scope: entry.forApp ? 'app' : 'device',
+    });
+  };
+
+  // keys that make the log quick: / to search, Esc to step back, space to pause
+  const onKeyDown = (event) => {
+    if (event.key === '/' && !typingIn(event.target)) {
+      event.preventDefault();
+      searchRef.current?.focus();
+    } else if (event.key === 'Escape') {
+      if (selected !== null) {
+        setSelected(null);
+      } else if (typingIn(event.target) && queryText) {
+        setQuery('');
+      } else {
+        resetFilters();
+        event.target.blur?.();
+      }
+    } else if (event.key === ' ' && !typingIn(event.target)) {
+      event.preventDefault();
+      togglePause();
+    }
+  };
 
   if (!backend.logs) {
     return <EmptyState tool="logs" icon={IconTerminal2} title={t('logsDesktopOnly')} />;
@@ -402,50 +519,83 @@ const LogsTool = () => {
 
   const status = logs.status;
   const appProcess = logs.processes.at(-1);
+  const appAlive = appProcess && !appProcess.endedAt;
+  const shortApp = logs.appId?.split('.').slice(-2).join('.');
+  const chips = [
+    ...[...tags].map((tag) => ({key: `tag-${tag}`, text: t('logsChipTag', {tag}), clear: () => setTags(new Set())})),
+    ...[...hiddenTags].map((tag) => ({
+      key: `hide-${tag}`,
+      text: t('logsChipHidden', {tag}),
+      off: true,
+      clear: () => setHiddenTags((current) => new Set([...current].filter((t2) => t2 !== tag))),
+    })),
+    ...(ruleFilter
+      ? [
+          {
+            key: 'rule',
+            text: t('logsChipRule', {rule: ruleNames[ruleFilter] ?? ruleFilter}),
+            clear: () => setRuleFilter(null),
+          },
+        ]
+      : []),
+  ];
+  const filtered = chips.length > 0 || !isEmptyQuery(query) || minLevel !== 'V';
+  const firedRules = new Set(findings.map((finding) => finding.rule)).size;
 
   return (
-    <div className={styles.tool}>
+    // the keys work anywhere in the tool
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div className={styles.tool} onKeyDown={onKeyDown}>
       <div className={styles.toolbar}>
-        <button
-          className={`${styles.appToggle} ${filterApp ? styles.appToggleOn : ''}`}
-          aria-pressed={filterApp}
-          disabled={!logs.appId}
-          onClick={() => setOnlyApp(!onlyApp)}
-        >
-          <Switch size="small" checked={filterApp} disabled={!logs.appId} tabIndex={-1} />
-          <span>{t('logsOnlyApp')}</span>
-          <span className={styles.mono}>{logs.appId ?? t('logsNoApp')}</span>
-          {appProcess && !appProcess.endedAt && <span className={styles.dim}>pid {appProcess.pid}</span>}
-        </button>
-        <div className={styles.levels} role="group" aria-label={t('logsMinLevel')}>
-          {LOG_LEVELS.map((level) => (
-            <Tooltip key={level} title={t('logsLevelFrom', {level: LEVEL_NAMES[level]})}>
-              <button
-                aria-pressed={minLevel === level}
-                className={`${styles.levelButton} ${minLevel === level ? styles.levelButtonOn : ''}`}
-                onClick={() => setMinLevel(level)}
-              >
-                <span className={styles[`levelText_${level}`]}>{level}</span>
-                <span className={styles.dim}>{levelCounts[level]}</span>
-              </button>
-            </Tooltip>
-          ))}
-        </div>
+        <Segmented
+          value={effectiveScope}
+          onChange={setScope}
+          options={[
+            {
+              value: 'app',
+              disabled: !logs.appId,
+              label: (
+                <Tooltip title={logs.appId ? t('logsScopeAppHint', {app: logs.appId}) : t('logsScopeNoAppHint')}>
+                  <span className={styles.scopeOption}>{logs.appId ? shortApp : t('logsScopeNoApp')}</span>
+                </Tooltip>
+              ),
+            },
+            {value: 'device', label: <span className={styles.scopeOption}>{t('logsScopeDevice')}</span>},
+          ]}
+        />
+        <Segmented
+          value={minLevel}
+          onChange={setMinLevel}
+          options={LEVEL_PRESETS.map((level) => {
+            const count = level === 'W' ? levelCounts.W : level === 'E' ? levelCounts.E + levelCounts.F : 0;
+            return {
+              value: level,
+              label: (
+                <span className={styles.levelOption}>
+                  {t(`logsLevel_${level}`)}
+                  {count > 0 && (
+                    <span className={`${styles.levelCount} ${styles[`levelCount_${level}`]}`}>{count}</span>
+                  )}
+                </span>
+              ),
+            };
+          })}
+        />
         <Input
+          ref={searchRef}
           allowClear
           prefix={<IconSearch size={14} />}
-          placeholder={t('logsSearch')}
-          value={query}
+          suffix={!queryText && <kbd className={styles.kbd}>/</kbd>}
+          placeholder={t('logsSearchHint')}
+          value={queryText}
+          status={query.error ? 'error' : undefined}
           onChange={(e) => setQuery(e.target.value)}
           className={styles.search}
         />
         <div className={styles.spacer} />
-        <span className={`${styles.status} ${styles[`status_${status.state}`] ?? ''}`}>
-          <span className={styles.statusDot} />
-          {t(`logsStatus_${status.state}`, {count: logs.entries.length})}
-        </span>
         <Tooltip title={frozen === null ? t('logsPause') : t('logsResume')}>
           <Button
+            type={frozen === null ? 'default' : 'primary'}
             aria-label={frozen === null ? t('logsPause') : t('logsResume')}
             icon={frozen === null ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />}
             onClick={togglePause}
@@ -461,7 +611,40 @@ const LogsTool = () => {
             onClick={() => backend.logs.save(`${logs.appId ?? device.name}.log`)}
           />
         </Tooltip>
+        <Button
+          type={sideOpen ? 'primary' : 'default'}
+          ghost={sideOpen}
+          icon={<IconLayoutSidebarRight size={16} />}
+          onClick={() => setSideOpen(!sideOpen)}
+        >
+          {t('logsRulesToggle')}
+          {firedRules > 0 && <span className={styles.rulesCount}>{firedRules}</span>}
+        </Button>
       </div>
+
+      {(chips.length > 0 || query.error) && (
+        <div className={styles.chips}>
+          {chips.map((chip) => (
+            <span key={chip.key} className={`${styles.chip} ${chip.off ? styles.chipOff : ''}`}>
+              {chip.text}
+              <button
+                type="button"
+                className={styles.chipClear}
+                aria-label={t('logsChipClear')}
+                onClick={() => chip.clear()}
+              >
+                <IconX size={12} />
+              </button>
+            </span>
+          ))}
+          {query.error && <span className={styles.errorText}>{t('logsSearchError', {error: query.error})}</span>}
+          {filtered && (
+            <Button size="small" type="link" onClick={resetFilters}>
+              {t('logsResetFilters')}
+            </Button>
+          )}
+        </div>
+      )}
 
       {status.state === 'failed' && (
         <Alert
@@ -491,10 +674,23 @@ const LogsTool = () => {
             follow={follow && frozen === null}
             onFollowChange={setFollow}
             ruleNames={ruleNames}
+            query={query}
+            onOnlyTag={onlyTag}
+            onHideTag={hideTag}
           />
+          {rows.length === 0 && logs.entries.length > 0 && (
+            <div className={styles.noRows}>
+              {t('logsNoRows')}
+              {filtered && (
+                <Button size="small" onClick={resetFilters}>
+                  {t('logsResetFilters')}
+                </Button>
+              )}
+            </div>
+          )}
           {(!follow || frozen !== null) && (
             <Button
-              className={styles.toBottom}
+              className={`${styles.toBottom} ${selectedEntry ? styles.toBottomRaised : ''}`}
               shape="round"
               icon={<IconArrowDown size={14} />}
               onClick={() => {
@@ -515,49 +711,73 @@ const LogsTool = () => {
                   {selectedEntry.date} {selectedEntry.time} · pid {selectedEntry.pid} · {selectedEntry.tag}
                 </span>
                 <div className={styles.spacer} />
-                <Button size="small" onClick={() => navigator.clipboard.writeText(selectedEntry.message)}>
-                  {t('logsCopy')}
+                <Button size="small" icon={<IconFilter size={14} />} onClick={() => onlyTag(selectedEntry.tag)}>
+                  {t('logsOnlyThisTag')}
                 </Button>
-                <Button size="small" type="text" onClick={() => setSelected(null)}>
-                  {t('logsClose')}
+                <Button size="small" icon={<IconEyeOff size={14} />} onClick={() => hideTag(selectedEntry.tag)}>
+                  {t('logsHideThisTag')}
                 </Button>
+                <Button size="small" icon={<IconPlus size={14} />} onClick={() => ruleFromLine(selectedEntry)}>
+                  {t('logsRuleFromLine')}
+                </Button>
+                <Tooltip title={t('logsCopy')}>
+                  <Button
+                    size="small"
+                    aria-label={t('logsCopy')}
+                    icon={<IconCopy size={14} />}
+                    onClick={() => navigator.clipboard.writeText(selectedEntry.message)}
+                  />
+                </Tooltip>
+                <Tooltip title={t('logsClose')}>
+                  <Button
+                    size="small"
+                    type="text"
+                    aria-label={t('logsClose')}
+                    icon={<IconX size={14} />}
+                    onClick={() => setSelected(null)}
+                  />
+                </Tooltip>
               </div>
               <pre className={styles.detailText}>{selectedEntry.message}</pre>
             </div>
           )}
         </section>
 
-        <aside className={styles.side} aria-label={t('logsRules')}>
-          <div className={styles.sideBlock}>
-            <h2 className={styles.sideTitle}>{t('logsFired')}</h2>
-            <LogFindings findings={findings} ruleFilter={ruleFilter} onRuleFilter={setRuleFilter} />
-          </div>
-          {logs.appId && (
+        {sideOpen && (
+          <aside className={styles.side} aria-label={t('logsRules')}>
             <div className={styles.sideBlock}>
-              <h2 className={styles.sideTitle}>{t('logsProcesses')}</h2>
-              {logs.processes.length ? (
-                logs.processes.map((process) => (
-                  <div key={process.pid} className={styles.process}>
-                    <span className={styles.mono}>pid {process.pid}</span>
-                    <span className={process.endedAt ? styles.ended : styles.alive}>
-                      {process.endedAt
-                        ? t('logsProcessEndedAt', {time: process.endedAt === 'ended' ? '' : process.endedAt})
-                        : t('logsProcessAlive')}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className={styles.quiet}>{t('logsAppNotRunning')}</div>
-              )}
+              <h2 className={styles.sideTitle}>{t('logsFired')}</h2>
+              <LogFindings findings={findings} ruleFilter={ruleFilter} onRuleFilter={setRuleFilter} />
             </div>
-          )}
-          <div className={styles.sideBlock}>
-            <h2 className={styles.sideTitle}>{t('logsCustomRules')}</h2>
-            <CustomRules rules={logs.rules} />
-          </div>
-          <div className={styles.note}>{t('logsFullStreamNote')}</div>
-        </aside>
+            <div className={styles.sideBlock}>
+              <h2 className={styles.sideTitle}>{t('logsCustomRules')}</h2>
+              <CustomRules rules={logs.rules} draft={draft} setDraft={setDraft} />
+            </div>
+            <div className={styles.note}>{t('logsFullStreamNote')}</div>
+          </aside>
+        )}
       </div>
+
+      <footer className={styles.statusBar}>
+        <span className={`${styles.status} ${styles[`status_${status.state}`] ?? ''}`}>
+          <span className={styles.statusDot} />
+          {frozen ? t('logsPaused') : t(`logsStatus_${status.state}`, {count: logs.entries.length})}
+        </span>
+        <span className={styles.dim}>{t('logsShown', {count: rows.length})}</span>
+        <span className={styles.statusApp}>
+          {!logs.appId ? (
+            t('logsAppNone')
+          ) : (
+            <>
+              <span className={`vi-dot ${appAlive ? 'vi-tone-ok' : 'vi-tone-off'}`} />
+              <span className={styles.mono}>{logs.appId}</span>
+              {appAlive ? t('logsAppRunning', {pid: appProcess.pid}) : t('logsAppNotRunning')}
+            </>
+          )}
+        </span>
+        <span className={styles.spacer} />
+        <span className={styles.keys}>{t('logsKeys')}</span>
+      </footer>
     </div>
   );
 };
