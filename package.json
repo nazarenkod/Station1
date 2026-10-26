@@ -52,7 +52,7 @@
     "dev:docs": "appium-docs build --serve",
     "plugin:sync:version": "node ./scripts/sync-plugin.mjs",
     "install-docs-deps": "appium-docs init --no-mkdocs",
-    "postinstall": "install-electron && electron-builder install-app-deps",
+    "postinstall": "install-electron && electron-builder install-app-deps && node scripts/brand-dev-electron.mjs",
     "version": "npm run plugin:sync:version && git add plugins/package.json"
   },
   "dependencies": {
