@@ -20,3 +20,7 @@ junit-test-results.xml
 junit-testresults.xml
 dist-cli
 dist-node
+
+# personal agent files
+CLAUDE.local.md
+.claude/settings.local.json

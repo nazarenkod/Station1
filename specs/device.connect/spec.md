@@ -1,10 +1,11 @@
 # Пристрої: виявлення, пріоритет, застосунок для кожного пристрою
 
-> Частина [основної специфікації](../SPEC.md), розділ [3. Пристрій і сесія](../SPEC.md#device). Спільні правила (мова, секрети, код, перевірки, git) — у [розділі 13](../SPEC.md#rules) і тут не повторюються.
+> Частина [основної специфікації](../SPEC.md), розділ [3. Пристрій і сесія](../SPEC.md#device). Принципи продукту — у [розділі 13](../SPEC.md#rules), правила роботи з кодом — в [AGENTS.md](../../AGENTS.md); тут вони не повторюються.
 
 - **ID:** `device.connect`
 - **Статус:** implemented
 - **Етап за документом:** MVP
+- **Як зроблено:** [design.md](design.md)
 
 ## Проблема й користувач
 
@@ -33,22 +34,6 @@ QA працює з кількома пристроями одразу: емул�
 
 - Вибір пристрою в шапці: «Підключені» й «Інші пристрої» з кнопкою «Запустити» для зупинених емуляторів і симуляторів.
 - Список оновлюється сам раз на 10 с, поки вікно на передньому плані; ручне оновлення крутить індикатор, фонове — ні.
-
-## Точка розширення
-
-Джерело даних. Код: `app/common/node/doctor/devices.js`, `app/common/node/device/apps.js`, `app/common/renderer/actions/Workstation.js`.
-
-## Модель даних
-
-Пристрій: `id`, `kind` (`android-device`, `android-emulator`, `android-avd`, `ios-simulator`, `ios-device`), `name`, `platformName`, `platformVersion`, `state`, `capabilities`. Застосунок: `id`, `name`, `version`, `build`, `installed`.
-
-## API, CLI, MCP
-
-`vision-inspector doctor` і MCP `doctor` повертають пристрої (access.cli-mcp).
-
-## Знання
-
-`WORKSTATION.appByDevice` — застосунок, обраний на кожному пристрої.
 
 ## Безпека й приватність
 
