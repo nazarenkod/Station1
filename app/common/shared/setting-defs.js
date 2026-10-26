@@ -29,6 +29,10 @@ export const GITLAB_CONFIG = 'GITLAB_CONFIG';
 export const WORKSTATION = 'WORKSTATION';
 // the builds opened lately, to install them again
 export const BUILDS_HISTORY = 'BUILDS_HISTORY';
+// the jobs each GitLab project leaves its builds in, by project path, and the build picked in their archive
+export const BUILD_JOBS = 'BUILD_JOBS';
+// the pipelines the Builds tool follows, with the devices their build goes to
+export const PIPELINE_WATCHES = 'PIPELINE_WATCHES';
 // log rules: built-in ones turned off or changed, and the project's own patterns
 export const LOG_RULES_CONFIG = 'LOG_RULES_CONFIG';
 // the proxy: its port, rewrite rules, traffic rules and modes
@@ -68,6 +72,8 @@ export const DEFAULT_SETTINGS = {
   [GITLAB_CONFIG]: null,
   [WORKSTATION]: {deviceId: null, app: null, recentApps: []},
   [BUILDS_HISTORY]: [],
+  [BUILD_JOBS]: {},
+  [PIPELINE_WATCHES]: [],
   [LOG_RULES_CONFIG]: {overrides: {}, custom: []},
   [IOS_SIGNING]: {teamId: null, bundleId: ''},
   [PROXY_CONFIG]: {port: 8890, mockRules: [], trafficRules: {}, mocksEnabled: true, breakpointsEnabled: true},

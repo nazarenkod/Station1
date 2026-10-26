@@ -32,6 +32,8 @@ import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {backend} from '../../polyfills.js';
 import {EASE_OUT, Stagger, StaggerItem} from '../AppShell/motion.jsx';
 import FindingsList from '../Findings/FindingsList.jsx';
+import {addWatch} from './pipeline-watch.js';
+import PipelinePanel from './PipelinePanel.jsx';
 
 import styles from './Builds.module.css';
 
@@ -413,6 +415,22 @@ const BuildsTool = () => {
     dispatch(loadBuildsHistory());
   }, [dispatch]);
 
+  // a pipeline link pasted anywhere on the page (not into a field) is followed at once
+  useEffect(() => {
+    const onPaste = (event) => {
+      if (['INPUT', 'TEXTAREA'].includes(event.target?.tagName)) {
+        return;
+      }
+      const text = event.clipboardData?.getData('text') ?? '';
+      if (/\/-\/(pipelines|jobs)\/\d+/.test(text)) {
+        event.preventDefault();
+        addWatch(text);
+      }
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, []);
+
   if (!backend.builds) {
     return (
       <div className={styles.page}>
@@ -463,6 +481,9 @@ const BuildsTool = () => {
       {current.status === 'idle' ? (
         <Stagger className={`${styles.inner} ${styles.innerIdle}`}>
           <StaggerItem>
+            <PipelinePanel />
+          </StaggerItem>
+          <StaggerItem>
             <DropZone />
           </StaggerItem>
           <StaggerItem>
@@ -486,6 +507,7 @@ const BuildsTool = () => {
               <BuildCard />
             </StaggerItem>
             <StaggerItem className={styles.sideColumn}>
+              <PipelinePanel />
               <GitLabBuilds />
               <RecentBuilds />
             </StaggerItem>

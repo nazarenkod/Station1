@@ -1,11 +1,12 @@
 import {AnimatePresence} from 'motion/react';
 import {useEffect} from 'react';
-import {useDispatch, useSelector} from 'react-redux';
+import {useDispatch, useSelector, useStore} from 'react-redux';
 import {useLocation, useNavigate, useOutlet} from 'react-router';
 
 import {activeDevice, initWorkstation, isDeviceRunning} from '../../actions/Workstation.js';
 import {loadSessionFileIfOpened} from '../../polyfills.js';
 import {PageTransition} from '../AppShell/motion.jsx';
+import {startPipelineWatches} from '../Builds/pipeline-watch.js';
 import {logsState, startLogs} from '../Logs/logs-store.js';
 import SessionExpiryModal from '../SessionInspector/SessionExpiryModal.jsx';
 import {useInspectorActions} from '../SessionInspector/use-inspector.js';
@@ -52,12 +53,15 @@ const LogsFollower = () => {
  */
 const Workstation = () => {
   const dispatch = useDispatch();
+  const store = useStore();
   const navigate = useNavigate();
   const location = useLocation();
   const outlet = useOutlet();
 
   useEffect(() => {
     dispatch(initWorkstation());
+    // the pipelines followed for builds go on whichever tool is open
+    startPipelineWatches(store);
     // a session file or a shared session link opens straight in the Inspector
     (async () => {
       const hasSessionLink = new URL(window.location.href).searchParams.has('state');
@@ -65,7 +69,7 @@ const Workstation = () => {
         navigate('/session', {replace: true});
       }
     })();
-  }, [dispatch, navigate]);
+  }, [dispatch, navigate, store]);
 
   return (
     <div className={styles.workstation}>

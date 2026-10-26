@@ -28,21 +28,112 @@ export class GitLabService {
     const settings = {...GITLAB_DEFAULTS, ...(await this.getSettings())};
     const token = await this.getToken();
     if (!settings.url || !token) {
-      throw new Error('GitLab is not set up: add the site and an access token');
+      throw Object.assign(new Error('GitLab is not set up: add the site and an access token'), {code: 'notSetUp'});
     }
     return {settings, token, base: `${settings.url.replace(/\/+$/, '')}/api/v4`};
   }
 
-  async request({base, token}, path) {
+  async request({base, token}, path, {method = 'GET'} = {}) {
     const response = await this.fetchImpl(`${base}${path}`, {
+      method,
       headers: {'PRIVATE-TOKEN': token, Accept: 'application/json'},
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) {
-      const reason = response.status === 401 ? 'the token is wrong or expired' : `HTTP ${response.status}`;
-      throw new Error(`GitLab answered: ${reason}`);
+      const reason =
+        response.status === 401
+          ? 'the token is wrong or expired'
+          : response.status === 403
+            ? 'the token may not do this here'
+            : response.status === 404
+              ? 'not found, or the token cannot see it'
+              : `HTTP ${response.status}`;
+      throw Object.assign(new Error(`GitLab answered: ${reason}`), {status: response.status});
     }
     return await response.json();
+  }
+
+  /**
+   * The connection for a link: the token works on its own site only.
+   */
+  async connectionFor(origin) {
+    const connection = await this.connection();
+    const own = new URL(
+      connection.settings.url.includes('://') ? connection.settings.url : `https://${connection.settings.url}`,
+    ).origin;
+    if (origin && origin !== own) {
+      throw Object.assign(new Error(`The link is to ${origin}, the token is for ${own}`), {code: 'otherSite'});
+    }
+    return connection;
+  }
+
+  /**
+   * A pipeline as the Builds tool follows it: its state and its jobs, with
+   * the jobs of the pipelines it triggers (the build is often made there).
+   */
+  async pipelineStatus({origin, project, pipelineId, jobId}) {
+    try {
+      const connection = await this.connectionFor(origin);
+      const ref = `/projects/${encodeURIComponent(project)}`;
+      const id = pipelineId ?? (await this.request(connection, `${ref}/jobs/${jobId}`)).pipeline.id;
+      const [pipeline, jobs, bridges] = await Promise.all([
+        this.request(connection, `${ref}/pipelines/${id}`),
+        this.request(connection, `${ref}/pipelines/${id}/jobs?per_page=100`),
+        this.request(connection, `${ref}/pipelines/${id}/bridges?per_page=100`).catch(() => []),
+      ]);
+      const downstream = await Promise.all(
+        bridges
+          .filter((bridge) => bridge.downstream_pipeline)
+          .map(async ({downstream_pipeline: child}) =>
+            (
+              await this.request(
+                connection,
+                `/projects/${child.project_id}/pipelines/${child.id}/jobs?per_page=100`,
+              ).catch(() => [])
+            ).map((job) => ({...job, project: String(child.project_id), downstream: true})),
+          ),
+      );
+      return {
+        ok: true,
+        pipeline: {
+          id: pipeline.id,
+          status: pipeline.status,
+          ref: pipeline.ref,
+          sha: pipeline.sha?.slice(0, 8) ?? '',
+          webUrl: pipeline.web_url,
+          createdAt: pipeline.created_at,
+          user: pipeline.user?.name ?? '',
+        },
+        jobs: [...jobs.map((job) => ({...job, project})), ...downstream.flat()].map((job) => ({
+          id: job.id,
+          name: job.name,
+          stage: job.stage,
+          status: job.status,
+          artifacts: (job.artifacts ?? []).map((artifact) => ({file_type: artifact.file_type, size: artifact.size})),
+          webUrl: job.web_url,
+          project: job.project,
+          downstream: !!job.downstream,
+          startedAt: job.started_at,
+          finishedAt: job.finished_at,
+          duration: job.duration,
+        })),
+      };
+    } catch (error) {
+      return {ok: false, code: error.code ?? (error.status === 404 ? 'notFound' : null), error: message(error)};
+    }
+  }
+
+  /**
+   * Starts a manual job.
+   */
+  async playJob({origin, project, jobId}) {
+    try {
+      const connection = await this.connectionFor(origin);
+      await this.request(connection, `/projects/${encodeURIComponent(project)}/jobs/${jobId}/play`, {method: 'POST'});
+      return {ok: true};
+    } catch (error) {
+      return {ok: false, error: message(error)};
+    }
   }
 
   projectPath(connection) {
@@ -86,9 +177,10 @@ export class GitLabService {
   /**
    * Downloads the artifacts archive of a job to `file`.
    */
-  async downloadArtifacts(jobId, file, {onProgress} = {}) {
+  async downloadArtifacts(jobId, file, {onProgress, project = null} = {}) {
     const connection = await this.connection();
-    const response = await this.fetchImpl(`${connection.base}${this.projectPath(connection)}/jobs/${jobId}/artifacts`, {
+    const projectRef = project ? `/projects/${encodeURIComponent(project)}` : this.projectPath(connection);
+    const response = await this.fetchImpl(`${connection.base}${projectRef}/jobs/${jobId}/artifacts`, {
       headers: {'PRIVATE-TOKEN': connection.token},
       signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
     });

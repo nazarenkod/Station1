@@ -57,13 +57,18 @@ export function setupBuildsIPC() {
 
   ipcMain.handle('builds:gitlab:list', async () => await gitlab.listBuilds());
 
-  ipcMain.handle('builds:gitlab:fetch', async (_evt, jobId) => {
+  ipcMain.handle('builds:pipeline:status', async (_evt, link) => await gitlab.pipelineStatus(link));
+  ipcMain.handle('builds:pipeline:play', async (_evt, job) => await gitlab.playJob(job));
+
+  // `project` is where the job is, for a pipeline of any project; without it, the project of the settings
+  ipcMain.handle('builds:gitlab:fetch', async (_evt, jobId, project = null) => {
     try {
       if (!(await cache.has(jobId))) {
         await cache.prepare(jobId);
         // a download cut halfway must not pass for the archive next time
         const partial = `${cache.archive(jobId)}.part`;
         await gitlab.downloadArtifacts(jobId, partial, {
+          project,
           onProgress: (progress) => broadcast('builds:progress', {jobId, ...progress}),
         });
         await rename(partial, cache.archive(jobId));
