@@ -1,0 +1,485 @@
+.page {
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+  --tool-color: var(--vi-tool-builds);
+}
+
+.inner {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.innerIdle {
+  max-width: 960px;
+  padding-top: 40px;
+  gap: 28px;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* what an open build gets checked for */
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checks h2 {
+  margin: 0;
+}
+
+.checkList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.checkItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--vi-radius-lg);
+  border: 1px solid var(--vi-border);
+  background: var(--ant-color-bg-container);
+}
+
+.checkIcon {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tool-color);
+  background: color-mix(in srgb, var(--tool-color) 12%, transparent);
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.mainColumn {
+  flex: 3 1 600px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sideColumn {
+  flex: 2 1 340px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stackGap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.strong {
+  font-weight: 500;
+}
+
+.sub {
+  font-size: var(--vi-text-sm);
+  color: var(--vi-text-3);
+}
+
+.mono {
+  font-family: var(--ant-font-family-code);
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error {
+  font-size: 12px;
+  color: var(--ant-color-error);
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--vi-border);
+  border-radius: var(--vi-radius-lg);
+  box-shadow: var(--vi-shadow-card);
+}
+
+.cardTitle {
+  flex: 1;
+  margin: 0;
+  font-size: var(--vi-text-md);
+  font-weight: 600;
+  letter-spacing: var(--vi-tracking-tight);
+}
+
+.sideHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gitlabIcon {
+  color: #ea580c;
+}
+
+/* the drop target */
+.drop {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 300px;
+  padding: 40px 24px;
+  border-radius: var(--vi-radius-xl);
+  border: 1.5px dashed color-mix(in srgb, var(--tool-color) 45%, var(--vi-border));
+  background:
+    radial-gradient(
+      360px 200px at 50% 30%,
+      color-mix(in srgb, var(--tool-color) 9%, transparent),
+      transparent 70%
+    ),
+    var(--ant-color-bg-container);
+  color: var(--vi-text-2);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.2s var(--vi-ease),
+    background 0.2s var(--vi-ease);
+}
+
+.drop:hover {
+  border-color: var(--tool-color);
+  background:
+    radial-gradient(
+      360px 200px at 50% 30%,
+      color-mix(in srgb, var(--tool-color) 14%, transparent),
+      transparent 70%
+    ),
+    var(--ant-color-bg-container);
+}
+
+.dropCompact {
+  flex-direction: row;
+  min-height: 0;
+  padding: 12px 16px;
+  justify-content: flex-start;
+  border-radius: var(--vi-radius-lg);
+}
+
+.dropIcon {
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--tool-color);
+  background: color-mix(in srgb, var(--tool-color) 14%, var(--ant-color-bg-container));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tool-color) 30%, transparent);
+}
+
+.dropCompact .dropIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.dropText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.dropText .strong {
+  font-size: var(--vi-text-lg);
+  font-weight: 600;
+  color: var(--vi-text);
+}
+
+.dropCompact .dropText {
+  text-align: left;
+}
+
+.dropCta {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  margin-top: 4px;
+  padding: 0 16px;
+  border-radius: var(--vi-radius-md);
+  background-image: var(--vi-gradient);
+  color: #ffffff;
+  font-weight: 500;
+  box-shadow: 0 6px 18px rgba(112, 80, 255, 0.3);
+}
+
+.formats {
+  display: flex;
+  gap: 6px;
+}
+
+.formats span {
+  padding: 1px 8px;
+  border-radius: var(--vi-radius-pill);
+  border: 1px solid var(--vi-border);
+  font-family: var(--vi-font-mono);
+  font-size: var(--vi-text-xs);
+  color: var(--vi-text-3);
+}
+
+.dropCompact .dropText .strong {
+  font-size: var(--vi-text-base);
+  font-weight: 500;
+}
+
+.dropOverlay {
+  position: absolute;
+  inset: 12px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 18px;
+  border: 2px dashed var(--tool-color);
+  background: color-mix(in srgb, var(--tool-color) 12%, transparent);
+  backdrop-filter: blur(6px);
+  color: var(--tool-color);
+  font-size: 16px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* the open build */
+.buildHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.platform {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.platform_android {
+  background: var(--vi-ok-bg);
+  color: var(--vi-ok-fg);
+}
+
+.platform_ios {
+  background: var(--ant-color-fill-tertiary);
+  color: var(--ant-color-text);
+}
+
+.buildName {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.format {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--ant-color-fill-tertiary);
+  color: var(--ant-color-text-secondary);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.factLabel {
+  font-size: 11px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.factValue {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.path {
+  word-break: break-all;
+}
+
+.install {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--ant-color-border-secondary);
+}
+
+.installRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.installed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vi-ok-fg);
+  font-weight: 500;
+}
+
+.failure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.findingsHead {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+/* GitLab and recent builds */
+.emptyLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.job {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ant-color-border-secondary);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.jobText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ref {
+  padding: 0 6px;
+  border-radius: 5px;
+  font-family: var(--ant-font-family-code);
+  font-size: 11px;
+  background: var(--ant-color-fill-tertiary);
+  color: var(--ant-color-text-secondary);
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.recent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ant-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recent:hover {
+  background: var(--ant-color-fill-quaternary);
+}
+
+.recentActive {
+  border-color: var(--ant-color-primary-border);
+  background: var(--ant-color-primary-bg);
+}

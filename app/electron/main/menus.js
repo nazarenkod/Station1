@@ -1,6 +1,7 @@
 import {app, dialog, Menu, shell} from 'electron';
 
 import webdriverPackageJson from '../../../node_modules/webdriver/package.json';
+import {PRODUCT_NAME} from '../../common/shared/product.js';
 import {isDev, t} from './helpers.js';
 import {checkForUpdates, UPDATES_ENABLED} from './updater.js';
 import {launchNewSessionWindow} from './windows.js';
@@ -24,9 +25,9 @@ export function rebuildMenus(mainWindow) {
 
 function showAppInfoPopup() {
   dialog.showMessageBox({
-    title: t('appiumInspector'),
+    title: PRODUCT_NAME,
     message:
-      `Vision Inspector ${app.getVersion()}\n\n` +
+      `${PRODUCT_NAME} ${app.getVersion()}\n\n` +
       `WebdriverIO ${webdriverPackageJson.version}\n` +
       `Electron ${process.versions.electron}\n` +
       `Node.js ${process.versions.node}`,
@@ -35,28 +36,28 @@ function showAppInfoPopup() {
 
 function optionAbout() {
   return {
-    label: t('About Vision Inspector'),
+    label: t('menuAbout', {app: PRODUCT_NAME}),
     click: () => showAppInfoPopup(),
   };
 }
 
-// empty until Vision Inspector has its own release channel
+// empty until the product has its own release channel
 function optionsCheckForUpdates() {
   return UPDATES_ENABLED ? [{label: t('Check for Updates…'), click: () => checkForUpdates()}] : [];
 }
 
 function dropdownApp() {
   return {
-    label: t('appiumInspector'),
+    label: PRODUCT_NAME,
     submenu: [
       optionAbout(),
       ...optionsCheckForUpdates(),
       separator,
-      {label: t('Hide Vision Inspector'), role: 'hide'},
+      {label: t('menuHide', {app: PRODUCT_NAME}), role: 'hide'},
       {label: t('Hide Others'), role: 'hideOthers'},
       {label: t('Show All'), role: 'unhide'},
       separator,
-      {label: t('Quit Vision Inspector'), role: 'quit'},
+      {label: t('menuQuit', {app: PRODUCT_NAME}), role: 'quit'},
     ],
   };
 }

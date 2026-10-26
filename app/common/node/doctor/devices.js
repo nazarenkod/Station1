@@ -121,6 +121,16 @@ export function parseSimctlDevices(json) {
 }
 
 /**
+ * Whether a paired iPhone is reachable now. The CoreDevice tunnel opens on
+ * demand and closes when idle, so a phone on the cable often shows
+ * "disconnected"; what tells it is there is a transport (wired or network).
+ * A phone that is gone has no transport and an "unavailable" tunnel.
+ */
+export function isIosDeviceConnected(connection = {}) {
+  return !!connection.transportType && connection.tunnelState !== 'unavailable';
+}
+
+/**
  * Physical iOS devices from the JSON file of `xcrun devicectl list devices`.
  */
 export function parseDevicectlDevices(json) {
@@ -129,10 +139,10 @@ export function parseDevicectlDevices(json) {
     .map((device) => ({
       kind: DEVICE_KIND.IOS_DEVICE,
       id: device.hardwareProperties.udid,
-      name: device.deviceProperties?.name || device.hardwareProperties.marketingName || 'iOS device',
+      name: (device.deviceProperties?.name || device.hardwareProperties.marketingName || 'iOS device').trim(),
       platformName: 'iOS',
       platformVersion: device.deviceProperties?.osVersionNumber ?? '',
-      state: device.connectionProperties?.tunnelState === 'connected' ? 'running' : 'disconnected',
+      state: isIosDeviceConnected(device.connectionProperties) ? 'running' : 'disconnected',
       developerMode: device.deviceProperties?.developerModeStatus === 'enabled',
     }));
 }
@@ -220,6 +230,27 @@ async function listIosDevices() {
   }
 }
 
+const PHYSICAL = new Set([DEVICE_KIND.ANDROID_DEVICE, DEVICE_KIND.IOS_DEVICE]);
+const STATE_ORDER = ['running', 'stopped', 'disconnected', 'offline', 'unauthorized', 'broken'];
+
+/**
+ * The order every list shows devices in: what can be used right now first
+ * (real phones before emulators and simulators), then what can be started,
+ * then what is unplugged or broken.
+ */
+export function sortDevices(devices) {
+  const stateRank = (device) => {
+    const index = STATE_ORDER.indexOf(device.state);
+    return index < 0 ? STATE_ORDER.length : index;
+  };
+  return [...devices].sort(
+    (a, b) =>
+      stateRank(a) - stateRank(b) ||
+      Number(PHYSICAL.has(b.kind)) - Number(PHYSICAL.has(a.kind)) ||
+      a.name.localeCompare(b.name),
+  );
+}
+
 /**
  * Every device a session could run on: connected Android devices and
  * emulators, AVDs that can be started, iOS simulators and physical devices.
@@ -232,7 +263,7 @@ export async function listDevices() {
     isMac ? listIosDevices() : [],
   ]);
   return {
-    devices: [...android.devices, ...simulators, ...iosDevices].map((device) => ({
+    devices: sortDevices([...android.devices, ...simulators, ...iosDevices]).map((device) => ({
       ...device,
       capabilities: capabilitiesFor(device),
     })),

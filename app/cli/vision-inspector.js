@@ -3,18 +3,22 @@ import {parseArgs} from 'node:util';
 
 import {auditScreen, captureSession, failsAt} from '../common/node/a11y/audit.js';
 import {toHtml, toJson, toJunit, toText, t} from '../common/node/a11y/formats.js';
+import {inspectBuild} from '../common/node/builds/inspect.js';
 import {listDevices} from '../common/node/doctor/devices.js';
 import {checkEnvironment} from '../common/node/doctor/environment.js';
 import {scanServers} from '../common/node/doctor/servers.js';
 import {mergeConfig} from '../common/renderer/lib/a11y/config';
 import {A11Y_RULES} from '../common/renderer/lib/a11y/types';
+import {failsAt as findingsFailAt} from '../common/shared/findings/findings.js';
+import {checkManifest} from '../common/shared/findings/manifest-rules.js';
+import {PRODUCT_NAME} from '../common/shared/product.js';
 import {startMcpServer} from './mcp.js';
 
 // set at build time by vite.cli.config.mjs
 // oxlint-disable-next-line no-undef
 const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : 'dev';
 
-const HELP = `Vision Inspector ${VERSION}
+const HELP = `${PRODUCT_NAME} ${VERSION}
 
 Usage:
   vision-inspector doctor [--json]
@@ -28,11 +32,18 @@ Usage:
       --screenshot <file>    its screenshot (PNG), for the contrast rules
       --density <dpi>        Android screen density, when checking files
       --app <id>             app id the decisions are kept under (files only)
-      --config <file.json>   rules exported from Vision Inspector
-      --decisions <file>     decisions exported from Vision Inspector: filed and ignored issues do not fail
+      --config <file.json>   rules exported from the app
+      --decisions <file>     decisions exported from the app: filed and ignored issues do not fail
       --format <f>           text (default), json, html or junit
       --output <file>        write the report there instead of stdout
       --fail-on <level>      error (default), warning, info or none: open issues that fail the run
+
+  vision-inspector build <file> [options]
+      Reads an APK, IPA or .app and checks its manifest or Info.plist.
+      --config <file.json>   rule settings: {"manifest": {"android-target-sdk": {"minTargetSdk": 34}}}
+      --format <f>           text (default) or json
+      --output <file>        write the report there instead of stdout
+      --fail-on <level>      high (default), medium, low, info or none
 
   vision-inspector mcp
       Runs as an MCP server on stdio (for Kiro CLI and other agents).
@@ -101,9 +112,47 @@ async function audit(options) {
   return {output, code: failsAt(result.reviewed, options['fail-on'] ?? 'error') ? 1 : 0};
 }
 
+const SEVERITY_TEXT = {high: 'HIGH  ', medium: 'MEDIUM', low: 'LOW   ', info: 'INFO  '};
+
+async function checkBuildFile(file, options) {
+  if (!file) {
+    throw new Error('Name the build file: vision-inspector build app.apk');
+  }
+  const build = await inspectBuild(file);
+  const config = await readJson(options.config);
+  const findings = checkManifest(build, config?.manifest ?? {});
+  const code = findingsFailAt(findings, options['fail-on'] ?? 'high') ? 1 : 0;
+  if (options.format === 'json') {
+    const {manifest, ...summary} = build;
+    return {output: JSON.stringify({build: summary, manifest, findings}, null, 2), code};
+  }
+  const version = [build.version, build.build && `(${build.build})`].filter(Boolean).join(' ');
+  const lines = [
+    `${build.appId} ${version}`,
+    `  ${build.format.toUpperCase()} · ${build.signing} · ${build.minOs || 'min OS unknown'}`,
+    '',
+  ];
+  if (!findings.length) {
+    lines.push('No findings.');
+  }
+  // one heading per rule, like the app shows them; a rule may count for itself
+  const byRule = new Map();
+  for (const finding of findings) {
+    byRule.set(finding.rule, [...(byRule.get(finding.rule) ?? []), finding]);
+  }
+  for (const [rule, group] of byRule) {
+    const [first] = group;
+    lines.push(
+      `${SEVERITY_TEXT[first.severity]}  ${t(`finding_${rule}_title`, {count: group.length, ...first.params})}`,
+    );
+    lines.push(...group.flatMap((finding) => finding.evidence.map((line) => `          ${line}`)));
+  }
+  return {output: lines.join('\n'), code};
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const [command, ...rest] = argv;
-  const {values} = parseArgs({
+  const {values, positionals} = parseArgs({
     args: rest,
     allowPositionals: true,
     options: {
@@ -129,13 +178,18 @@ export async function main(argv = process.argv.slice(2)) {
     process.stdout.write(`${VERSION}\n`);
     return;
   }
-  if (!['doctor', 'audit', 'a11y'].includes(command)) {
+  if (!['doctor', 'audit', 'a11y', 'build'].includes(command)) {
     process.stdout.write(HELP);
     process.exitCode = command && !['help', '--help', '-h'].includes(command) ? 2 : 0;
     return;
   }
   try {
-    const {output, code} = command === 'doctor' ? await doctor(values) : await audit(values);
+    const {output, code} =
+      command === 'doctor'
+        ? await doctor(values)
+        : command === 'build'
+          ? await checkBuildFile(positionals[0], values)
+          : await audit(values);
     if (values.output) {
       await writeFile(values.output, output);
     } else {

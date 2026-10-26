@@ -1,6 +1,7 @@
 // Definitions for all the persistent settings used in the app
 
-import {fallbackLng} from './i18next.config.js';
+// the workstation speaks Ukrainian until the user picks another language
+export const DEFAULT_LANGUAGE = 'uk';
 
 export const PREFERRED_LANGUAGE = 'PREFERRED_LANGUAGE';
 export const PREFERRED_THEME = 'PREFERRED_THEME';
@@ -22,6 +23,16 @@ export const JIRA_CONFIG = 'JIRA_CONFIG';
 export const AI_CONFIG = 'AI_CONFIG';
 // what the Jira dialog remembers: the task per screen, the block, the most used types and field values
 export const JIRA_MEMORY = 'JIRA_MEMORY';
+// GitLab site and the project builds come from; the access token is kept apart, encrypted
+export const GITLAB_CONFIG = 'GITLAB_CONFIG';
+// the device and app every tool of the workstation works with, and the apps used lately
+export const WORKSTATION = 'WORKSTATION';
+// the builds opened lately, to install them again
+export const BUILDS_HISTORY = 'BUILDS_HISTORY';
+// log rules: built-in ones turned off or changed, and the project's own patterns
+export const LOG_RULES_CONFIG = 'LOG_RULES_CONFIG';
+// the proxy: its port, rewrite rules, traffic rules and modes
+export const PROXY_CONFIG = 'PROXY_CONFIG';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -37,7 +48,7 @@ export const IMPORTANT_SOURCE_ATTRS = [
 ];
 
 export const DEFAULT_SETTINGS = {
-  [PREFERRED_LANGUAGE]: fallbackLng,
+  [PREFERRED_LANGUAGE]: DEFAULT_LANGUAGE,
   [PREFERRED_THEME]: 'system',
   [SAVED_SESSIONS]: [],
   [SET_SAVED_GESTURES]: [],
@@ -52,4 +63,9 @@ export const DEFAULT_SETTINGS = {
   [JIRA_CONFIG]: null,
   [AI_CONFIG]: null,
   [JIRA_MEMORY]: {},
+  [GITLAB_CONFIG]: null,
+  [WORKSTATION]: {deviceId: null, app: null, recentApps: []},
+  [BUILDS_HISTORY]: [],
+  [LOG_RULES_CONFIG]: {overrides: {}, custom: []},
+  [PROXY_CONFIG]: {port: 8890, mockRules: [], trafficRules: {}, mocksEnabled: true, breakpointsEnabled: true},
 };

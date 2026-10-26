@@ -56,6 +56,18 @@ export class JiraBugService {
     }
   }
 
+  /**
+   * The latest bugs the account reported, for the workstation's desk.
+   */
+  async mine(max = 8) {
+    try {
+      const {jira} = await this.client();
+      return {ok: true, issues: await jira.search('reporter = currentUser() ORDER BY updated DESC', max)};
+    } catch (error) {
+      return {ok: false, error: message(error)};
+    }
+  }
+
   async findUsers(query) {
     const {jira} = await this.client();
     return await jira.findUsers(query);

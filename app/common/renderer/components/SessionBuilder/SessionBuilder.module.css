@@ -1,7 +1,7 @@
 .sessionContainer {
   width: 100%;
   height: 100%;
-  padding: 0 1em 1em 1em;
+  padding: 4px 20px 16px;
   display: flex;
   flex-flow: column;
 }
@@ -16,7 +16,7 @@
 }
 
 .sessionContainer :global(.addCloudProviderTab) {
-  font-style: italic;
+  color: var(--vi-text-3);
 }
 
 .sessionFooter {
@@ -50,14 +50,150 @@
 }
 
 .localDesc {
-  font-style: italic;
-  color: #666;
+  color: var(--vi-text-3);
   margin: 0;
   padding: 6px 8px 0 8px;
 }
 
 .errorMessage {
   padding-top: 1px;
-  color: #ff4d4f;
+  color: var(--ant-color-error);
   font-size: 12px;
+}
+
+/* the quick start: a session from the title bar's device and app */
+.quickPage {
+  height: 100%;
+  overflow-y: auto;
+  padding: 40px 24px;
+  background: var(--vi-glow-ground), var(--vi-bg);
+}
+
+.quick {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px 28px;
+  border-radius: var(--vi-radius-xl);
+  border: 1px solid var(--vi-accent-ring);
+  background:
+    linear-gradient(160deg, var(--vi-accent-bg), transparent 45%), var(--ant-color-bg-container);
+  box-shadow: var(--vi-shadow-hero);
+}
+
+.quickHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.quickText {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.quickTitle {
+  margin: 0;
+  font-size: var(--vi-text-2xl);
+  font-weight: 700;
+  letter-spacing: var(--vi-tracking-display);
+}
+
+.quickLead {
+  margin: 6px 0 0;
+  color: var(--vi-text-2);
+  line-height: 1.6;
+}
+
+.quickRows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--vi-radius-lg);
+  border: 1px solid var(--vi-border);
+  overflow: hidden;
+}
+
+.quickRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--ant-color-bg-container);
+}
+
+.quickRow + .quickRow {
+  border-top: 1px solid var(--vi-hairline);
+}
+
+.quickRowWarn {
+  background: var(--vi-warn-bg);
+}
+
+.quickIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--vi-accent-bg);
+  color: var(--vi-accent-fg);
+}
+
+.quickRowWarn .quickIcon {
+  background: var(--vi-warn-bg);
+  color: var(--vi-warn-fg);
+}
+
+.quickRowText {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: baseline;
+}
+
+.quickLabel {
+  grid-row: span 2;
+  align-self: center;
+  color: var(--vi-text-3);
+}
+
+.quickValue {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quickSub {
+  font-size: var(--vi-text-sm);
+  color: var(--vi-text-3);
+}
+
+.quickDevices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quickFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.backToQuick {
+  align-self: flex-start;
+  padding-left: 0;
 }

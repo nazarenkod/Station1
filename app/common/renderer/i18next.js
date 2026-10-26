@@ -1,3 +1,5 @@
+import 'dayjs/locale/uk';
+import dayjs from 'dayjs';
 import i18n from 'i18next';
 import HttpApi from 'i18next-http-backend';
 import {initReactI18next} from 'react-i18next';
@@ -17,5 +19,9 @@ const i18nextOptions = {
 if (!i18n.isInitialized) {
   i18n.use(HttpApi).use(initReactI18next).init(i18nextOptions);
 }
+
+// dates follow the interface language
+dayjs.locale(i18n.language);
+i18n.on?.('languageChanged', (lng) => dayjs.locale(lng));
 
 export default i18n;

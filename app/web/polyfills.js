@@ -68,7 +68,27 @@ const pluginDoctor = {
 };
 
 const backend = isPlugin
-  ? {available: true, doctor: pluginDoctor, jira: null, ai: null}
-  : {available: false, doctor: null, jira: null, ai: null};
+  ? {
+      available: true,
+      doctor: pluginDoctor,
+      jira: null,
+      ai: null,
+      gitlab: null,
+      device: null,
+      builds: null,
+      logs: null,
+      proxy: null,
+    }
+  : {
+      available: false,
+      doctor: null,
+      jira: null,
+      ai: null,
+      gitlab: null,
+      device: null,
+      builds: null,
+      logs: null,
+      proxy: null,
+    };
 
 export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};

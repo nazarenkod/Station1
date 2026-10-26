@@ -1,6 +1,6 @@
 import {IconCircleCheck, IconPlugConnected} from '@tabler/icons-react';
 import {Alert, Button, Form, Input, Modal, Select, Space} from 'antd';
-import {useEffect, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {JIRA_CONFIG} from '../../../shared/setting-defs.js';
@@ -23,11 +23,10 @@ export async function loadJiraSettings() {
 }
 
 /**
- * The Jira Cloud site, the account that files bugs and the bug defaults. The
- * API token goes straight to the system keychain and is never shown again.
+ * The Jira settings form state: loaded when `active` turns on, saved on
+ * demand. The API token goes straight to the system keychain.
  */
-const JiraSettingsModal = ({open, onClose, onSaved}) => {
-  const {t} = useTranslation();
+export function useJiraSettings(active) {
   const [form] = Form.useForm();
   const [hasToken, setHasToken] = useState(false);
   const [token, setToken] = useState('');
@@ -35,7 +34,7 @@ const JiraSettingsModal = ({open, onClose, onSaved}) => {
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    if (!open || !backend.jira) {
+    if (!active || !backend.jira) {
       return;
     }
     (async () => {
@@ -44,9 +43,9 @@ const JiraSettingsModal = ({open, onClose, onSaved}) => {
       setToken('');
       setTest(null);
     })();
-  }, [open, form]);
+  }, [active, form]);
 
-  const save = async () => {
+  const save = useCallback(async () => {
     const values = await form.validateFields();
     const url = values.url.trim().replace(/\/+$/, '');
     await setSetting(JIRA_CONFIG, {...JIRA_DEFAULTS, ...values, url: url.startsWith('http') ? url : `https://${url}`});
@@ -55,9 +54,9 @@ const JiraSettingsModal = ({open, onClose, onSaved}) => {
       setHasToken(true);
       setToken('');
     }
-  };
+  }, [form, token]);
 
-  const runTest = async () => {
+  const runTest = useCallback(async () => {
     setTesting(true);
     try {
       await save();
@@ -65,42 +64,45 @@ const JiraSettingsModal = ({open, onClose, onSaved}) => {
     } finally {
       setTesting(false);
     }
-  };
+  }, [save]);
 
-  if (!backend.jira) {
-    return (
-      <Modal open={open} onCancel={onClose} footer={null} title={t('jiraSettings')}>
-        <Alert type="info" showIcon title={t('jiraDesktopOnly')} />
-      </Modal>
-    );
-  }
+  const disconnect = useCallback(async () => {
+    await backend.jira.setToken('');
+    setHasToken(false);
+    setTest(null);
+  }, []);
+
+  return {form, hasToken, token, setToken, test, testing, save, runTest, disconnect};
+}
+
+/**
+ * The Jira Cloud site, the account that files bugs and the bug defaults.
+ */
+export const JiraSettingsFields = ({settings}) => {
+  const {t} = useTranslation();
+  const {form, hasToken, token, setToken, test, testing, runTest} = settings;
 
   return (
-    <Modal
-      open={open}
-      title={t('jiraSettings')}
-      onCancel={onClose}
-      onOk={async () => {
-        await save();
-        onSaved?.();
-        onClose();
-      }}
-      okText={t('jiraSave')}
-      width={560}
-      centered
-      destroyOnHidden
-    >
+    <>
       <Form form={form} layout="vertical" requiredMark={false}>
-        <Form.Item name="url" label={t('jiraSite')} rules={[{required: true, message: t('jiraSiteRequired')}]}>
-          <Input placeholder="https://your-company.atlassian.net" />
-        </Form.Item>
-        <Form.Item
-          name="email"
-          label={t('jiraEmail')}
-          rules={[{required: true, type: 'email', message: t('jiraEmailRequired')}]}
-        >
-          <Input placeholder="name@company.com" autoComplete="off" />
-        </Form.Item>
+        <Space.Compact block>
+          <Form.Item
+            name="url"
+            label={t('jiraSite')}
+            rules={[{required: true, message: t('jiraSiteRequired')}]}
+            style={{flex: 1}}
+          >
+            <Input placeholder="https://your-company.atlassian.net" />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label={t('jiraEmail')}
+            rules={[{required: true, type: 'email', message: t('jiraEmailRequired')}]}
+            style={{flex: 1, marginLeft: 8}}
+          >
+            <Input placeholder="name@company.com" autoComplete="off" />
+          </Form.Item>
+        </Space.Compact>
         <Form.Item
           label={t('jiraToken')}
           extra={
@@ -147,6 +149,38 @@ const JiraSettingsModal = ({open, onClose, onSaved}) => {
           />
         )}
       </Space>
+    </>
+  );
+};
+
+const JiraSettingsModal = ({open, onClose, onSaved}) => {
+  const {t} = useTranslation();
+  const settings = useJiraSettings(open);
+
+  if (!backend.jira) {
+    return (
+      <Modal open={open} onCancel={onClose} footer={null} title={t('jiraSettings')}>
+        <Alert type="info" showIcon title={t('jiraDesktopOnly')} />
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      open={open}
+      title={t('jiraSettings')}
+      onCancel={onClose}
+      onOk={async () => {
+        await settings.save();
+        onSaved?.();
+        onClose();
+      }}
+      okText={t('jiraSave')}
+      width={560}
+      centered
+      destroyOnHidden
+    >
+      <JiraSettingsFields settings={settings} />
     </Modal>
   );
 };

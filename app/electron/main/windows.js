@@ -19,7 +19,7 @@ let mainWindow = null;
 export async function setupMainWindow() {
   const preferredTheme = await settings.get(PREFERRED_THEME);
   const isDarkTheme = preferredTheme === 'dark' || (preferredTheme === 'system' && nativeTheme.shouldUseDarkColors);
-  const backgroundColor = isDarkTheme ? '#0B0B10' : '#F5F5FA';
+  const backgroundColor = isDarkTheme ? '#09090D' : '#F5F5F8';
 
   const splashWindow = buildSplashWindow(backgroundColor);
   splashWindow[pathLoadMethod](splashPath);

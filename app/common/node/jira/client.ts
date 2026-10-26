@@ -69,6 +69,8 @@ export interface JiraFoundIssue {
   status: string;
   // the status category is Done
   done: boolean;
+  // the status category: new, indeterminate (in progress) or done
+  category: string;
   labels: string[];
 }
 
@@ -257,6 +259,7 @@ export class JiraClient {
         summary: String(issue.fields?.summary ?? ''),
         status: status.name ?? '',
         done: status.statusCategory?.key === 'done',
+        category: status.statusCategory?.key ?? '',
         labels: Array.isArray(issue.fields?.labels) ? (issue.fields.labels as string[]) : [],
       };
     });

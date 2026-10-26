@@ -1,0 +1,618 @@
+.workstation {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--ant-color-bg-layout);
+}
+
+/* the window's title bar, one row: brand, the tools, the shared device and app, the session */
+.header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--vi-header-height);
+  padding: 0 12px 0 calc(16px + var(--vi-titlebar-inset));
+  background: var(--vi-surface-glass);
+  backdrop-filter: saturate(180%) blur(18px);
+  border-bottom: 1px solid var(--vi-hairline);
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+}
+
+.header :global(button),
+.header :global(a),
+.header :global(input),
+.header :global(.ant-select),
+.header :global(.ant-dropdown-trigger) {
+  -webkit-app-region: no-drag;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 4px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.brandMark {
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 4px 12px rgba(124, 92, 255, 0.4));
+}
+
+.wordmark {
+  font-size: var(--vi-text-md);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.wordmarkSub {
+  font-weight: 500;
+  color: var(--vi-text-3);
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: var(--vi-border);
+  flex-shrink: 0;
+}
+
+.spacer {
+  flex: 1;
+  min-width: 8px;
+  align-self: stretch;
+}
+
+/* the shared context: device and app side by side in one control */
+.context {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 2px;
+  border-radius: var(--vi-radius-md);
+  border: 1px solid var(--vi-border);
+  background: var(--ant-color-bg-container);
+  flex-shrink: 1;
+}
+
+.context:not(:has(button)) {
+  display: none;
+}
+
+.contextDivider {
+  width: 1px;
+  height: 18px;
+  background: var(--vi-border);
+  flex-shrink: 0;
+}
+
+.picker {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  min-width: 0;
+  max-width: 280px;
+  padding: 0 10px;
+  border-radius: var(--vi-radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--vi-text);
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--vi-mid) var(--vi-ease);
+}
+
+.picker:hover,
+.picker[aria-expanded='true'] {
+  background: var(--vi-hover);
+}
+
+.picker > svg {
+  flex-shrink: 0;
+  color: var(--vi-text-3);
+}
+
+.pickerMain {
+  min-width: 32px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pickerSub {
+  color: var(--vi-text-3);
+  white-space: nowrap;
+}
+
+.pickerEmpty {
+  min-width: 0;
+  color: var(--vi-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mono {
+  font-family: var(--ant-font-family-code);
+  font-size: var(--vi-text-sm);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.dotOn {
+  background: var(--vi-ok);
+  box-shadow: 0 0 0 3px var(--vi-ok-bg);
+}
+
+.dotWarn {
+  background: var(--vi-warn);
+}
+
+.dotOff {
+  border: 1.5px solid var(--vi-text-4);
+}
+
+.dotRec {
+  background: var(--vi-danger);
+  animation: vi-pulse 1.8s var(--vi-ease) infinite;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--vi-radius-pill);
+  border: 1px solid var(--vi-border);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  color: var(--vi-text-2);
+  flex-shrink: 0;
+  transition: background var(--vi-mid) var(--vi-ease);
+}
+
+.chip:hover {
+  background: var(--vi-hover);
+}
+
+.chipLive {
+  border-color: transparent;
+  background: var(--vi-danger-bg);
+  color: var(--vi-danger-fg);
+  font-weight: 500;
+}
+
+.chipLive:hover {
+  background: var(--vi-danger-bg);
+}
+
+.iconButton {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--vi-radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--vi-text-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--vi-mid) var(--vi-ease),
+    color var(--vi-mid) var(--vi-ease);
+}
+
+.iconButton:hover {
+  background: var(--vi-hover);
+  color: var(--vi-text);
+}
+
+.iconButtonOn,
+.iconButtonOn:hover {
+  background: var(--vi-accent-bg);
+  color: var(--vi-accent-fg);
+}
+
+/* the tools, one pill each, in a segmented track */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--vi-hover);
+  border: 1px solid var(--vi-hairline);
+  overflow-x: auto;
+  flex-shrink: 0;
+  max-width: 60vw;
+  scrollbar-width: none;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 9px;
+  color: var(--vi-text-3);
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color var(--vi-mid) var(--vi-ease);
+}
+
+.tab:hover {
+  color: var(--vi-text);
+}
+
+.tab:focus-visible {
+  outline-offset: -2px;
+}
+
+.tabActive,
+.tabActive:hover {
+  color: var(--vi-text);
+}
+
+/* the raised pill under the active tab slides between tabs */
+.tabPill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 9px;
+  background: var(--ant-color-bg-container);
+  box-shadow:
+    0 0 0 1px var(--vi-border),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tabLabel,
+.tabDot,
+.tabBadge {
+  position: relative;
+  z-index: 1;
+}
+
+.tabDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--tool-color);
+  opacity: 0.75;
+  transition:
+    opacity var(--vi-mid) var(--vi-ease),
+    box-shadow var(--vi-mid) var(--vi-ease);
+}
+
+.tab:hover .tabDot {
+  opacity: 1;
+}
+
+.tabActive .tabDot {
+  opacity: 1;
+  box-shadow: 0 0 10px var(--tool-color);
+}
+
+.tabBadge {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 6px;
+  font-size: var(--vi-text-xs);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: var(--vi-off-bg);
+  color: var(--vi-text-2);
+}
+
+.tabSoon {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vi-text-4);
+}
+
+.tool_home {
+  --tool-color: var(--vi-tool-home);
+}
+
+.tool_inspector {
+  --tool-color: var(--vi-tool-inspector);
+}
+
+.tool_a11y {
+  --tool-color: var(--vi-tool-a11y);
+}
+
+.tool_proxy {
+  --tool-color: var(--vi-tool-proxy);
+}
+
+.tool_logs {
+  --tool-color: var(--vi-tool-logs);
+}
+
+.tool_builds {
+  --tool-color: var(--vi-tool-builds);
+}
+
+/* narrower windows: drop the secondary words first, the tools never */
+@media (max-width: 1599px) {
+  .pickerSub {
+    display: none;
+  }
+
+  .picker {
+    max-width: 230px;
+  }
+}
+
+@media (max-width: 1399px) {
+  .wordmarkSub {
+    display: none;
+  }
+}
+
+@media (max-width: 1319px) {
+  .chipText,
+  .pickerEmpty {
+    display: none;
+  }
+
+  .picker {
+    max-width: 190px;
+  }
+}
+
+/* narrow windows: the logo alone */
+@media (max-width: 1099px) {
+  .wordmark {
+    display: none;
+  }
+}
+
+.toolArea {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* a tool's own controls, under the tabs */
+.toolBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 16px;
+  flex-shrink: 0;
+}
+
+.toolTitle {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.toolCenter {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.toolActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* lists inside the device and app pickers */
+.menu {
+  width: 340px;
+  max-height: 440px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuLabel {
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ant-color-text-tertiary);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ant-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background: var(--ant-color-fill-quaternary);
+}
+
+.menuItemActive {
+  background: var(--ant-color-primary-bg);
+}
+
+.menuItemText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.menuItemSub {
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuFooter {
+  display: flex;
+  gap: 8px;
+  padding: 8px 4px 2px;
+  border-top: 1px solid var(--vi-hairline);
+  margin-top: 4px;
+}
+
+/* a tool with nothing to show yet (EmptyState.jsx) */
+.placeholder {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  overflow-y: auto;
+  background: radial-gradient(
+    520px 320px at 50% 38%,
+    color-mix(in srgb, var(--tool-color, var(--vi-violet)) 9%, transparent),
+    transparent 70%
+  );
+}
+
+.placeholderCard {
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.placeholderIcon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 8px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(
+    in srgb,
+    var(--tool-color, var(--vi-violet)) 14%,
+    var(--ant-color-bg-container)
+  );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--tool-color, var(--vi-violet)) 30%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--tool-color, var(--vi-violet)) 5%, transparent),
+    0 18px 40px color-mix(in srgb, var(--tool-color, var(--vi-violet)) 18%, transparent);
+  color: var(--tool-color, var(--vi-violet));
+}
+
+.placeholder.tool_home .placeholderIcon {
+  color: var(--vi-violet);
+}
+
+.placeholderTitle {
+  margin: 0;
+  font-size: var(--vi-text-xl);
+  font-weight: 600;
+  letter-spacing: var(--vi-tracking-tight);
+  color: var(--vi-text);
+}
+
+.placeholderText {
+  margin: 0;
+  max-width: 440px;
+  color: var(--vi-text-2);
+  line-height: 1.6;
+}
+
+.placeholderSteps {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  color: var(--vi-text-2);
+}
+
+.placeholderSteps li {
+  counter-increment: step;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.placeholderSteps li::before {
+  content: counter(step);
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--vi-text-xs);
+  font-weight: 600;
+  background: var(--vi-off-bg);
+  color: var(--vi-text-2);
+}
+
+.placeholderActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.menuError {
+  margin: 6px 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--vi-warn-bg);
+  color: var(--vi-warn-fg);
+}

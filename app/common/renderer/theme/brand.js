@@ -1,31 +1,56 @@
 import {theme} from 'antd';
 
-// The Vision palette: a violet-to-cyan lens gradient over quiet neutral surfaces
+// The Vision palette: one violet accent over quiet, near-black (or paper) surfaces.
+// The CSS side of the same tokens lives in assets/stylesheets/main.css as --vi-*;
+// keep the two in step.
 export const BRAND = {
   violet: '#7C5CFF',
   blue: '#3B82F6',
   cyan: '#22D3EE',
-  gradient: 'linear-gradient(135deg, #7C5CFF 0%, #3B82F6 55%, #22D3EE 100%)',
+  gradient: 'linear-gradient(135deg, #7050FF 0%, #4F5FE8 55%, #2F6FE0 100%)',
 };
 
-const SURFACES = {
+// the primary colour is a shade deeper than the brand violet so white text on it passes 4.5:1
+const PRIMARY = '#7050FF';
+
+const SCHEMES = {
   dark: {
-    layout: '#0B0B10',
-    container: '#13131A',
-    elevated: '#1A1A24',
-    border: '#272734',
-    borderSecondary: '#1F1F2A',
-    text: '#ECECF3',
-    selected: 'rgba(124, 92, 255, 0.22)',
+    layout: '#09090D',
+    container: '#111117',
+    elevated: '#17171F',
+    border: '#262631',
+    borderSecondary: '#1C1C25',
+    text: '#F2F2F7',
+    textSecondary: '#B4B4C6',
+    textTertiary: '#8E8EA3',
+    textQuaternary: '#6E6E84',
+    selected: 'rgba(124, 92, 255, 0.18)',
+    hover: 'rgba(255, 255, 255, 0.035)',
+    success: '#4ADE80',
+    warning: '#FBBF24',
+    error: '#FB7185',
+    info: '#60A5FA',
+    link: '#A797FF',
+    shadow: '0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06)',
   },
   light: {
-    layout: '#F5F5FA',
+    layout: '#F5F5F8',
     container: '#FFFFFF',
     elevated: '#FFFFFF',
-    border: '#E3E3EC',
-    borderSecondary: '#EEEEF4',
-    text: '#16161D',
-    selected: 'rgba(124, 92, 255, 0.12)',
+    border: '#E0E0E8',
+    borderSecondary: '#EBEBF1',
+    text: '#121218',
+    textSecondary: '#4A4A5C',
+    textTertiary: '#6B6B80',
+    textQuaternary: '#858599',
+    selected: 'rgba(124, 92, 255, 0.1)',
+    hover: 'rgba(18, 18, 24, 0.03)',
+    success: '#16A34A',
+    warning: '#D97706',
+    error: '#E11D48',
+    info: '#2563EB',
+    link: '#5A3EE6',
+    shadow: '0 16px 48px rgba(16, 16, 40, 0.12), 0 0 0 1px rgba(16, 16, 40, 0.05)',
   },
 };
 
@@ -38,48 +63,57 @@ export const FONT_FAMILY_CODE =
  * The antd theme for one colour scheme.
  */
 export function buildThemeConfig(isDarkTheme) {
-  const surface = isDarkTheme ? SURFACES.dark : SURFACES.light;
+  const scheme = isDarkTheme ? SCHEMES.dark : SCHEMES.light;
   return {
     algorithm: isDarkTheme ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
-      colorPrimary: BRAND.violet,
-      colorInfo: BRAND.blue,
-      colorSuccess: '#22C55E',
-      colorWarning: '#F59E0B',
-      colorError: '#F43F5E',
-      colorLink: BRAND.violet,
-      colorBgLayout: surface.layout,
-      colorBgContainer: surface.container,
-      colorBgElevated: surface.elevated,
-      colorBorder: surface.border,
-      colorBorderSecondary: surface.borderSecondary,
-      colorText: surface.text,
+      colorPrimary: PRIMARY,
+      colorInfo: scheme.info,
+      colorSuccess: scheme.success,
+      colorWarning: scheme.warning,
+      colorError: scheme.error,
+      colorLink: scheme.link,
+      colorBgLayout: scheme.layout,
+      colorBgContainer: scheme.container,
+      colorBgElevated: scheme.elevated,
+      colorBorder: scheme.border,
+      colorBorderSecondary: scheme.borderSecondary,
+      colorSplit: scheme.borderSecondary,
+      colorText: scheme.text,
+      colorTextSecondary: scheme.textSecondary,
+      colorTextTertiary: scheme.textTertiary,
+      colorTextQuaternary: scheme.textQuaternary,
+      colorTextPlaceholder: scheme.textQuaternary,
+      colorTextDescription: scheme.textTertiary,
       fontFamily: FONT_FAMILY,
       fontFamilyCode: FONT_FAMILY_CODE,
       fontSize: 13,
       borderRadius: 10,
-      borderRadiusLG: 14,
-      borderRadiusSM: 7,
+      borderRadiusLG: 16,
+      borderRadiusSM: 8,
+      borderRadiusXS: 6,
       controlHeight: 34,
       wireframe: false,
-      motionDurationMid: '0.22s',
+      motionDurationMid: '0.2s',
       motionEaseInOut: 'cubic-bezier(0.22, 1, 0.36, 1)',
       motionEaseOut: 'cubic-bezier(0.22, 1, 0.36, 1)',
-      boxShadowSecondary: isDarkTheme
-        ? '0 12px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04)'
-        : '0 12px 40px rgba(20, 20, 50, 0.12), 0 0 0 1px rgba(20, 20, 50, 0.04)',
+      boxShadowSecondary: scheme.shadow,
     },
     components: {
+      Alert: {
+        borderRadiusLG: 12,
+      },
       Badge: {
-        colorError: BRAND.violet,
+        colorError: PRIMARY,
         indicatorHeight: 20,
         textFontSize: 12,
       },
       Button: {
         fontWeight: 500,
-        primaryShadow: '0 6px 20px rgba(124, 92, 255, 0.35)',
+        primaryShadow: '0 6px 18px rgba(124, 92, 255, 0.32)',
         defaultShadow: 'none',
         dangerShadow: 'none',
+        defaultBg: scheme.container,
       },
       Card: {
         headerFontSize: 14,
@@ -88,11 +122,28 @@ export function buildThemeConfig(isDarkTheme) {
       Collapse: {
         headerBg: 'transparent',
       },
+      Drawer: {
+        colorBgElevated: scheme.container,
+      },
+      Input: {
+        activeShadow: '0 0 0 3px rgba(124, 92, 255, 0.18)',
+      },
+      Menu: {
+        itemSelectedBg: scheme.selected,
+        itemBorderRadius: 8,
+      },
       Modal: {
-        borderRadiusLG: 18,
+        borderRadiusLG: 20,
       },
       Notification: {
         borderRadiusLG: 14,
+      },
+      Segmented: {
+        itemSelectedBg: isDarkTheme ? '#262631' : '#FFFFFF',
+        trackBg: isDarkTheme ? 'rgba(255, 255, 255, 0.04)' : 'rgba(18, 18, 24, 0.05)',
+      },
+      Select: {
+        optionSelectedBg: scheme.selected,
       },
       Switch: {
         handleSize: 18,
@@ -101,22 +152,26 @@ export function buildThemeConfig(isDarkTheme) {
       },
       Table: {
         headerBg: 'transparent',
-        headerColor: isDarkTheme ? 'rgba(236, 236, 243, 0.55)' : 'rgba(22, 22, 29, 0.55)',
+        headerColor: scheme.textTertiary,
         headerSplitColor: 'transparent',
-        rowSelectedBg: surface.selected,
-        rowHoverBg: isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(22, 22, 29, 0.025)',
+        rowSelectedBg: scheme.selected,
+        rowHoverBg: scheme.hover,
       },
       Tabs: {
-        titleFontSize: 14,
-        inkBarColor: BRAND.violet,
-        itemSelectedColor: isDarkTheme ? '#FFFFFF' : '#16161D',
-        itemColor: isDarkTheme ? 'rgba(236, 236, 243, 0.6)' : 'rgba(22, 22, 29, 0.6)',
+        titleFontSize: 13,
+        inkBarColor: PRIMARY,
+        itemSelectedColor: scheme.text,
+        itemColor: scheme.textTertiary,
+        itemHoverColor: scheme.text,
       },
       Tag: {
         borderRadiusSM: 6,
       },
+      Tooltip: {
+        colorBgSpotlight: isDarkTheme ? '#262631' : '#1C1C24',
+      },
       Tree: {
-        nodeSelectedBg: surface.selected,
+        nodeSelectedBg: scheme.selected,
       },
     },
   };

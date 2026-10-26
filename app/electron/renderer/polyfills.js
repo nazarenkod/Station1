@@ -36,6 +36,21 @@ const backend = {
   get ai() {
     return window.electronIPC.ai;
   },
+  get gitlab() {
+    return window.electronIPC.gitlab;
+  },
+  get device() {
+    return window.electronIPC.device;
+  },
+  get builds() {
+    return window.electronIPC.builds;
+  },
+  get logs() {
+    return window.electronIPC.logs;
+  },
+  get proxy() {
+    return window.electronIPC.proxy;
+  },
 };
 
 export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};

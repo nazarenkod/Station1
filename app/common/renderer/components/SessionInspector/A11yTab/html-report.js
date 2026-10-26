@@ -1,3 +1,4 @@
+import {PRODUCT_NAME} from '../../../../shared/product.js';
 import {violationText} from './a11y-ui.js';
 
 const escapeHtml = (text) =>
@@ -42,7 +43,7 @@ export function buildHtmlReport({t, scan, reviewed, screen, device, screenshot, 
     .join('');
 
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(screen?.title ?? 'Accessibility report')} · Vision Inspector</title>
+<title>${escapeHtml(screen?.title ?? 'Accessibility report')} · ${PRODUCT_NAME}</title>
 <style>
 :root{color-scheme:light dark;--bg:#F5F5FA;--card:#fff;--text:#16161D;--muted:#6b6b80;--line:#E3E3EC}
 @media (prefers-color-scheme:dark){:root{--bg:#0B0B10;--card:#13131A;--text:#ECECF3;--muted:#9a9ab0;--line:#272734}}
@@ -67,5 +68,5 @@ footer{padding:0 32px 28px;color:var(--muted);font-size:12px}
 <p>${escapeHtml(device?.appId ?? '')} · ${escapeHtml(t('a11yReportIssues', {count: problems.length}))} · ${new Date().toLocaleString()}</p></div></header>
 <main><div class="shot">${screenshot ? `<img src="data:image/png;base64,${screenshot}" alt="">` : ''}${boxes}</div>
 <ol>${rows || `<li style="--c:#22C55E"><div class="title">${escapeHtml(t('a11yAllClear'))}</div></li>`}</ol></main>
-<footer>Vision Inspector</footer></body></html>`;
+<footer>${PRODUCT_NAME}</footer></body></html>`;
 }

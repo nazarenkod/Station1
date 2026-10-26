@@ -2,9 +2,10 @@ import {dialog} from 'electron';
 import pkg from 'electron-updater';
 const {autoUpdater} = pkg;
 
+import {PRODUCT_NAME} from '../../common/shared/product.js';
 import {t} from './helpers.js';
 
-// Vision Inspector has no release channel yet: the update check stays off and
+// the product has no release channel yet: the update check stays off and
 // out of the menus until electron-builder.json gets a "publish" target
 export const UPDATES_ENABLED = false;
 const RELEASES_LINK = '';
@@ -21,7 +22,7 @@ autoUpdater.on('update-not-available', () => {
     type: 'info',
     buttons: [t('OK')],
     message: t('No update available'),
-    detail: t('Vision Inspector is up-to-date'),
+    detail: t('menuUpToDate', {app: PRODUCT_NAME}),
   });
 });
 

@@ -1,19 +1,13 @@
-import {bindActionCreators} from '@reduxjs/toolkit';
 import {Splitter} from 'antd';
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {shallowEqual, useDispatch, useSelector} from 'react-redux';
-import {useNavigate} from 'react-router';
+import {useRef, useState} from 'react';
 
-import * as A11yActions from '../../actions/A11y.js';
-import * as SessionInspectorActions from '../../actions/SessionInspector.js';
 import {WINDOW_DIMENSIONS} from '../../constants/common.js';
-import AppHeader from '../AppShell/AppHeader.jsx';
+import ToolBar from '../Workstation/ToolBar.jsx';
 import HeaderButtons from './Header/HeaderButtons.jsx';
 import Screenshot from './Screenshot/Screenshot.jsx';
-import SessionExpiryModal from './SessionExpiryModal.jsx';
 import SessionInspectorTabs from './SessionInspectorTabs.jsx';
+import {useInspector} from './use-inspector.js';
 
-import shellStyles from '../AppShell/AppShell.module.css';
 import styles from './SessionInspector.module.css';
 
 const MAX_SCREENSHOT_WIDTH_PERCENT = `${WINDOW_DIMENSIONS.MAX_SCREENSHOT_PANEL_WIDTH_FRACTION * 100}%`;
@@ -22,29 +16,7 @@ const MAX_SCREENSHOT_WIDTH_PERCENT = `${WINDOW_DIMENSIONS.MAX_SCREENSHOT_PANEL_W
  * The root component of the Session Inspector screen.
  */
 const Inspector = () => {
-  const inspector = useSelector((state) => state.inspector, shallowEqual);
-  const dispatch = useDispatch();
-  const actions = useMemo(() => bindActionCreators({...SessionInspectorActions, ...A11yActions}, dispatch), [dispatch]);
-  const props = {...inspector, ...actions};
-
-  const {
-    screenshot,
-    screenshotError,
-    isUsingMjpegMode,
-    isAwaitingMjpegStream,
-    isSourceRefreshOn,
-    quitSession,
-    setUserWaitTimeout,
-    showKeepAlivePrompt,
-    keepSessionAlive,
-    applyClientMethod,
-    getSavedClientFramework,
-    runKeepAliveLoop,
-    setSessionTime,
-    storeSessionSettings,
-  } = props;
-
-  const navigate = useNavigate();
+  const {props, quitSessionAndReturn, showScreenshot} = useInspector();
 
   const [screenshotPanelWidth, setScreenshotPanelWidth] = useState(WINDOW_DIMENSIONS.INITIAL_SCREENSHOT_PANEL_WIDTH_PX);
   const screenshotPanelResizedManually = useRef(false);
@@ -69,30 +41,11 @@ const Inspector = () => {
     setScreenshotPanelWidth(widths[0]);
   };
 
-  const quitSessionAndReturn = useCallback(
-    async ({reason, manualQuit = true, detachOnly = false} = {}) => {
-      await quitSession({reason, manualQuit, detachOnly});
-      navigate('/session', {replace: true});
-    },
-    [navigate, quitSession],
-  );
-
-  const showScreenshot =
-    (screenshot && !screenshotError) || (isUsingMjpegMode && (!isSourceRefreshOn || !isAwaitingMjpegStream));
-
-  useEffect(() => {
-    applyClientMethod({methodName: 'getPageSource'});
-    storeSessionSettings();
-    getSavedClientFramework();
-    runKeepAliveLoop();
-    setSessionTime(Date.now());
-  }, [applyClientMethod, getSavedClientFramework, runKeepAliveLoop, setSessionTime, storeSessionSettings]);
-
   return (
-    <div className={`${styles.inspectorContainer} ${shellStyles.page}`}>
-      <AppHeader>
+    <div className={styles.inspectorContainer}>
+      <ToolBar>
         <HeaderButtons {...props} quitSessionAndReturn={quitSessionAndReturn} />
-      </AppHeader>
+      </ToolBar>
       <Splitter className={styles.inspectorSplitter} onResize={setPanelWidthManually}>
         <Splitter.Panel
           min={WINDOW_DIMENSIONS.MIN_IMG_WIDTH_PX}
@@ -110,12 +63,6 @@ const Inspector = () => {
           <SessionInspectorTabs {...props} showScreenshot={showScreenshot} />
         </Splitter.Panel>
       </Splitter>
-      <SessionExpiryModal
-        showKeepAlivePrompt={showKeepAlivePrompt}
-        keepSessionAlive={keepSessionAlive}
-        quitSessionAndReturn={quitSessionAndReturn}
-        setUserWaitTimeout={setUserWaitTimeout}
-      />
     </div>
   );
 };

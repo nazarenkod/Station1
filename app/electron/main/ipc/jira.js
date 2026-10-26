@@ -1,43 +1,22 @@
-import {ipcMain, safeStorage} from 'electron';
+import {ipcMain} from 'electron';
 import settings from 'electron-settings';
 
 import {JiraBugService} from '../../../common/node/jira/bug-service.js';
 import {JIRA_CONFIG} from '../../../common/shared/setting-defs.js';
+import {encryptedSecret} from '../secrets.js';
 
-// the API token never reaches the renderer: it is stored encrypted by the OS keychain
-const TOKEN_KEY = 'JIRA_TOKEN_ENCRYPTED';
-
-async function readToken() {
-  const stored = await settings.get(TOKEN_KEY);
-  if (!stored) {
-    return null;
-  }
-  try {
-    return safeStorage.decryptString(Buffer.from(stored, 'base64'));
-  } catch {
-    return null;
-  }
-}
+const token = encryptedSecret('JIRA_TOKEN_ENCRYPTED');
 
 export function setupJiraIPC() {
   const service = new JiraBugService({
     getSettings: async () => (await settings.get(JIRA_CONFIG)) ?? {},
-    getToken: readToken,
+    getToken: token.read,
   });
 
-  ipcMain.handle('jira:hasToken', async () => !!(await readToken()));
-  ipcMain.handle('jira:setToken', async (_evt, token) => {
-    if (!token) {
-      await settings.unset(TOKEN_KEY);
-      return true;
-    }
-    if (!safeStorage.isEncryptionAvailable()) {
-      throw new Error('The system keychain is not available to keep the token safe');
-    }
-    await settings.set(TOKEN_KEY, safeStorage.encryptString(token).toString('base64'));
-    return true;
-  });
+  ipcMain.handle('jira:hasToken', token.has);
+  ipcMain.handle('jira:setToken', async (_evt, value) => await token.write(value));
   ipcMain.handle('jira:test', async () => await service.test());
+  ipcMain.handle('jira:mine', async () => await service.mine());
   ipcMain.handle('jira:findUsers', async (_evt, query) => {
     try {
       return await service.findUsers(query);

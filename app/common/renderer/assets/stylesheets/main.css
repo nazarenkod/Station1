@@ -1,25 +1,172 @@
 @import 'antd/dist/reset.css';
 
-/* Brand tokens for custom components; antd's own tokens are --ant-* */
+/*
+ * Vision design tokens. antd's own tokens are --ant-* (theme/brand.js sets them);
+ * these cover everything antd has no token for. Light values first, dark below.
+ */
 :root {
+  /* brand */
   --vi-violet: #7c5cff;
   --vi-blue: #3b82f6;
   --vi-cyan: #22d3ee;
-  --vi-gradient: linear-gradient(135deg, #7c5cff 0%, #3b82f6 55%, #22d3ee 100%);
-  --vi-gradient-soft: linear-gradient(135deg, rgba(124, 92, 255, 0.14), rgba(34, 211, 238, 0.1));
-  --vi-glow: 0 0 0 1px rgba(124, 92, 255, 0.35), 0 8px 30px rgba(124, 92, 255, 0.25);
-  --vi-surface-glass: rgba(255, 255, 255, 0.72);
-  --vi-hairline: rgba(20, 20, 50, 0.08);
-  --vi-shadow-card: 0 1px 2px rgba(20, 20, 50, 0.04), 0 8px 24px rgba(20, 20, 50, 0.06);
+  --vi-gradient: linear-gradient(135deg, #7050ff 0%, #4f5fe8 55%, #2f6fe0 100%);
+  --vi-gradient-soft: linear-gradient(135deg, rgba(124, 92, 255, 0.14), rgba(59, 130, 246, 0.08));
+  --vi-accent-fg: #5a3ee6;
+  --vi-accent-bg: rgba(124, 92, 255, 0.1);
+  --vi-accent-ring: rgba(124, 92, 255, 0.28);
+  --vi-glow: 0 0 0 1px rgba(124, 92, 255, 0.3), 0 8px 26px rgba(124, 92, 255, 0.22);
+
+  /* surfaces: ground < panel < raised; hairlines between them */
+  --vi-bg: #f5f5f8;
+  --vi-panel: #ffffff;
+  --vi-raised: #ffffff;
+  --vi-sunken: #f0f0f4;
+  --vi-surface-glass: rgba(255, 255, 255, 0.78);
+  --vi-hairline: rgba(16, 16, 40, 0.08);
+  --vi-border: rgba(16, 16, 40, 0.1);
+  --vi-border-strong: rgba(16, 16, 40, 0.16);
+  --vi-hover: rgba(16, 16, 40, 0.035);
+
+  /* text (each passes 4.5:1 on panel and ground, except text-4 which is for hints and placeholders) */
+  --vi-text: #121218;
+  --vi-text-2: #4a4a5c;
+  --vi-text-3: #6b6b80;
+  --vi-text-4: #858599;
+
+  /* status: a hue for dots and bars, -fg for text, -bg for tinted fills */
+  --vi-ok: #16a34a;
+  --vi-ok-fg: #166534;
+  --vi-ok-bg: rgba(22, 163, 74, 0.1);
+  --vi-warn: #d97706;
+  --vi-warn-fg: #92400e;
+  --vi-warn-bg: rgba(217, 119, 6, 0.12);
+  --vi-danger: #e11d48;
+  --vi-danger-fg: #be123c;
+  --vi-danger-bg: rgba(225, 29, 72, 0.1);
+  --vi-info: #2563eb;
+  --vi-info-fg: #1d4ed8;
+  --vi-info-bg: rgba(37, 99, 235, 0.1);
+  --vi-teal: #0891b2;
+  --vi-teal-fg: #155e75;
+  --vi-teal-bg: rgba(8, 145, 178, 0.1);
+  --vi-off-fg: #5f5f73;
+  --vi-off-bg: rgba(16, 16, 40, 0.05);
+
+  /* tools: each tool's colour marks its tab, its tiles and its empty state */
+  --vi-tool-home: #121218;
+  --vi-tool-inspector: #2563eb;
+  --vi-tool-a11y: #d97706;
+  --vi-tool-proxy: #7c5cff;
+  --vi-tool-logs: #059669;
+  --vi-tool-builds: #0891b2;
+
+  /* type */
+  --vi-font-sans:
+    'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --vi-font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --vi-text-xs: 11px;
+  --vi-text-sm: 12px;
+  --vi-text-base: 13px;
+  --vi-text-md: 14px;
+  --vi-text-lg: 16px;
+  --vi-text-xl: 20px;
+  --vi-text-2xl: 28px;
+  --vi-text-display: 40px;
+  --vi-tracking-tight: -0.015em;
+  --vi-tracking-display: -0.035em;
+  --vi-tracking-eyebrow: 0.08em;
+
+  /* space: a 4px grid */
+  --vi-space-1: 4px;
+  --vi-space-2: 8px;
+  --vi-space-3: 12px;
+  --vi-space-4: 16px;
+  --vi-space-5: 20px;
+  --vi-space-6: 24px;
+  --vi-space-8: 32px;
+  --vi-space-10: 40px;
+
+  /* radius */
+  --vi-radius-xs: 6px;
+  --vi-radius-sm: 8px;
+  --vi-radius-md: 10px;
+  --vi-radius-lg: 16px;
+  --vi-radius-xl: 22px;
+  --vi-radius-pill: 999px;
+
+  /* elevation */
+  --vi-shadow-card: 0 1px 2px rgba(16, 16, 40, 0.04), 0 6px 20px rgba(16, 16, 40, 0.04);
+  --vi-shadow-raised: 0 2px 4px rgba(16, 16, 40, 0.05), 0 16px 40px rgba(16, 16, 40, 0.08);
+  --vi-shadow-hero: 0 1px 2px rgba(16, 16, 40, 0.04), 0 24px 60px rgba(76, 60, 180, 0.1);
+  --vi-glow-ground: radial-gradient(
+    900px 420px at 12% -12%,
+    rgba(124, 92, 255, 0.1),
+    transparent 70%
+  );
+
+  /* motion */
   --vi-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --vi-fast: 0.12s;
+  --vi-mid: 0.22s;
+
   --vi-titlebar-inset: 0px;
+  --vi-header-height: 52px;
 }
 
 body.dark {
   color-scheme: dark;
-  --vi-surface-glass: rgba(19, 19, 26, 0.72);
-  --vi-hairline: rgba(255, 255, 255, 0.07);
-  --vi-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --vi-accent-fg: #c4b8ff;
+  --vi-accent-bg: rgba(124, 92, 255, 0.16);
+  --vi-accent-ring: rgba(167, 151, 255, 0.3);
+
+  --vi-bg: #09090d;
+  --vi-panel: #111117;
+  --vi-raised: #17171f;
+  --vi-sunken: #0d0d12;
+  --vi-surface-glass: rgba(9, 9, 13, 0.78);
+  --vi-hairline: rgba(255, 255, 255, 0.06);
+  --vi-border: rgba(255, 255, 255, 0.08);
+  --vi-border-strong: rgba(255, 255, 255, 0.14);
+  --vi-hover: rgba(255, 255, 255, 0.04);
+
+  --vi-text: #f2f2f7;
+  --vi-text-2: #b4b4c6;
+  --vi-text-3: #8e8ea3;
+  --vi-text-4: #6e6e84;
+
+  --vi-ok: #4ade80;
+  --vi-ok-fg: #86efac;
+  --vi-ok-bg: rgba(74, 222, 128, 0.12);
+  --vi-warn: #fbbf24;
+  --vi-warn-fg: #fcd34d;
+  --vi-warn-bg: rgba(251, 191, 36, 0.13);
+  --vi-danger: #fb7185;
+  --vi-danger-fg: #fda4af;
+  --vi-danger-bg: rgba(251, 113, 133, 0.13);
+  --vi-info: #60a5fa;
+  --vi-info-fg: #93c5fd;
+  --vi-info-bg: rgba(96, 165, 250, 0.13);
+  --vi-teal: #22d3ee;
+  --vi-teal-fg: #67e8f9;
+  --vi-teal-bg: rgba(34, 211, 238, 0.12);
+  --vi-off-fg: #8e8ea3;
+  --vi-off-bg: rgba(255, 255, 255, 0.05);
+
+  --vi-tool-home: #f2f2f7;
+  --vi-tool-inspector: #60a5fa;
+  --vi-tool-a11y: #fbbf24;
+  --vi-tool-proxy: #a797ff;
+  --vi-tool-logs: #34d399;
+  --vi-tool-builds: #22d3ee;
+
+  --vi-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 1px 2px rgba(0, 0, 0, 0.4);
+  --vi-shadow-raised: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 20px 50px rgba(0, 0, 0, 0.45);
+  --vi-shadow-hero: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 30px 80px rgba(0, 0, 0, 0.45);
+  --vi-glow-ground: radial-gradient(
+    900px 420px at 12% -12%,
+    rgba(124, 92, 255, 0.16),
+    transparent 70%
+  );
 }
 
 /* macOS: the window has no title bar, the app header takes its place */
@@ -57,6 +204,11 @@ kbd {
 
 ::selection {
   background: rgba(124, 92, 255, 0.3);
+}
+
+body {
+  background: var(--vi-bg);
+  color: var(--vi-text);
 }
 
 #root,
@@ -156,21 +308,21 @@ kbd {
   margin: 6px;
 }
 
-/* cards: hairline border, soft shadow, a lift on hover */
+/* cards: hairline border, a quiet shadow */
 .ant-card {
+  border-color: var(--vi-border);
   box-shadow: var(--vi-shadow-card);
   transition:
     box-shadow 0.3s var(--vi-ease),
-    border-color 0.3s var(--vi-ease),
-    transform 0.3s var(--vi-ease);
+    border-color 0.3s var(--vi-ease);
 }
 
 .ant-card-head-title {
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--vi-tracking-tight);
 }
 
-/* primary buttons carry the brand gradient */
+/* primary buttons carry the brand gradient; it is the only place it shows besides the logo */
 .ant-btn-variant-solid.ant-btn-color-primary:not(:disabled) {
   background-image: var(--vi-gradient);
   background-size: 160% 100%;
@@ -186,15 +338,18 @@ kbd {
   background-position: 100% 0%;
 }
 
+.ant-btn-variant-outlined.ant-btn-color-default:not(:disabled) {
+  border-color: var(--vi-border-strong);
+}
+
 .ant-btn:not(:disabled):active {
   transform: scale(0.97);
 }
 
-/* the active tab gets a gradient underline */
+/* the active tab gets a solid violet underline */
 .ant-tabs-ink-bar {
-  background: var(--vi-gradient) !important;
-  height: 3px !important;
-  border-radius: 3px 3px 0 0;
+  height: 2px !important;
+  border-radius: 2px 2px 0 0;
 }
 
 .ant-tabs-tab-btn {
@@ -202,11 +357,23 @@ kbd {
   transition: color 0.2s var(--vi-ease);
 }
 
+.ant-tabs-top > .ant-tabs-nav::before {
+  border-bottom-color: var(--vi-hairline) !important;
+}
+
 .ant-table-thead > tr > th {
-  font-size: 12px;
+  font-size: var(--vi-text-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+}
+
+.ant-alert {
+  border-color: var(--vi-border);
+}
+
+.ant-drawer-header {
+  border-bottom-color: var(--vi-hairline) !important;
 }
 
 .ant-tag {
@@ -253,7 +420,7 @@ kbd {
   }
 }
 
-/* a status dot that breathes while something is live */
+/* a status dot that breathes while something is live; tone it with vi-tone-* */
 .vi-dot {
   display: inline-block;
   width: 8px;
@@ -272,6 +439,130 @@ kbd {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* a small uppercase label above a heading or a number */
+.vi-eyebrow {
+  font-size: var(--vi-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--vi-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--vi-text-3);
+}
+
+/* numbers that line up and do not jump while they change */
+.vi-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.vi-mono {
+  font-family: var(--vi-font-mono);
+}
+
+/* a status pill: a dot and a word, tinted by tone */
+.vi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  max-width: 100%;
+  padding: 0 9px;
+  border-radius: var(--vi-radius-pill);
+  font-size: var(--vi-text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--vi-off-bg);
+  color: var(--vi-off-fg);
+}
+
+.vi-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.vi-pill.vi-pill-plain::before {
+  display: none;
+}
+
+.vi-tone-ok {
+  background: var(--vi-ok-bg);
+  color: var(--vi-ok-fg);
+}
+
+.vi-tone-warn {
+  background: var(--vi-warn-bg);
+  color: var(--vi-warn-fg);
+}
+
+.vi-tone-danger {
+  background: var(--vi-danger-bg);
+  color: var(--vi-danger-fg);
+}
+
+.vi-tone-info {
+  background: var(--vi-info-bg);
+  color: var(--vi-info-fg);
+}
+
+.vi-tone-accent {
+  background: var(--vi-accent-bg);
+  color: var(--vi-accent-fg);
+}
+
+.vi-tone-off {
+  background: var(--vi-off-bg);
+  color: var(--vi-off-fg);
+}
+
+.vi-dot[class*='vi-tone-'] {
+  background: currentColor;
+}
+
+.vi-dot.vi-tone-ok {
+  color: var(--vi-ok);
+}
+
+.vi-dot.vi-tone-warn {
+  color: var(--vi-warn);
+}
+
+.vi-dot.vi-tone-danger {
+  color: var(--vi-danger);
+}
+
+.vi-dot.vi-tone-info {
+  color: var(--vi-info);
+}
+
+.vi-dot.vi-tone-off {
+  background: transparent;
+  border: 1.5px solid var(--vi-text-4);
+}
+
+/* a panel: the one card shape every tool uses */
+.vi-panel {
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--vi-border);
+  border-radius: var(--vi-radius-lg);
+  box-shadow: var(--vi-shadow-card);
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  border: 1px solid var(--vi-border);
+  border-bottom-width: 2px;
+  font-size: 11px;
+  color: var(--vi-text-3);
 }
 
 @media (prefers-reduced-motion: reduce) {

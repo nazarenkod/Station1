@@ -7,6 +7,7 @@ import {
   parseAvdList,
   parseIni,
   parseDevicectlDevices,
+  sortDevices,
   parseSimctlDevices,
   parseSimRuntime,
 } from '../../app/common/node/doctor/devices.js';
@@ -102,7 +103,7 @@ describe('doctor: devices', function () {
             hardwareProperties: {platform: 'watchOS', udid: 'W1'},
           },
           {
-            connectionProperties: {tunnelState: 'connected'},
+            connectionProperties: {tunnelState: 'connected', transportType: 'wired'},
             deviceProperties: {name: 'QA iPhone', osVersionNumber: '17.4', developerModeStatus: 'enabled'},
             hardwareProperties: {platform: 'iOS', udid: '00008120-000428E43A60C01E', marketingName: 'iPhone 14 Pro'},
           },
@@ -120,6 +121,36 @@ describe('doctor: devices', function () {
         developerMode: true,
       },
     ]);
+  });
+
+  it('sees a phone on the cable while its CoreDevice tunnel is idle, and not one that is gone', function () {
+    const phone = (connectionProperties) => ({
+      connectionProperties,
+      deviceProperties: {name: 'iPhone 17 Pro', osVersionNumber: '27.0'},
+      hardwareProperties: {platform: 'iOS', udid: '00008150-000E29361AB8401C'},
+    });
+    const states = parseDevicectlDevices({
+      result: {
+        devices: [
+          phone({tunnelState: 'disconnected', transportType: 'wired', pairingState: 'paired'}),
+          phone({tunnelState: 'disconnected', transportType: 'localNetwork', pairingState: 'paired'}),
+          phone({tunnelState: 'unavailable', pairingState: 'paired'}),
+        ],
+      },
+    }).map((device) => device.state);
+    expect(states).toEqual(['running', 'running', 'disconnected']);
+  });
+
+  it('puts the devices that can be used now first, real phones before emulators', function () {
+    const device = (name, kind, state) => ({name, kind, state});
+    const sorted = sortDevices([
+      device('Pixel 2 API 29', DEVICE_KIND.ANDROID_AVD, 'broken'),
+      device('iPhone 15', DEVICE_KIND.IOS_SIMULATOR, 'stopped'),
+      device('iPhone 14 Pro', DEVICE_KIND.IOS_DEVICE, 'disconnected'),
+      device('Pixel 8', DEVICE_KIND.ANDROID_EMULATOR, 'running'),
+      device('iPhone 17 Pro', DEVICE_KIND.IOS_DEVICE, 'running'),
+    ]).map((d) => d.name);
+    expect(sorted).toEqual(['iPhone 17 Pro', 'Pixel 8', 'iPhone 15', 'iPhone 14 Pro', 'Pixel 2 API 29']);
   });
 
   it('builds capabilities for a connected device and for a stopped AVD', function () {

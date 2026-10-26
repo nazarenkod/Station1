@@ -1,0 +1,12 @@
+.tool {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: 12px;
+}
+
+.audit {
+  height: 100%;
+  overflow-y: auto;
+  padding: 0 4px 0 8px;
+}

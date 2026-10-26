@@ -1,12 +1,14 @@
 {
-  "productName": "Vision Inspector",
+  "productName": "Station#1",
   "appId": "app.vision.inspector",
   "asar": true,
   "directories": {
     "output": "release"
   },
-  "files": ["dist/"],
-  "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+  "files": [
+    "dist/"
+  ],
+  "artifactName": "Station1-${version}-${os}-${arch}.${ext}",
   "fileAssociations": [
     {
       "ext": "appiumsession",
@@ -19,11 +21,17 @@
     "target": [
       {
         "target": "dmg",
-        "arch": ["arm64", "x64"]
+        "arch": [
+          "arm64",
+          "x64"
+        ]
       },
       {
         "target": "zip",
-        "arch": ["arm64", "x64"]
+        "arch": [
+          "arm64",
+          "x64"
+        ]
       }
     ],
     "hardenedRuntime": true,
@@ -47,18 +55,24 @@
     ]
   },
   "win": {
-    "target": ["nsis", "zip"]
+    "target": [
+      "nsis",
+      "zip"
+    ]
   },
   "nsis": {
     "allowToChangeInstallationDirectory": true,
     "oneClick": false
   },
   "linux": {
-    "target": ["AppImage", "tar.gz"],
+    "target": [
+      "AppImage",
+      "tar.gz"
+    ],
     "category": "Development",
     "desktop": {
       "entry": {
-        "Name": "Vision Inspector",
+        "Name": "Station#1",
         "Comment": "Mobile app inspector with accessibility audit, powered by Appium",
         "Categories": "Development",
         "Terminal": false,

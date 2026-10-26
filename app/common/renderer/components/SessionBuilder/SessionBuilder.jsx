@@ -1,5 +1,5 @@
 import {bindActionCreators} from '@reduxjs/toolkit';
-import {IconLink} from '@tabler/icons-react';
+import {IconArrowLeft, IconLink} from '@tabler/icons-react';
 import {Badge, Button, Divider, Space, Spin, Tabs} from 'antd';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -15,14 +15,13 @@ import {
   SESSION_BUILDER_NARROW_LAYOUT_BREAKPOINT,
   SESSION_BUILDER_TABS,
 } from '../../constants/session-builder.js';
-import {openLink} from '../../polyfills.js';
+import {backend, openLink} from '../../polyfills.js';
 import {isEmpty} from '../../utils/common.js';
 import {log} from '../../utils/logger.js';
-import AppHeader from '../AppShell/AppHeader.jsx';
-import AppSettings from './AppSettings/AppSettings.jsx';
 import AttachToSession from './AttachToSessionTab/AttachToSession.jsx';
 import CapabilityEditor from './CapabilityBuilderTab/CapabilityEditor.jsx';
 import Doctor from './DoctorTab/Doctor.jsx';
+import QuickStart from './QuickStart.jsx';
 import SavedCapabilitySets from './SavedCapabilitySetsTab/SavedCapabilitySets.jsx';
 import AdvancedServerParams from './ServerDetails/AdvancedServerParams.jsx';
 import CloudProviders from './ServerDetails/CloudProviders.jsx';
@@ -80,6 +79,8 @@ const Session = () => {
   );
 
   const isAttaching = tabKey === 'attach';
+  // the desktop app can start a session from the title bar alone; the full builder is one click away
+  const [advanced, setAdvanced] = useState(!backend.doctor);
 
   const handleSelectServerTab = async (tab) => {
     const {changeServerType, addCloudProvider} = props;
@@ -140,115 +141,134 @@ const Session = () => {
 
   return [
     <div className={shellStyles.page} key="main">
-      <AppHeader subtitle={t('newSessionTitle')} actions={<AppSettings />} />
       <Spin size="large" spinning={!!newSessionLoading} wrapperClassName={shellStyles.pageBody}>
-        <div className={styles.sessionContainer}>
-          <Tabs
-            activeKey={serverType}
-            onChange={(tab) => handleSelectServerTab(tab)}
-            styles={{root: {paddingBottom: '8px'}, header: {margin: '0px 0px 1em 6px'}, item: {padding: '10px 0px'}}}
-            items={[
-              {
-                label: t('Appium Server'),
-                key: SERVER_TYPES.REMOTE,
-                children: <ServerTabCustom {...props} />,
-              },
-              ...visibleProviders.map((providerName) => {
-                const provider = CloudProviders[providerName];
-                if (!provider) {
-                  return true;
-                }
-                return {
-                  label: <div>{provider.tabhead()}</div>,
-                  key: providerName,
-                  children: provider.tab(props),
-                };
-              }),
-              {
-                label: <span className="addCloudProviderTab">{t('Select Cloud Providers')}</span>,
-                key: ADD_CLOUD_PROVIDER_TAB_KEY,
-              },
-            ]}
-          />
-          <AdvancedServerParams {...props} />
-          <Tabs
-            activeKey={tabKey}
-            onChange={switchTabs}
-            styles={{
-              root: {marginTop: '8px', marginBottom: '1em'},
-              header: {margin: '0px 0px 1em 6px'},
-              item: {padding: '10px 0px'},
-            }}
-            className={styles.builderTabsCont}
-            items={[
-              {
-                label: t('doctorTab'),
-                key: SESSION_BUILDER_TABS.DOCTOR,
-                className: styles.scrollingTab,
-                children: <Doctor {...props} />,
-              },
-              {
-                label: t('Capability Builder'),
-                key: SESSION_BUILDER_TABS.CAPS_BUILDER,
-                className: styles.scrollingTab,
-                children: <CapabilityEditor {...props} isNarrow={isNarrow} />,
-              },
-              {
-                label: (
-                  <span>
-                    {t('Saved Capability Sets')} <Badge count={savedSessions.length} offset={[0, -3]} />
-                  </span>
-                ),
-                key: SESSION_BUILDER_TABS.SAVED_CAPS,
-                className: styles.scrollingTab,
-                children: <SavedCapabilitySets {...props} isNarrow={isNarrow} />,
-              },
-              {
-                label: t('attachToSession'),
-                key: SESSION_BUILDER_TABS.ATTACH_TO_SESSION,
-                className: styles.scrollingTab,
-                children: <AttachToSession loadNewSession={loadNewSession} {...props} />,
-              },
-            ]}
-          />
-          <Divider />
-          <div className={styles.sessionFooter}>
-            <Button
-              type="link"
-              className={styles.desiredCapsLink}
-              icon={<IconLink size={16} />}
-              onClick={() => openLink(LINKS.CAPS_DOCS)}
-            >
-              {t('desiredCapabilitiesDocumentation')}
-            </Button>
-            {!isAttaching && (
-              <Space.Compact>
-                {capsUUID && (
-                  <Button
-                    onClick={() => saveSession({server, serverType, caps, name: capsName, uuid: capsUUID})}
-                    disabled={!isCapsDirty || isEditingDesiredCaps}
-                  >
-                    {t('Save')}
-                  </Button>
-                )}
-                <Button onClick={requestSaveAsModal} disabled={isEditingDesiredCaps}>
-                  {t('saveAs')}
-                </Button>
-              </Space.Compact>
-            )}
-            {!isAttaching && (
+        {!advanced ? (
+          <div className={styles.quickPage}>
+            <QuickStart
+              loadNewSession={loadNewSession}
+              applyLocalServer={props.applyLocalServer}
+              onAdvanced={() => setAdvanced(true)}
+            />
+          </div>
+        ) : (
+          <div className={styles.sessionContainer}>
+            {backend.doctor && (
               <Button
-                type={BUTTON.PRIMARY}
-                id="btnStartSession"
-                disabled={isEditingDesiredCaps}
-                onClick={() => loadNewSession(caps)}
-                className={styles.startSessionBtn}
+                type="link"
+                icon={<IconArrowLeft size={16} />}
+                className={styles.backToQuick}
+                onClick={() => setAdvanced(false)}
               >
-                {t('startSession')}
+                {t('quickBack')}
               </Button>
             )}
+            <Tabs
+              activeKey={serverType}
+              onChange={(tab) => handleSelectServerTab(tab)}
+              styles={{root: {paddingBottom: '8px'}, header: {margin: '0px 0px 1em 6px'}, item: {padding: '10px 0px'}}}
+              items={[
+                {
+                  label: t('Appium Server'),
+                  key: SERVER_TYPES.REMOTE,
+                  children: <ServerTabCustom {...props} />,
+                },
+                ...visibleProviders.map((providerName) => {
+                  const provider = CloudProviders[providerName];
+                  if (!provider) {
+                    return true;
+                  }
+                  return {
+                    label: <div>{provider.tabhead()}</div>,
+                    key: providerName,
+                    children: provider.tab(props),
+                  };
+                }),
+                {
+                  label: <span className="addCloudProviderTab">{t('Select Cloud Providers')}</span>,
+                  key: ADD_CLOUD_PROVIDER_TAB_KEY,
+                },
+              ]}
+            />
+            <AdvancedServerParams {...props} />
+            <Tabs
+              activeKey={tabKey}
+              onChange={switchTabs}
+              styles={{
+                root: {marginTop: '8px', marginBottom: '1em'},
+                header: {margin: '0px 0px 1em 6px'},
+                item: {padding: '10px 0px'},
+              }}
+              className={styles.builderTabsCont}
+              items={[
+                {
+                  label: t('doctorTab'),
+                  key: SESSION_BUILDER_TABS.DOCTOR,
+                  className: styles.scrollingTab,
+                  children: <Doctor {...props} />,
+                },
+                {
+                  label: t('Capability Builder'),
+                  key: SESSION_BUILDER_TABS.CAPS_BUILDER,
+                  className: styles.scrollingTab,
+                  children: <CapabilityEditor {...props} isNarrow={isNarrow} />,
+                },
+                {
+                  label: (
+                    <span>
+                      {t('Saved Capability Sets')} <Badge count={savedSessions.length} offset={[0, -3]} />
+                    </span>
+                  ),
+                  key: SESSION_BUILDER_TABS.SAVED_CAPS,
+                  className: styles.scrollingTab,
+                  children: <SavedCapabilitySets {...props} isNarrow={isNarrow} />,
+                },
+                {
+                  label: t('attachToSession'),
+                  key: SESSION_BUILDER_TABS.ATTACH_TO_SESSION,
+                  className: styles.scrollingTab,
+                  children: <AttachToSession loadNewSession={loadNewSession} {...props} />,
+                },
+              ]}
+            />
+            <Divider />
+            <div className={styles.sessionFooter}>
+              <Button
+                type="link"
+                className={styles.desiredCapsLink}
+                icon={<IconLink size={16} />}
+                onClick={() => openLink(LINKS.CAPS_DOCS)}
+              >
+                {t('desiredCapabilitiesDocumentation')}
+              </Button>
+              {!isAttaching && (
+                <Space.Compact>
+                  {capsUUID && (
+                    <Button
+                      onClick={() => saveSession({server, serverType, caps, name: capsName, uuid: capsUUID})}
+                      disabled={!isCapsDirty || isEditingDesiredCaps}
+                    >
+                      {t('Save')}
+                    </Button>
+                  )}
+                  <Button onClick={requestSaveAsModal} disabled={isEditingDesiredCaps}>
+                    {t('saveAs')}
+                  </Button>
+                </Space.Compact>
+              )}
+              {!isAttaching && (
+                <Button
+                  type={BUTTON.PRIMARY}
+                  id="btnStartSession"
+                  disabled={isEditingDesiredCaps}
+                  onClick={() => loadNewSession(caps)}
+                  className={styles.startSessionBtn}
+                >
+                  {t('startSession')}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </Spin>
     </div>,
     <CloudProviderSelector key="CloudProviderSelector" {...props} />,

@@ -4,8 +4,8 @@ import settings from 'electron-settings';
 import i18n from 'i18next';
 import i18NextBackend from 'i18next-fs-backend';
 
-import {commonI18NextOptions, fallbackLng} from '../../common/shared/i18next.config.js';
-import {PREFERRED_LANGUAGE} from '../../common/shared/setting-defs.js';
+import {commonI18NextOptions} from '../../common/shared/i18next.config.js';
+import {DEFAULT_LANGUAGE, PREFERRED_LANGUAGE} from '../../common/shared/setting-defs.js';
 
 const localesPath =
   process.env.NODE_ENV === 'development'
@@ -15,7 +15,7 @@ const translationFilePath = join(localesPath, '{{lng}}', '{{ns}}.json');
 
 const i18nextOptions = {
   ...commonI18NextOptions,
-  lng: settings.getSync(PREFERRED_LANGUAGE) || fallbackLng,
+  lng: settings.getSync(PREFERRED_LANGUAGE) || DEFAULT_LANGUAGE,
   backend: {
     loadPath: translationFilePath,
     addPath: translationFilePath,

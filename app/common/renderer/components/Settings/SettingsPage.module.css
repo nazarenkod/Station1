@@ -1,0 +1,191 @@
+.page {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.layout {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+.nav {
+  flex: 1 1 200px;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  margin: 0 0 12px;
+  padding: 0 10px;
+  font-size: var(--vi-text-2xl);
+  font-weight: 700;
+  letter-spacing: var(--vi-tracking-display);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--vi-radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--vi-text-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.navItem:hover {
+  background: var(--vi-hover);
+  color: var(--vi-text);
+}
+
+.navItemActive,
+.navItemActive:hover {
+  background: var(--vi-accent-bg);
+  color: var(--vi-text);
+  font-weight: 500;
+  box-shadow: inset 2px 0 0 var(--vi-violet);
+}
+
+.content {
+  flex: 999 1 560px;
+  min-width: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--vi-text-xl);
+  font-weight: 600;
+  letter-spacing: var(--vi-tracking-tight);
+}
+
+.sectionText {
+  margin: 4px 0 0;
+  color: var(--vi-text-3);
+}
+
+.vault {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: var(--vi-radius-md);
+  background: var(--vi-accent-bg);
+  border: 1px solid var(--vi-accent-ring);
+  color: var(--vi-text);
+}
+
+.vault svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--vi-violet);
+}
+
+.card {
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--vi-border);
+  border-radius: var(--vi-radius-lg);
+  box-shadow: var(--vi-shadow-card);
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--vi-hairline);
+}
+
+.logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logo_jira {
+  background: var(--vi-info-bg);
+  color: var(--vi-info-fg);
+}
+
+.logo_gitlab {
+  background: var(--vi-warn-bg);
+  color: #ea580c;
+}
+
+.logo_ai {
+  background: var(--vi-accent-bg);
+  color: var(--vi-accent-fg);
+}
+
+.cardTitleBlock {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardTitle {
+  font-size: var(--vi-text-md);
+  font-weight: 600;
+  letter-spacing: var(--vi-tracking-tight);
+}
+
+.cardPurpose {
+  font-size: var(--vi-text-sm);
+  color: var(--vi-text-3);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--vi-radius-pill);
+  font-size: var(--vi-text-sm);
+  font-weight: 500;
+  background: var(--vi-off-bg);
+  color: var(--vi-off-fg);
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 4px;
+  background: currentColor;
+}
+
+.statusOn {
+  background: var(--vi-ok-bg);
+  color: var(--vi-ok-fg);
+}
+
+.cardBody {
+  padding: 18px 20px 4px;
+}
+
+.cardFoot {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px 18px;
+}

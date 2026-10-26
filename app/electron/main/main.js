@@ -1,11 +1,18 @@
+// first: where the app keeps its data, before any module reads settings
+import './identity.js';
 import {app} from 'electron';
 import debug from 'electron-debug';
 
 import {installExtensions} from './debug.js';
 import {isDev, setupIPCListeners} from './helpers.js';
 import {setupAiIPC} from './ipc/ai.js';
+import {setupBuildsIPC} from './ipc/builds.js';
+import {setupDeviceIPC} from './ipc/device.js';
 import {setupDoctorIPC} from './ipc/doctor.js';
+import {setupGitLabIPC} from './ipc/gitlab.js';
 import {setupJiraIPC} from './ipc/jira.js';
+import {setupLogsIPC} from './ipc/logs.js';
+import {setupProxyIPC} from './ipc/proxy.js';
 import {setupMainWindow} from './windows.js';
 
 // Used when opening Inspector through an .appiumsession file (Windows/Linux).
@@ -38,5 +45,10 @@ app.on('ready', async () => {
   setupDoctorIPC();
   setupJiraIPC();
   setupAiIPC();
+  setupGitLabIPC();
+  setupDeviceIPC();
+  setupBuildsIPC();
+  setupLogsIPC();
+  setupProxyIPC();
   await setupMainWindow();
 });
