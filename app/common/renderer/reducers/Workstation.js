@@ -53,7 +53,12 @@ export default function workstation(state = INITIAL_STATE, action) {
     case SET_WORKSTATION_APPS:
       return {...state, apps: action.apps, appsLoading: action.loading, appsError: action.error ?? null};
     case SET_WORKSTATION_APP:
-      return {...state, app: action.app, recentApps: action.recentApps};
+      return {
+        ...state,
+        app: action.app,
+        recentApps: action.recentApps,
+        appByDevice: action.appByDevice ?? state.appByDevice,
+      };
     case SET_WORKSTATION_APPIUM:
       return {...state, appium: action.appium ?? {status: 'stopped'}};
     case SET_WORKSTATION_MY_BUGS:

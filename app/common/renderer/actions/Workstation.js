@@ -156,20 +156,19 @@ export function watchDevices() {
 
 export function selectDevice(deviceId) {
   return async (dispatch, getState) => {
-    const {deviceId: previous, app, appByDevice} = getState().workstation;
-    // the app stays with the device it was used on, for when that device comes back
-    const remembered = previous && app ? {...appByDevice, [previous]: app} : appByDevice;
-    dispatch({type: SET_WORKSTATION_DEVICE, deviceId, appByDevice: remembered});
+    dispatch({type: SET_WORKSTATION_DEVICE, deviceId});
     await persist(getState);
-    await dispatch(refreshApps({deviceChanged: !!previous && previous !== deviceId}));
+    await dispatch(refreshApps());
   };
 }
 
 /**
- * The apps installed on the active device. When no app is chosen yet, the one
- * on screen becomes the active app.
+ * The apps installed on the active device, and the app to work with there:
+ * one the device does not have (left from another device, or from the last
+ * run) gives way to one it has, unless it was picked for this very device
+ * (to install it, say).
  */
-export function refreshApps({deviceChanged = false} = {}) {
+export function refreshApps() {
   return async (dispatch, getState) => {
     const device = activeDevice(getState().workstation);
     if (!backend.device || !isDeviceRunning(device)) {
@@ -184,45 +183,49 @@ export function refreshApps({deviceChanged = false} = {}) {
     });
     const [listed, onScreen] = await Promise.all([
       backend.device.apps(device).catch((error) => ({apps: [], error: {reason: 'failed', message: error.message}})),
-      getState().workstation.app ? null : backend.device.foreground(device).catch(() => null),
+      backend.device.foreground(device).catch(() => null),
     ]);
     dispatch({type: SET_WORKSTATION_APPS, apps: listed.apps, loading: false, error: listed.error});
-    // on another device the app follows what it has installed, when that could be read
-    if (deviceChanged && !listed.error && listed.apps.length) {
-      const {app, appByDevice, recentApps} = getState().workstation;
+
+    const {app, appByDevice, recentApps} = getState().workstation;
+    // what an unreadable list says about the app is nothing: keep it
+    const readable = !listed.error && listed.apps.length > 0;
+    const installed = !!app && listed.apps.some((entry) => entry.id === app.id);
+    const pickedHere = device.id in appByDevice && (appByDevice[device.id]?.id ?? null) === (app?.id ?? null);
+    if (readable && !installed && !pickedHere) {
       const next = appForDevice({
         installed: listed.apps,
         remembered: appByDevice[device.id],
         current: app,
         recentApps,
-        onScreen: await backend.device.foreground(device).catch(() => null),
+        onScreen,
       });
       if (next?.id !== app?.id) {
         await dispatch(selectApp(next?.id ?? null, next?.name ? next : null));
         return;
       }
     }
-    if (onScreen && !getState().workstation.app) {
-      await dispatch(selectApp(onScreen));
-    } else {
-      await dispatch(refreshAppVersion());
-    }
+    await dispatch(refreshAppVersion());
   };
 }
 
 export function selectApp(appId, known = null) {
   return async (dispatch, getState) => {
     const id = appId?.trim();
+    const {apps, recentApps, deviceId, appByDevice} = getState().workstation;
     if (!id) {
-      dispatch({type: SET_WORKSTATION_APP, app: null, recentApps: getState().workstation.recentApps});
+      // no app is a choice too: this device keeps it until another app is picked
+      const cleared = deviceId ? {...appByDevice, [deviceId]: null} : appByDevice;
+      dispatch({type: SET_WORKSTATION_APP, app: null, recentApps, appByDevice: cleared});
       await persist(getState);
       return;
     }
-    const {apps, recentApps} = getState().workstation;
     const listed = known ?? apps.find((app) => app.id === id);
     const app = {id, name: listed?.name ?? id, version: listed?.version ?? '', build: listed?.build ?? ''};
     const recent = [app, ...recentApps.filter((entry) => entry.id !== id)].slice(0, MAX_RECENT_APPS);
-    dispatch({type: SET_WORKSTATION_APP, app, recentApps: recent});
+    // the app is remembered with the device it is used on, for when that device comes back
+    const remembered = deviceId ? {...appByDevice, [deviceId]: app} : appByDevice;
+    dispatch({type: SET_WORKSTATION_APP, app, recentApps: recent, appByDevice: remembered});
     await persist(getState);
     await dispatch(refreshAppVersion());
   };
