@@ -29,3 +29,14 @@ describe('quick start capabilities', function () {
     expect(quickCapabilities(emulator, null, {keepData: true})).not.toHaveProperty('appium:appWaitActivity');
   });
 });
+
+describe('quick start on a real iPhone', function () {
+  const phone = {platformName: 'iOS', kind: 'ios-device', capabilities: {platformName: 'iOS', 'appium:udid': 'X'}};
+
+  it('signs WebDriverAgent with what was found, unless the device says otherwise', function () {
+    const signing = {'appium:xcodeOrgId': 'TEAM123456', 'appium:showXcodeLog': true};
+    expect(quickCapabilities(phone, null, {keepData: true, signing})).toMatchObject(signing);
+    const own = {...phone, capabilities: {...phone.capabilities, 'appium:xcodeOrgId': 'OWN'}};
+    expect(quickCapabilities(own, null, {keepData: true, signing})['appium:xcodeOrgId']).toBe('OWN');
+  });
+});

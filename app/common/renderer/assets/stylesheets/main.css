@@ -574,3 +574,8 @@ kbd {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* notifications may explain in a few lines: keep their line breaks */
+.ant-notification-notice-description {
+  white-space: pre-line;
+}

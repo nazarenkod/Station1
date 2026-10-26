@@ -67,6 +67,7 @@ window.electronIPC = {
     apps: async (device) => await ipcRenderer.invoke('device:apps', device),
     foreground: async (device) => await ipcRenderer.invoke('device:foreground', device),
     appVersion: async (device, appId) => await ipcRenderer.invoke('device:appVersion', device, appId),
+    signingTeams: async () => await ipcRenderer.invoke('device:signingTeams'),
   },
   builds: {
     // a dropped file only tells its path through webUtils

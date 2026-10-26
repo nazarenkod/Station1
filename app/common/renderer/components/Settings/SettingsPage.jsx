@@ -2,6 +2,7 @@ import {IconBrandGitlab, IconLock, IconSparkles, IconTicket} from '@tabler/icons
 import {Alert, App, Button, Form} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import {useLocation} from 'react-router';
 
 import {backend} from '../../polyfills.js';
 import {AiSettingsFields, useAiSettings} from '../AiSettings/AiSettingsModal.jsx';
@@ -10,10 +11,11 @@ import {JiraSettingsFields, useJiraSettings} from '../Jira/JiraSettingsModal.jsx
 import ChangeLanguage from '../SessionBuilder/AppSettings/ChangeLanguage.jsx';
 import ToggleTheme from '../SessionBuilder/AppSettings/ToggleTheme.jsx';
 import {GitLabSettingsFields, useGitLabSettings} from './GitLabSettings.jsx';
+import IosSigningSettings from './IosSigningSettings.jsx';
 
 import styles from './SettingsPage.module.css';
 
-const SECTIONS = ['integrations', 'general'];
+const SECTIONS = ['integrations', 'devices', 'general'];
 
 /**
  * One outside service: what it is for, whether it is connected, its fields.
@@ -132,6 +134,21 @@ const Integrations = () => {
   );
 };
 
+const Devices = () => {
+  const {t} = useTranslation();
+  return (
+    <Stagger className={styles.section}>
+      <StaggerItem>
+        <h2 className={styles.sectionTitle}>{t('settingsDevices')}</h2>
+        <p className={styles.sectionText}>{t('settingsDevicesText')}</p>
+      </StaggerItem>
+      <StaggerItem>
+        <IosSigningSettings />
+      </StaggerItem>
+    </Stagger>
+  );
+};
+
 const General = () => {
   const {t} = useTranslation();
   return (
@@ -151,12 +168,17 @@ const General = () => {
   );
 };
 
+const PAGES = {integrations: Integrations, devices: Devices, general: General};
+
 /**
  * The workstation's settings: outside services and their keys, language and look.
  */
 const SettingsPage = () => {
   const {t} = useTranslation();
-  const [section, setSection] = useState('integrations');
+  // another screen can open a section of its own: the session start opens the devices
+  const {state} = useLocation();
+  const [section, setSection] = useState(SECTIONS.includes(state?.section) ? state.section : 'integrations');
+  const Page = PAGES[section];
 
   return (
     <div className={styles.page}>
@@ -174,7 +196,9 @@ const SettingsPage = () => {
             </button>
           ))}
         </nav>
-        <div className={styles.content}>{section === 'integrations' ? <Integrations /> : <General />}</div>
+        <div className={styles.content}>
+          <Page />
+        </div>
       </div>
     </div>
   );

@@ -137,6 +137,11 @@
   color: var(--vi-accent-fg);
 }
 
+.logo_device {
+  background: var(--vi-info-bg, var(--vi-accent-bg));
+  color: var(--vi-info-fg, var(--vi-accent-fg));
+}
+
 .cardTitleBlock {
   flex: 1 1 220px;
   min-width: 0;
@@ -188,4 +193,8 @@
   display: flex;
   gap: 8px;
   padding: 12px 20px 18px;
+}
+
+.cardAlert {
+  margin-bottom: 16px;
 }

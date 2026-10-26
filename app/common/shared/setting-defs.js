@@ -33,6 +33,8 @@ export const BUILDS_HISTORY = 'BUILDS_HISTORY';
 export const LOG_RULES_CONFIG = 'LOG_RULES_CONFIG';
 // the proxy: its port, rewrite rules, traffic rules and modes
 export const PROXY_CONFIG = 'PROXY_CONFIG';
+// how WebDriverAgent is signed for a real iPhone: the development team and its bundle id
+export const IOS_SIGNING = 'IOS_SIGNING';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -67,5 +69,6 @@ export const DEFAULT_SETTINGS = {
   [WORKSTATION]: {deviceId: null, app: null, recentApps: []},
   [BUILDS_HISTORY]: [],
   [LOG_RULES_CONFIG]: {overrides: {}, custom: []},
+  [IOS_SIGNING]: {teamId: null, bundleId: ''},
   [PROXY_CONFIG]: {port: 8890, mockRules: [], trafficRules: {}, mocksEnabled: true, breakpointsEnabled: true},
 };

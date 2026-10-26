@@ -3,9 +3,12 @@ import {Alert, Button, Checkbox} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
+import {useNavigate} from 'react-router';
 
+import {pickSigningTeam, wdaSigningCapabilities} from '../../../shared/ios/signing.js';
+import {IOS_SIGNING} from '../../../shared/setting-defs.js';
 import {activeDevice, isDeviceRunning, selectDevice} from '../../actions/Workstation.js';
-import {backend} from '../../polyfills.js';
+import {backend, getSetting} from '../../polyfills.js';
 import {getRandomId} from '../../utils/other.js';
 import {appsProblemText, appVersionLabel} from '../Workstation/AppPicker.jsx';
 import {deviceSubtitle} from '../Workstation/DevicePicker.jsx';
@@ -19,10 +22,25 @@ const UNUSABLE = ['broken', 'offline', 'unauthorized', 'disconnected'];
 const isIos = (device) => /ios/i.test(device?.platformName ?? '');
 
 /**
+ * How WebDriverAgent gets signed for a real iPhone, or why it cannot be:
+ * the team chosen in the settings, else the only one this Mac has.
+ */
+async function iosSigning() {
+  const saved = (await getSetting(IOS_SIGNING)) ?? {};
+  const teams = (await backend.device?.signingTeams?.().catch(() => [])) ?? [];
+  const team = pickSigningTeam(teams, saved.teamId);
+  if (!team) {
+    return {problem: teams.length ? 'quickSigningPickTeam' : 'quickSigningNoTeam', count: teams.length};
+  }
+  return {caps: wdaSigningCapabilities({teamId: team.teamId, bundleId: saved.bundleId})};
+}
+
+/**
  * Capabilities for the device and app picked in the title bar.
  */
-export function quickCapabilities(device, app, {keepData}) {
-  const caps = {...device.capabilities};
+export function quickCapabilities(device, app, {keepData, signing = null}) {
+  // what the device's own capabilities say about signing wins over what was found
+  const caps = {...signing, ...device.capabilities};
   if (app?.id) {
     caps[isIos(device) ? 'appium:bundleId' : 'appium:appPackage'] = app.id;
     // apps that launch through an activity alias (a switchable icon) open another activity than
@@ -57,6 +75,7 @@ const QuickStart = ({loadNewSession, applyLocalServer, onAdvanced}) => {
   const [keepData, setKeepData] = useState(true);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const serverRunning = appium?.status === 'running';
   const usable = device && !UNUSABLE.includes(device.state);
@@ -68,6 +87,15 @@ const QuickStart = ({loadNewSession, applyLocalServer, onAdvanced}) => {
     if (app?.installed === false) {
       setError(t('quickAppMissing', {app: app.id, device: device.name}));
       return;
+    }
+    let signing = null;
+    if (device.kind === 'ios-device') {
+      const found = await iosSigning();
+      if (found.problem) {
+        setError({text: t(found.problem, {count: found.count}), settings: true});
+        return;
+      }
+      signing = found.caps;
     }
     try {
       let port = serverRunning ? appium.port : null;
@@ -85,7 +113,7 @@ const QuickStart = ({loadNewSession, applyLocalServer, onAdvanced}) => {
       }
       await applyLocalServer({hostname: '127.0.0.1', port, path: ''});
       setBusy('session');
-      await loadNewSession(toCapList(quickCapabilities(device, app, {keepData})));
+      await loadNewSession(toCapList(quickCapabilities(device, app, {keepData, signing})));
     } finally {
       setBusy(null);
     }
@@ -165,7 +193,20 @@ const QuickStart = ({loadNewSession, applyLocalServer, onAdvanced}) => {
         </div>
       )}
 
-      {error && <Alert type="error" showIcon title={error} />}
+      {error && (
+        <Alert
+          type="error"
+          showIcon
+          title={error.text ?? error}
+          action={
+            error.settings && (
+              <Button size="small" onClick={() => navigate('/settings', {state: {section: 'devices'}})}>
+                {t('quickOpenSettings')}
+              </Button>
+            )
+          }
+        />
+      )}
 
       <div className={styles.quickFoot}>
         <Checkbox checked={keepData} onChange={(e) => setKeepData(e.target.checked)}>

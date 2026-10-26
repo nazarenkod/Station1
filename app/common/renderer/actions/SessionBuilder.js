@@ -178,11 +178,26 @@ export function showError(e, params = {methodName: null, secs: 5, url: null}) {
   }
 
   log.error(errMessage);
+  const hint = typeof errMessage === 'string' ? sessionErrorHint(errMessage) : null;
   notification.error({
-    title: methodName ? i18n.t('callToMethodFailed', {methodName}) : i18n.t('Error'),
-    description: errMessage,
+    title: hint ? i18n.t(`${hint}Title`) : methodName ? i18n.t('callToMethodFailed', {methodName}) : i18n.t('Error'),
+    description: hint ? `${i18n.t(`${hint}Text`)}\n\n${errMessage}` : errMessage,
     duration: secs,
   });
+}
+
+/**
+ * What a few well-known session failures mean in plain words, as the key of
+ * their title and text; null for the others.
+ */
+export function sessionErrorHint(message) {
+  if (/Unable to launch WebDriverAgent|xcodebuild failed with code 65/i.test(message)) {
+    return 'sessionHintWda';
+  }
+  if (/Unable to resolve the launchable activity|No activity found/i.test(message)) {
+    return 'sessionHintNoActivity';
+  }
+  return null;
 }
 
 /**
