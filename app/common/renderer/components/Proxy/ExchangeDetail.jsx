@@ -304,13 +304,31 @@ const ExchangeDetail = ({exchange, pause, mockRuleNames, onClose}) => {
 
   const reasons = [
     flags.includes('error') && {flag: 'error', text: t('proxyWhy_error', {status: exchange.status})},
-    flags.includes('slow') && {flag: 'slow', text: t('proxyWhy_slow', {duration: formatDuration(exchange.durationMs)})},
+    flags.includes('slow') && {
+      flag: 'slow',
+      text: exchange.slowLimit?.rule
+        ? t('proxyWhy_slowRule', {
+            duration: formatDuration(exchange.durationMs),
+            limit: formatDuration(exchange.slowLimit.ms),
+            rule: exchange.slowLimit.rule,
+          })
+        : exchange.slowLimit
+          ? t('proxyWhy_slowDefault', {
+              duration: formatDuration(exchange.durationMs),
+              limit: formatDuration(exchange.slowLimit.ms),
+            })
+          : t('proxyWhy_slow', {duration: formatDuration(exchange.durationMs)}),
+    },
     // the first of the repeats has nothing before it: it was repeated later
     flags.includes('dupe') && {
       flag: 'dupe',
       text: exchange.duplicateOf?.length
         ? t('proxyWhy_dupe', {count: exchange.duplicateOf.length + 1})
         : t('proxyWhy_dupeFirst'),
+    },
+    flags.includes('contract') && {
+      flag: 'contract',
+      text: t('proxyWhy_contract', {missing: (exchange.missing ?? []).join(', ')}),
     },
     flags.includes('mock') && {
       flag: 'mock',

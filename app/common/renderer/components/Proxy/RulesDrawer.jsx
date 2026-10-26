@@ -1,5 +1,5 @@
 import {IconPlus, IconTrash} from '@tabler/icons-react';
-import {App, Button, Drawer, Input, InputNumber, Switch, Tabs} from 'antd';
+import {App, Button, Drawer, Input, InputNumber, Segmented, Switch, Tabs} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
@@ -10,6 +10,11 @@ import RuleEditor, {ACTION_ICONS, ruleName} from './RuleEditor.jsx';
 import styles from './Proxy.module.css';
 
 const lines = (list) => (list ?? []).join('\n');
+const toNames = (text) =>
+  text
+    .split(/[\s,]+/)
+    .map((name) => name.trim())
+    .filter(Boolean);
 const toList = (text) =>
   text
     .split('\n')
@@ -124,7 +129,14 @@ const TrafficRules = ({config}) => {
     dupEnabled: merged.duplicates.enabled,
     windowMs: merged.duplicates.windowMs,
     minRepeats: merged.duplicates.minRepeats,
-    dupIgnore: lines(merged.duplicates.ignore),
+    query: merged.duplicates.query,
+    ignoreParams: merged.duplicates.ignoreParams.join(', '),
+    body: merged.duplicates.body,
+    ignoreFields: merged.duplicates.ignoreFields.join(', '),
+    // the old "never a duplicate" patterns become ignore lines of the expected repeats
+    expected: lines([...merged.duplicates.expected, ...merged.duplicates.ignore.map((pattern) => `${pattern} ignore`)]),
+    contractEnabled: merged.contract.enabled,
+    required: lines(merged.contract.required),
     slowEnabled: merged.slow.enabled,
     defaultMs: merged.slow.defaultMs,
     overrides: lines(merged.slow.overrides),
@@ -142,8 +154,14 @@ const TrafficRules = ({config}) => {
           enabled: draft.dupEnabled,
           windowMs: draft.windowMs,
           minRepeats: draft.minRepeats,
-          ignore: toList(draft.dupIgnore),
+          query: draft.query,
+          ignoreParams: toNames(draft.ignoreParams),
+          body: draft.body,
+          ignoreFields: toNames(draft.ignoreFields),
+          expected: toList(draft.expected),
+          ignore: [],
         },
+        contract: {enabled: draft.contractEnabled, required: toList(draft.required)},
         slow: {enabled: draft.slowEnabled, defaultMs: draft.defaultMs, overrides: toList(draft.overrides)},
         errors: {enabled: draft.errEnabled, except: toList(draft.except)},
         ignore: {hosts: toList(draft.hosts), paths: toList(draft.paths)},
@@ -169,16 +187,65 @@ const TrafficRules = ({config}) => {
             <InputNumber value={draft.minRepeats} onChange={set('minRepeats')} min={2} max={20} />
           </label>
         </div>
+        <div className={styles.fieldRow}>
+          <label className={styles.field}>
+            <span>{t('proxyDupQuery')}</span>
+            <Segmented
+              size="small"
+              value={draft.query}
+              onChange={set('query')}
+              options={[
+                {value: 'all', label: t('proxyDupCompare')},
+                {value: 'none', label: t('proxyDupSkip')},
+              ]}
+            />
+          </label>
+          <label className={styles.field}>
+            <span>{t('proxyDupBody')}</span>
+            <Segmented
+              size="small"
+              value={draft.body}
+              onChange={set('body')}
+              options={[
+                {value: 'all', label: t('proxyDupCompare')},
+                {value: 'none', label: t('proxyDupSkip')},
+              ]}
+            />
+          </label>
+        </div>
+        {draft.query === 'all' && (
+          <label className={styles.field}>
+            <span>{t('proxyDupIgnoreParams')}</span>
+            <Input
+              value={draft.ignoreParams}
+              onChange={set('ignoreParams')}
+              className={styles.monoInput}
+              placeholder="ts, nonce"
+            />
+          </label>
+        )}
+        {draft.body === 'all' && (
+          <label className={styles.field}>
+            <span>{t('proxyDupIgnoreFields')}</span>
+            <Input
+              value={draft.ignoreFields}
+              onChange={set('ignoreFields')}
+              className={styles.monoInput}
+              placeholder="requestId, meta.sentAt"
+            />
+          </label>
+        )}
         <label className={styles.field}>
-          <span>{t('proxyDupIgnore')}</span>
+          <span>{t('proxyDupExpected')}</span>
           <Input.TextArea
-            value={draft.dupIgnore}
-            onChange={set('dupIgnore')}
-            autoSize={{minRows: 2}}
+            value={draft.expected}
+            onChange={set('expected')}
+            autoSize={{minRows: 3}}
             className={styles.monoInput}
-            placeholder="*/ping"
+            placeholder={'GET */orders/*/status poll 1000\n*/profile allow 3 in 30s\n*/ping ignore'}
           />
         </label>
+        <p className={styles.ruleHint}>{t('proxyDupExpectedHint')}</p>
       </section>
       <section className={styles.ruleBlock}>
         <div className={styles.modeRow}>
@@ -215,6 +282,25 @@ const TrafficRules = ({config}) => {
             placeholder="GET */templates/* 404"
           />
         </label>
+      </section>
+      <section className={styles.ruleBlock}>
+        <div className={styles.modeRow}>
+          <span className={styles.ruleName}>{t('proxyRuleContract')}</span>
+          <Switch checked={draft.contractEnabled} onChange={set('contractEnabled')} />
+        </div>
+        <label className={styles.field}>
+          <span>{t('proxyContractRequired')}</span>
+          <Input.TextArea
+            value={draft.required}
+            onChange={set('required')}
+            autoSize={{minRows: 3}}
+            className={styles.monoInput}
+            placeholder={
+              '*/api/* header:Authorization\nPOST */payments/* header:X-Request-Id\nGET */profile response.body:data.user.id'
+            }
+          />
+        </label>
+        <p className={styles.ruleHint}>{t('proxyContractHint')}</p>
       </section>
       <section className={styles.ruleBlock}>
         <span className={styles.ruleName}>{t('proxyRuleIgnore')}</span>

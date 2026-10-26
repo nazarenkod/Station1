@@ -69,7 +69,7 @@ const caPage = (
 /**
  * The HTTP(S) proxy of the workstation: every request and response the
  * device makes through it, rewrite rules, breakpoints, and the traffic
- * rules flagging errors, slow answers and duplicates.
+ * rules flagging errors, slow answers, duplicates and missing fields.
  */
 export class ProxyServer {
   constructor({dataDir, onEvent}) {
@@ -443,9 +443,11 @@ export class ProxyServer {
   }
 
   judge(exchange, recent) {
-    const {flags, findings, duplicateOf} = this.engine.check(exchange, recent);
+    const {flags, findings, duplicateOf, slowLimit, missing} = this.engine.check(exchange, recent);
     exchange.flags = [...new Set([...exchange.flags, ...flags])];
     exchange.duplicateOf = duplicateOf;
+    exchange.slowLimit = slowLimit;
+    exchange.missing = missing;
     // the earlier copies of a duplicate are duplicates too
     for (const seq of duplicateOf) {
       const other = [...this.exchanges.values()].find((candidate) => candidate.seq === seq);

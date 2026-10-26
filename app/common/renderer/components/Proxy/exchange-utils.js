@@ -86,7 +86,7 @@ export const statusTone = (exchange) => {
   return exchange.status >= 300 ? 'redirect' : 'ok';
 };
 
-export const FILTERS = ['all', 'error', 'slow', 'dupe', 'mock', 'paused'];
+export const FILTERS = ['all', 'error', 'slow', 'dupe', 'contract', 'mock', 'paused'];
 
 export function matchesFilter(exchange, filter) {
   if (filter === 'all') {

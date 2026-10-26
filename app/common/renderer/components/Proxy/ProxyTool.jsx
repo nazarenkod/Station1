@@ -43,7 +43,7 @@ import styles from './Proxy.module.css';
 
 const ROW_HEIGHT = 30;
 const OVERSCAN = 15;
-const FLAG_ORDER = ['paused', 'held', 'error', 'slow', 'dupe', 'mock', 'replay', 'ignored'];
+const FLAG_ORDER = ['paused', 'held', 'error', 'slow', 'dupe', 'contract', 'mock', 'replay', 'ignored'];
 
 // how the traffic was last shown, for when the tool is opened again in this run
 const memory = {view: 'list', expanded: new Set(), hiddenHosts: new Set()};

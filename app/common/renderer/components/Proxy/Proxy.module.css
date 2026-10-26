@@ -207,6 +207,10 @@
   background: var(--vi-violet);
 }
 
+.dot_contract {
+  background: var(--vi-blue);
+}
+
 .dot_paused {
   background: var(--vi-teal);
 }
@@ -423,6 +427,11 @@
   color: var(--vi-info-fg);
 }
 
+.flag_contract {
+  background: var(--vi-danger-bg);
+  color: var(--vi-danger-fg);
+}
+
 .flag_mock {
   background: var(--vi-accent-bg);
   color: var(--vi-accent-fg);
@@ -526,6 +535,10 @@
 
 .reason_dupe {
   background: var(--vi-info-bg);
+}
+
+.reason_contract {
+  background: var(--vi-danger-bg);
 }
 
 .reason_mock {

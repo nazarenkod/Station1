@@ -147,8 +147,8 @@
 | Червоний: 4xx/5xx, обриви, тайм-аути | [proxy.traffic](proxy.traffic/spec.md) | implemented |
 | Червоний: креші, ANR, винятки в логах | [logs.stream](logs.stream/spec.md) | implemented |
 | Жовтий: повільно, поріг на ендпоінт | [proxy.traffic](proxy.traffic/spec.md) | implemented |
-| Дублі запитів | [proxy.traffic](proxy.traffic/spec.md) | implemented; що вважати дублем — draft |
-| Контракт: обовʼязкові заголовки й поля | [proxy.traffic](proxy.traffic/spec.md) | draft |
+| Дублі запитів | [proxy.traffic](proxy.traffic/spec.md) | implemented |
+| Контракт: обовʼязкові заголовки й поля | [proxy.traffic](proxy.traffic/spec.md) | implemented |
 
 Заплановано: N+1 і запити після виходу з екрана, baseline-порівняння, контракт API (OpenAPI), пояснення прапорця ШІ — v1–v2.
 
