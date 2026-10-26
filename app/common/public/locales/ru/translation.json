@@ -692,5 +692,6 @@
   "a11yProblemClassGroupBy": "Одна проблема — это",
   "a11yProblemClassAction": "Находки класса",
   "a11yProblemClassAction_report": "выводятся",
-  "a11yProblemClassAction_ignore": "игнорируются"
+  "a11yProblemClassAction_ignore": "игнорируются",
+  "quickAppMissing": "«{{app}}» не установлено на {{device}}. Выберите вверху приложение этого устройства, установите его во вкладке «Сборки» или уберите приложение, чтобы начать сессию без него."
 }

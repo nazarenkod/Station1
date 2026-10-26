@@ -21,6 +21,8 @@ const INITIAL_STATE = {
   appsError: null,
   app: null,
   recentApps: [],
+  // the app last used on each device, by device id
+  appByDevice: {},
   appium: {status: 'stopped'},
   myBugs: {status: 'idle', issues: []},
 };
@@ -28,14 +30,26 @@ const INITIAL_STATE = {
 export default function workstation(state = INITIAL_STATE, action) {
   switch (action.type) {
     case RESTORE_WORKSTATION:
-      return {...state, deviceId: action.deviceId, app: action.app, recentApps: action.recentApps};
+      return {
+        ...state,
+        deviceId: action.deviceId,
+        app: action.app,
+        recentApps: action.recentApps,
+        appByDevice: action.appByDevice ?? {},
+      };
     case SET_WORKSTATION_DEVICES_LOADING:
       // a background poll does not spin the refresh buttons
       return {...state, devicesLoading: action.loading, devicesPolling: !!action.quiet && action.loading};
     case SET_WORKSTATION_DEVICES:
       return {...state, devices: action.devices, devicesLoaded: true, devicesLoading: false, devicesPolling: false};
     case SET_WORKSTATION_DEVICE:
-      return {...state, deviceId: action.deviceId, apps: [], appsError: null};
+      return {
+        ...state,
+        deviceId: action.deviceId,
+        appByDevice: action.appByDevice ?? state.appByDevice,
+        apps: [],
+        appsError: null,
+      };
     case SET_WORKSTATION_APPS:
       return {...state, apps: action.apps, appsLoading: action.loading, appsError: action.error ?? null};
     case SET_WORKSTATION_APP:

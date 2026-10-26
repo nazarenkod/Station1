@@ -22,8 +22,33 @@ export const activeDevice = (workstation) =>
   workstation.devices.find((device) => device.id === workstation.deviceId) ?? null;
 
 async function persist(getState) {
-  const {deviceId, app, recentApps} = getState().workstation;
-  await setSetting(WORKSTATION, {deviceId, app, recentApps});
+  const {deviceId, app, recentApps, appByDevice} = getState().workstation;
+  await setSetting(WORKSTATION, {deviceId, app, recentApps, appByDevice});
+}
+
+// the home screen is on screen, not an app to work with
+const isLauncher = (appId) => /launcher|springboard/i.test(appId ?? '');
+
+/**
+ * The app to work with on a device just picked, from what it has installed:
+ * the one last used on this device, else the current one, else the most
+ * recent one there, else the one on screen. Null when none of them is
+ * installed: an app of another device (an iOS bundle on an Android emulator)
+ * would only make the session fail.
+ */
+export function appForDevice({installed, remembered, current, recentApps, onScreen}) {
+  const has = (app) => app && installed.some((entry) => entry.id === app.id);
+  const recent = recentApps.find(has);
+  if (has(remembered)) {
+    return remembered;
+  }
+  if (has(current)) {
+    return current;
+  }
+  if (recent) {
+    return recent;
+  }
+  return onScreen && !isLauncher(onScreen) ? {id: onScreen} : null;
 }
 
 /**
@@ -38,6 +63,7 @@ export function initWorkstation() {
       deviceId: saved.deviceId ?? null,
       app: saved.app ?? null,
       recentApps: saved.recentApps ?? [],
+      appByDevice: saved.appByDevice ?? {},
     });
     if (!backend.doctor) {
       return;
@@ -130,9 +156,12 @@ export function watchDevices() {
 
 export function selectDevice(deviceId) {
   return async (dispatch, getState) => {
-    dispatch({type: SET_WORKSTATION_DEVICE, deviceId});
+    const {deviceId: previous, app, appByDevice} = getState().workstation;
+    // the app stays with the device it was used on, for when that device comes back
+    const remembered = previous && app ? {...appByDevice, [previous]: app} : appByDevice;
+    dispatch({type: SET_WORKSTATION_DEVICE, deviceId, appByDevice: remembered});
     await persist(getState);
-    await dispatch(refreshApps());
+    await dispatch(refreshApps({deviceChanged: !!previous && previous !== deviceId}));
   };
 }
 
@@ -140,7 +169,7 @@ export function selectDevice(deviceId) {
  * The apps installed on the active device. When no app is chosen yet, the one
  * on screen becomes the active app.
  */
-export function refreshApps() {
+export function refreshApps({deviceChanged = false} = {}) {
   return async (dispatch, getState) => {
     const device = activeDevice(getState().workstation);
     if (!backend.device || !isDeviceRunning(device)) {
@@ -158,6 +187,21 @@ export function refreshApps() {
       getState().workstation.app ? null : backend.device.foreground(device).catch(() => null),
     ]);
     dispatch({type: SET_WORKSTATION_APPS, apps: listed.apps, loading: false, error: listed.error});
+    // on another device the app follows what it has installed, when that could be read
+    if (deviceChanged && !listed.error && listed.apps.length) {
+      const {app, appByDevice, recentApps} = getState().workstation;
+      const next = appForDevice({
+        installed: listed.apps,
+        remembered: appByDevice[device.id],
+        current: app,
+        recentApps,
+        onScreen: await backend.device.foreground(device).catch(() => null),
+      });
+      if (next?.id !== app?.id) {
+        await dispatch(selectApp(next?.id ?? null, next?.name ? next : null));
+        return;
+      }
+    }
     if (onScreen && !getState().workstation.app) {
       await dispatch(selectApp(onScreen));
     } else {

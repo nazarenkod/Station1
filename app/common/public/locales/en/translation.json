@@ -767,6 +767,7 @@
   "quickNoDeviceHint": "Pick a device at the top or start an emulator",
   "quickApp": "App",
   "quickNoApp": "No app",
+  "quickAppMissing": "“{{app}}” is not installed on {{device}}. Pick an app of this device at the top, install it in the Builds tool, or clear the app to start a session without one.",
   "quickNoAppHint": "The session opens on the device's current screen",
   "quickAppLaunch": "Launched before the session",
   "quickServer": "Server",

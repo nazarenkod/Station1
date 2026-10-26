@@ -59,6 +59,11 @@ const QuickStart = ({loadNewSession, applyLocalServer, onAdvanced}) => {
 
   const start = async () => {
     setError(null);
+    // Appium would only fail to find the app's activity or bundle: say what is wrong instead
+    if (app?.installed === false) {
+      setError(t('quickAppMissing', {app: app.id, device: device.name}));
+      return;
+    }
     try {
       let port = serverRunning ? appium.port : null;
       if (!port) {
