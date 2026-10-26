@@ -25,6 +25,11 @@ export function quickCapabilities(device, app, {keepData}) {
   const caps = {...device.capabilities};
   if (app?.id) {
     caps[isIos(device) ? 'appium:bundleId' : 'appium:appPackage'] = app.id;
+    // apps that launch through an activity alias (a switchable icon) open another activity than
+    // the one Appium resolves, which it would wait for in vain: any activity of the app will do
+    if (!isIos(device) && !caps['appium:appWaitActivity']) {
+      caps['appium:appWaitActivity'] = '*';
+    }
   }
   caps['appium:noReset'] = keepData;
   return caps;
