@@ -1,10 +1,12 @@
 import {IconCircleCheck, IconPlugConnected, IconSparkles} from '@tabler/icons-react';
-import {Alert, Button, Form, Input, InputNumber, Modal, Segmented, Select, Space, Switch} from 'antd';
+import {Alert, Button, Collapse, Form, Input, InputNumber, Modal, Segmented, Select, Space, Switch} from 'antd';
 import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {AI_CONFIG} from '../../../shared/setting-defs.js';
 import {backend, getSetting, openLink, setSetting} from '../../polyfills.js';
+
+import styles from './AiSettings.module.css';
 
 export const AI_DEFAULTS = {
   provider: 'none',
@@ -18,6 +20,9 @@ export const AI_DEFAULTS = {
     '[\\w.+-]+@[\\w-]+\\.[\\w.]+',
   ],
 };
+
+// what each built-in pattern hides, to show it by name rather than as a regular expression
+const MASK_NAMES = ['card', 'iban', 'phone', 'email'];
 
 const MODEL_HINT = {gemini: 'gemini-flash-lite-latest', kiro: 'kiro-cli default'};
 const GEMINI_KEY_PAGE = 'https://aistudio.google.com/apikey';
@@ -78,10 +83,14 @@ export function useAiSettings(active) {
  * Which model looks at screens (Gemini with an API key, or Kiro CLI with the
  * account it is signed in to), what never leaves the machine, and how much a day.
  */
-export const AiSettingsFields = ({settings}) => {
+export const AiSettingsFields = ({settings, inlineTest = true}) => {
   const {t} = useTranslation();
   const {form, key, setKey, hasKey, test, testing, runTest} = settings;
   const provider = Form.useWatch('provider', form);
+  const maskOptions = AI_DEFAULTS.maskPatterns.map((pattern, i) => ({
+    value: pattern,
+    label: t(`aiMask_${MASK_NAMES[i]}`),
+  }));
 
   return (
     <Form form={form} layout="vertical" requiredMark={false}>
@@ -97,42 +106,64 @@ export const AiSettingsFields = ({settings}) => {
       </Form.Item>
       {provider && provider !== 'none' && (
         <>
-          <Form.Item name="model" label={t('aiModel')} extra={t(`aiProviderHint_${provider}`)}>
-            <Input placeholder={MODEL_HINT[provider]} />
+          <div className={styles.row}>
+            <Form.Item name="model" label={t('aiModel')} extra={t(`aiProviderHint_${provider}`)}>
+              <Input placeholder={MODEL_HINT[provider]} />
+            </Form.Item>
+            {provider === 'gemini' && (
+              <Form.Item
+                label={t('aiKey')}
+                extra={
+                  <Button type="link" size="small" style={{padding: 0}} onClick={() => openLink(GEMINI_KEY_PAGE)}>
+                    {t('aiKeyWhere')}
+                  </Button>
+                }
+              >
+                <Input.Password
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  placeholder={hasKey ? t('jiraTokenSaved') : t('aiKeyPlaceholder')}
+                  autoComplete="new-password"
+                  prefix={hasKey && !key ? <IconCircleCheck size={16} color="#22C55E" /> : null}
+                />
+              </Form.Item>
+            )}
+          </div>
+          <Form.Item extra={t('aiConsentSwitchHint')}>
+            <label className={styles.switchRow}>
+              <Form.Item name="consent" valuePropName="checked" noStyle>
+                <Switch size="small" />
+              </Form.Item>
+              {t('aiConsentSwitch')}
+            </label>
           </Form.Item>
-          {provider === 'gemini' && (
-            <Form.Item
-              label={t('aiKey')}
-              extra={
-                <Button type="link" size="small" style={{padding: 0}} onClick={() => openLink(GEMINI_KEY_PAGE)}>
-                  {t('aiKeyWhere')}
-                </Button>
-              }
-            >
-              <Input.Password
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                placeholder={hasKey ? t('jiraTokenSaved') : t('aiKeyPlaceholder')}
-                autoComplete="new-password"
-                prefix={hasKey && !key ? <IconCircleCheck size={16} color="#22C55E" /> : null}
-              />
-            </Form.Item>
-          )}
-          <Form.Item name="maskPatterns" label={t('aiMask')} extra={t('aiMaskHint')}>
-            <Select mode="tags" tokenSeparators={['\n']} />
-          </Form.Item>
-          <Space size="large" align="start">
-            <Form.Item name="dailyLimit" label={t('aiDailyLimit')}>
-              <InputNumber min={1} max={10000} />
-            </Form.Item>
-            <Form.Item name="consent" label={t('aiConsentSwitch')} valuePropName="checked">
-              <Switch />
-            </Form.Item>
-          </Space>
+          <Collapse
+            ghost
+            size="small"
+            items={[
+              {
+                key: 'privacy',
+                label: t('aiPrivacy'),
+                forceRender: true,
+                children: (
+                  <>
+                    <Form.Item name="maskPatterns" label={t('aiMask')} extra={t('aiMaskHint')}>
+                      <Select mode="tags" tokenSeparators={['\n']} options={maskOptions} />
+                    </Form.Item>
+                    <Form.Item name="dailyLimit" label={t('aiDailyLimit')} extra={t('aiDailyLimitHint')}>
+                      <InputNumber min={1} max={10000} />
+                    </Form.Item>
+                  </>
+                ),
+              },
+            ]}
+          />
           <Space orientation="vertical" style={{width: '100%'}}>
-            <Button icon={<IconPlugConnected size={16} />} loading={testing} onClick={runTest}>
-              {t('aiTest')}
-            </Button>
+            {inlineTest && (
+              <Button icon={<IconPlugConnected size={16} />} loading={testing} onClick={runTest}>
+                {t('aiTest')}
+              </Button>
+            )}
             {test && (
               <Alert
                 type={test.ok ? 'success' : 'error'}

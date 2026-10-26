@@ -67,7 +67,7 @@ export function useGitLabSettings(active) {
 /**
  * The GitLab site, the access token and the project whose pipelines build the app.
  */
-export const GitLabSettingsFields = ({settings}) => {
+export const GitLabSettingsFields = ({settings, inlineTest = true}) => {
   const {t} = useTranslation();
   const {form, token, setToken, hasToken, test, testing, runTest} = settings;
   const url = Form.useWatch('url', form);
@@ -121,9 +121,11 @@ export const GitLabSettingsFields = ({settings}) => {
         </Form.Item>
       </Form>
       <Space orientation="vertical" style={{width: '100%'}}>
-        <Button icon={<IconPlugConnected size={16} />} loading={testing} onClick={runTest}>
-          {t('jiraTest')}
-        </Button>
+        {inlineTest && (
+          <Button icon={<IconPlugConnected size={16} />} loading={testing} onClick={runTest}>
+            {t('jiraTest')}
+          </Button>
+        )}
         {test && (
           <Alert
             type={test.ok ? 'success' : 'error'}

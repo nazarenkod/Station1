@@ -78,7 +78,7 @@ export function useJiraSettings(active) {
 /**
  * The Jira Cloud site, the account that files bugs and the bug defaults.
  */
-export const JiraSettingsFields = ({settings}) => {
+export const JiraSettingsFields = ({settings, inlineTest = true}) => {
   const {t} = useTranslation();
   const {form, hasToken, token, setToken, test, testing, runTest} = settings;
 
@@ -138,9 +138,11 @@ export const JiraSettingsFields = ({settings}) => {
         </Form.Item>
       </Form>
       <Space orientation="vertical" style={{width: '100%'}}>
-        <Button icon={<IconPlugConnected size={16} />} loading={testing} onClick={runTest}>
-          {t('jiraTest')}
-        </Button>
+        {inlineTest && (
+          <Button icon={<IconPlugConnected size={16} />} loading={testing} onClick={runTest}>
+            {t('jiraTest')}
+          </Button>
+        )}
         {test && (
           <Alert
             type={test.ok ? 'success' : 'error'}

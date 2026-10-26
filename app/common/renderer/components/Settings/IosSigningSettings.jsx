@@ -46,7 +46,7 @@ const IosSigningSettings = () => {
   const used = teams ? pickSigningTeam(teams, teamId) : null;
 
   return (
-    <section className={styles.card} aria-label={t('settingsIosTitle')}>
+    <section className={`${styles.card} ${styles.cardOpen}`} aria-label={t('settingsIosTitle')}>
       <div className={styles.cardHead}>
         <span className={`${styles.logo} ${styles.logo_device}`}>
           <IconDeviceMobile size={20} stroke={1.7} />
