@@ -101,6 +101,7 @@
   gap: 8px;
   height: 28px;
   min-width: 0;
+  overflow: hidden;
   max-width: 280px;
   padding: 0 10px;
   border-radius: var(--vi-radius-sm);
@@ -390,10 +391,31 @@
   }
 }
 
-/* narrow windows: the logo alone */
+/* narrow windows: the logo alone, tighter tabs so the device keeps its name */
 @media (max-width: 1099px) {
   .wordmark {
     display: none;
+  }
+
+  .tab {
+    gap: 6px;
+    padding: 0 9px;
+  }
+
+  .context {
+    min-width: 150px;
+  }
+}
+
+/* very narrow windows: the other tools by their dot, still read out by name */
+@media (max-width: 879px) {
+  .tab:not(.tabActive) .tabLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 

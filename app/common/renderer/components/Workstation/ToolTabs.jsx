@@ -31,6 +31,7 @@ const ToolTabs = () => {
             to={target}
             className={`${styles.tab} ${styles[`tool_${tool.key}`]} ${active ? styles.tabActive : ''}`}
             aria-current={active ? 'page' : undefined}
+            title={t(`wsTool_${tool.key}`)}
           >
             {active && (
               <motion.span

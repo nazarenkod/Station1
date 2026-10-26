@@ -4,7 +4,6 @@ import {
   IconDots,
   IconDownload,
   IconPlayerPause,
-  IconPlugConnected,
   IconPower,
   IconSearch,
   IconShieldX,
@@ -24,6 +23,7 @@ import {FILTERS, formatDuration, formatSize, hostAndPath, matchesFilter, statusT
 import ExchangeDetail from './ExchangeDetail.jsx';
 import {clearTraffic, resumePause, saveProxyConfig, startProxy, stopProxy, useProxy} from './proxy-store.js';
 import RulesDrawer from './RulesDrawer.jsx';
+import SetUpDevice from './SetUpDevice.jsx';
 
 import styles from './Proxy.module.css';
 
@@ -332,9 +332,11 @@ const ProxyTool = () => {
           {t('proxyRules')}
           {activeRules > 0 && <span className={styles.countBadge}>{activeRules}</span>}
         </Button>
-        <Button icon={<IconPlugConnected size={16} />} onClick={() => setConnectOpen(true)}>
-          {t('proxyConnectDevice')}
-        </Button>
+        <SetUpDevice
+          device={isDeviceRunning(device) ? device : null}
+          primary={false}
+          onOpenDetails={() => setConnectOpen(true)}
+        />
         <div className={styles.iconGroup}>
           <Tooltip title={t('logsClear')}>
             <Button
@@ -421,9 +423,7 @@ const ProxyTool = () => {
             t('proxyStepOpenApp'),
           ]}
           actions={
-            <Button type="primary" icon={<IconPlugConnected size={16} />} onClick={() => setConnectOpen(true)}>
-              {t('proxyConnectDevice')}
-            </Button>
+            <SetUpDevice device={isDeviceRunning(device) ? device : null} onOpenDetails={() => setConnectOpen(true)} />
           }
         />
       ) : (
