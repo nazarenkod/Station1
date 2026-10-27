@@ -23,6 +23,15 @@ import store from './store.js';
 
 const container = document.getElementById('root');
 
+// errors nobody caught go to the journal of the station, with their stack
+window.addEventListener('error', (event) => backend.journal?.report({text: event.message, detail: event.error?.stack}));
+window.addEventListener('unhandledrejection', (event) =>
+  backend.journal?.report({
+    text: `unhandled rejection: ${event.reason?.message ?? event.reason}`,
+    detail: event.reason?.stack,
+  }),
+);
+
 // without local tools (a plain web build) there is no desk to show: the Inspector opens first
 const Home = backend.available ? Desk : SessionBuilderPage;
 

@@ -108,6 +108,14 @@ window.electronIPC = {
     save: async (name) => await ipcRenderer.invoke('logs:save', name),
     onBatch: subscribe('logs:batch'),
   },
+  journal: {
+    list: async () => await ipcRenderer.invoke('journal:list'),
+    previous: async () => await ipcRenderer.invoke('journal:previous'),
+    clear: async () => await ipcRenderer.invoke('journal:clear'),
+    save: async (text, name) => await ipcRenderer.invoke('journal:save', text, name),
+    report: (error) => ipcRenderer.send('journal:report', error),
+    onChanged: subscribe('journal:changed'),
+  },
   proxy: {
     start: async (options) => await ipcRenderer.invoke('proxy:start', options),
     stop: async () => await ipcRenderer.invoke('proxy:stop'),

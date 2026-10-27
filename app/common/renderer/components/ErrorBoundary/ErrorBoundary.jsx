@@ -1,5 +1,6 @@
 import {Component} from 'react';
 
+import {backend} from '../../polyfills.js';
 import {copyToClipboard} from '../../utils/other.js';
 import ErrorMessage from './ErrorMessage.jsx';
 
@@ -18,6 +19,13 @@ export default class ErrorBoundary extends Component {
   static getDerivedStateFromError(error) {
     // Update state so the next render will show the fallback UI.
     return {error};
+  }
+
+  componentDidCatch(error, info) {
+    backend.journal?.report({
+      text: `render error: ${error?.message ?? error}`,
+      detail: [error?.stack, info?.componentStack].filter(Boolean).join('\n'),
+    });
   }
 
   render() {

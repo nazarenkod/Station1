@@ -1,6 +1,9 @@
 import {spawn} from 'node:child_process';
 import path from 'node:path';
 
+import {commandOutcome, describeCommand} from '../../shared/journal.js';
+import {journal, setSummary} from '../journal.js';
+
 const ENV_START = '__VISION_ENV_START__';
 const ENV_TIMEOUT_MS = 8000;
 const MAX_OUTPUT = 16 * 1024 * 1024;
@@ -58,10 +61,12 @@ async function readShellEnv() {
   let env = {...process.env};
   if (process.platform !== 'win32') {
     const shell = process.env.SHELL || '/bin/zsh';
+    const started = Date.now();
     const result = await run(shell, ['-ilc', `printf %s ${ENV_START}; env -0`], {
       timeout: ENV_TIMEOUT_MS,
       env: process.env,
     });
+    setSummary({shell, shellEnv: {ok: result.ok, ms: Date.now() - started, timedOut: result.timedOut}});
     if (result.ok) {
       env = {...env, ...parseEnvOutput(result.stdout)};
     } else {
@@ -73,6 +78,7 @@ async function readShellEnv() {
   if (extraDirs.length) {
     env.PATH = [env.PATH, ...extraDirs].filter(Boolean).join(path.delimiter);
   }
+  setSummary({path: env.PATH, androidHome: env.ANDROID_HOME || env.ANDROID_SDK_ROOT, javaHome: env.JAVA_HOME});
   return env;
 }
 
@@ -95,18 +101,27 @@ export function run(command, args = [], {timeout = 15000, env, cwd} = {}) {
     let timer = null;
     const group = process.platform !== 'win32';
 
+    // the journal shows the command while it runs, then how it ended
+    const record = journal.begin({
+      source: 'command',
+      text: describeCommand(command, args),
+      detail: cwd && `cwd: ${cwd}`,
+    });
+
     const finish = (result) => {
       if (done) {
         return;
       }
       done = true;
       clearTimeout(timer);
-      resolve({
+      const full = {
         timedOut,
         stdout: Buffer.concat(out).toString(),
         stderr: Buffer.concat(err).toString(),
         ...result,
-      });
+      };
+      journal.end(record, commandOutcome(full));
+      resolve(full);
     };
 
     let child;

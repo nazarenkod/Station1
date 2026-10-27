@@ -12,9 +12,14 @@ const mainPath = isDev ? process.env.ELECTRON_RENDERER_URL : join(__dirname, '..
 const splashPath = isDev
   ? `${process.env.ELECTRON_RENDERER_URL}/splash.html`
   : join(__dirname, '..', 'renderer', 'splash.html'); // from 'main' in package.json
+const journalPath = isDev
+  ? `${process.env.ELECTRON_RENDERER_URL}/journal.html`
+  : join(__dirname, '..', 'renderer', 'journal.html'); // from 'main' in package.json
 const pathLoadMethod = isDev ? 'loadURL' : 'loadFile';
 
 let mainWindow = null;
+let journalWindow = null;
+let journalOpening = null;
 
 export async function setupMainWindow() {
   const preferredTheme = await settings.get(PREFERRED_THEME);
@@ -62,6 +67,47 @@ export async function setupMainWindow() {
   ipcMain.on('electron:updateLanguage', async (_evt, lngCode) => {
     await i18n.changeLanguage(lngCode);
     rebuildMenus(mainWindow);
+  });
+}
+
+export const getJournalWindow = () => journalWindow;
+
+/**
+ * The journal of the station in a window of its own: it keeps working when
+ * the main window hangs. Asked again, it shows the same window.
+ */
+export function openJournalWindow() {
+  if (journalWindow && !journalWindow.isDestroyed()) {
+    journalWindow.show();
+    journalWindow.focus();
+    return;
+  }
+  // a second click while the window is being made must not make another one
+  journalOpening ??= buildJournalWindow().finally(() => {
+    journalOpening = null;
+  });
+}
+
+async function buildJournalWindow() {
+  const preferredTheme = await settings.get(PREFERRED_THEME);
+  const isDarkTheme = preferredTheme === 'dark' || (preferredTheme === 'system' && nativeTheme.shouldUseDarkColors);
+  journalWindow = new BrowserWindow({
+    width: 1000,
+    height: 720,
+    minWidth: 560,
+    minHeight: 400,
+    title: i18n.t('journalTitle'),
+    backgroundColor: isDarkTheme ? '#09090D' : '#F5F5F8',
+    webPreferences: {
+      preload: join(__dirname, '..', 'preload', 'preload.mjs'), // from 'main' in package.json
+      sandbox: false,
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+  journalWindow[pathLoadMethod](journalPath);
+  journalWindow.on('closed', () => {
+    journalWindow = null;
   });
 }
 

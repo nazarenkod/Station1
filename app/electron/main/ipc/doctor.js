@@ -5,6 +5,7 @@ import {bootDevice, listDevices} from '../../../common/node/doctor/devices.js';
 import {checkEnvironment, runDriverDoctor} from '../../../common/node/doctor/environment.js';
 import {deleteSession, scanServers} from '../../../common/node/doctor/servers.js';
 import {applyStress, restoreStress} from '../../../common/node/doctor/stress.js';
+import {journal} from '../../../common/node/journal.js';
 
 const broadcast = (channel, payload) => {
   for (const window of BrowserWindow.getAllWindows()) {
@@ -13,10 +14,27 @@ const broadcast = (channel, payload) => {
 };
 
 export function setupDoctorIPC() {
+  // the journal keeps only how the server changes; its own log is in the doctor
+  let lastStatus = null;
+  const noteState = (state) => {
+    if (state.status === lastStatus) {
+      return;
+    }
+    lastStatus = state.status;
+    journal.add({
+      source: 'appium',
+      level: state.status === 'failed' ? 'error' : 'info',
+      text: `Appium ${state.status}${state.port ? ` :${state.port}` : ''}${state.binary ? ` (${state.binary})` : ''}`,
+      detail: state.error ?? undefined,
+    });
+  };
   const appium = new ManagedAppium({
     dataDir: app.getPath('userData'),
     onLog: (entry) => broadcast('doctor:server:log', entry),
-    onState: (state) => broadcast('doctor:server:state', state),
+    onState: (state) => {
+      noteState(state);
+      broadcast('doctor:server:state', state);
+    },
   });
 
   ipcMain.handle('doctor:servers', async (_evt, options) => await scanServers(options));

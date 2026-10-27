@@ -34,6 +34,7 @@ export default defineConfig({
         input: {
           main: join(import.meta.dirname, 'app', 'common', 'index.html'),
           splash: join(import.meta.dirname, 'app', 'common', 'splash.html'),
+          journal: join(import.meta.dirname, 'app', 'common', 'journal.html'),
         },
       },
     },

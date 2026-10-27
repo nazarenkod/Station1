@@ -54,6 +54,9 @@ const backend = {
   get settings() {
     return window.electronIPC.settings;
   },
+  get journal() {
+    return window.electronIPC.journal;
+  },
 };
 
 export {backend, loadSessionFileIfOpened, localesPath, openLink, setTheme, settings, updateLanguage};
