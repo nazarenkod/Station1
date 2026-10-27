@@ -16,7 +16,7 @@ export const AI_KINDS = [
 
 export type AiKind = (typeof AI_KINDS)[number];
 
-const LANGUAGE_NAMES: Record<string, string> = {en: 'English', uk: 'Ukrainian', ru: 'Russian'};
+const LANGUAGE_NAMES: Record<string, string> = {en: 'English', uk: 'Ukrainian'};
 // at most this many elements go into the prompt, the visible ones on top first
 const MAX_ELEMENTS = 120;
 const CONFIDENT = 0.75;

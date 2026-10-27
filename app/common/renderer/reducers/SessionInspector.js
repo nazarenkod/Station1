@@ -1,4 +1,5 @@
 import {
+  A11Y_SCAN_CLEARED,
   A11Y_SCAN_DONE,
   A11Y_SCAN_FAILED,
   A11Y_SCAN_REQUESTED,
@@ -167,6 +168,18 @@ export default function inspector(state = INITIAL_STATE, action) {
         a11yScreen: action.screen,
         a11yDevice: action.device,
         a11yScannedAt: action.scannedAt,
+      };
+
+    case A11Y_SCAN_CLEARED:
+      return {
+        ...state,
+        a11yStatus: 'idle',
+        a11yScan: null,
+        a11yScreen: null,
+        a11yDevice: null,
+        a11yError: null,
+        a11yScannedAt: null,
+        a11yHighlight: null,
       };
 
     case A11Y_SCAN_FAILED:

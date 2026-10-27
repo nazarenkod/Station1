@@ -16,7 +16,6 @@ export const languageList = [
   {name: 'Polish', code: 'pl', original: 'Polski'},
   {name: 'Portuguese', code: 'pt-PT', original: 'Português'},
   {name: 'Portuguese (Brazil)', code: 'pt-BR', original: 'Português (Brasil)'},
-  {name: 'Russian', code: 'ru', original: 'Русский'},
   {name: 'Spanish', code: 'es-ES', original: 'Español'},
   {name: 'Telugu', code: 'te', original: 'తెలుగు'},
   {name: 'Turkish', code: 'tr', original: 'Türk'},

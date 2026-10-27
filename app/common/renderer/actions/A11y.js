@@ -26,6 +26,8 @@ import {applyClientMethod, SET_SOURCE_AND_SCREENSHOT} from './SessionInspector.j
 export const A11Y_SCAN_REQUESTED = 'A11Y_SCAN_REQUESTED';
 export const A11Y_SCAN_DONE = 'A11Y_SCAN_DONE';
 export const A11Y_SCAN_FAILED = 'A11Y_SCAN_FAILED';
+// a new test starts from a clean screen: the last audit is dropped, its decisions stay
+export const A11Y_SCAN_CLEARED = 'A11Y_SCAN_CLEARED';
 export const SET_A11Y_HIGHLIGHT = 'SET_A11Y_HIGHLIGHT';
 export const SET_A11Y_OVERLAY = 'SET_A11Y_OVERLAY';
 export const SET_A11Y_CONFIG = 'SET_A11Y_CONFIG';

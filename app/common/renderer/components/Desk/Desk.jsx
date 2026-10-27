@@ -1,58 +1,34 @@
 import {
   IconAccessible,
+  IconArrowsMaximize,
+  IconArrowsMinimize,
   IconChevronRight,
   IconCircleCheck,
-  IconDeviceMobile,
-  IconFocus2,
-  IconListSearch,
-  IconPlayerPlay,
   IconPlugConnected,
   IconRefresh,
   IconTerminal2,
 } from '@tabler/icons-react';
-import {Alert, Button} from 'antd';
+import {App, Button, Tooltip} from 'antd';
 import dayjs from 'dayjs';
-import {useEffect, useMemo, useState} from 'react';
+import {useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {useDispatch, useSelector} from 'react-redux';
+import {useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
 import {SEVERITIES, severityRank} from '../../../shared/findings/findings.js';
-import {activeDevice, isDeviceRunning, refreshDevices, selectDevice} from '../../actions/Workstation.js';
-import {backend} from '../../polyfills.js';
 import {Stagger, StaggerItem} from '../AppShell/motion.jsx';
-import {SeverityTag} from '../Findings/FindingsList.jsx';
 import {useLogs} from '../Logs/logs-store.js';
 import {useProxy} from '../Proxy/proxy-store.js';
-import {appsProblemText, appVersionLabel} from '../Workstation/AppPicker.jsx';
-import {deviceSubtitle} from '../Workstation/DevicePicker.jsx';
-import {formatElapsed} from '../Workstation/SessionChip.jsx';
+import DevicesPanel from './DevicesPanel.jsx';
 import DoctorPanel from './DoctorPanel.jsx';
+import NewTestDialog from './NewTestDialog.jsx';
 
 import styles from './Desk.module.css';
 
-const BOOTABLE = ['android-avd', 'ios-simulator'];
 const LISTED = 10;
 const TOOL_PATHS = {proxy: '/proxy', logs: '/logs', a11y: '/a11y', builds: '/builds'};
 // the audit has its own scale; the desk shows everything on the findings scale
 const A11Y_SEVERITY = {error: 'high', warning: 'medium', info: 'low'};
-
-const canBoot = (device) => device.state === 'stopped' && BOOTABLE.includes(device.kind);
-
-/**
- * The current time, ticking every second while `active`.
- */
-const useNow = (active) => {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [active]);
-  return now;
-};
 
 /**
  * Everything the tools have found this session, worst first, as one list,
@@ -113,128 +89,8 @@ const useSessionAnalysis = () => {
   }, [t, proxy.version, logs.version, scan, screen, build]);
 };
 
-/**
- * The session in one band: what is being tested, on what, and for how long.
- */
-const SessionBar = () => {
-  const {t} = useTranslation();
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const workstation = useSelector((state) => state.workstation);
-  const hasSession = useSelector((state) => !!state.inspector.driver);
-  const startedAt = useSelector((state) => state.inspector.sessionStartTime);
-  const {devices, devicesLoaded, app, appsError} = workstation;
-  const devicesLoading = workstation.devicesLoading && !workstation.devicesPolling;
-  const device = activeDevice(workstation);
-  const now = useNow(hasSession);
-  const [booting, setBooting] = useState(null);
-
-  const boot = async (candidate) => {
-    setBooting(candidate.id);
-    try {
-      await backend.doctor.bootDevice(candidate);
-      await dispatch(refreshDevices());
-    } finally {
-      setBooting(null);
-    }
-  };
-
-  let title;
-  let sub;
-  let actions;
-  if (!device) {
-    const running = devices.find(isDeviceRunning);
-    const bootable = devices.find(canBoot);
-    title = devicesLoaded ? t('deskNoDeviceTitle') : t('wsLookingForDevices');
-    sub = t('deskNoDeviceText');
-    actions = (
-      <>
-        {running && (
-          <Button
-            type="primary"
-            icon={<IconDeviceMobile size={16} />}
-            onClick={() => dispatch(selectDevice(running.id))}
-          >
-            {t('deskUseDevice', {device: running.name})}
-          </Button>
-        )}
-        {!running && bootable && (
-          <Button
-            type="primary"
-            icon={<IconPlayerPlay size={16} />}
-            loading={booting === bootable.id}
-            onClick={() => boot(bootable)}
-          >
-            {t('deskBootDevice', {device: bootable.name})}
-          </Button>
-        )}
-        <Button icon={<IconRefresh size={16} />} loading={devicesLoading} onClick={() => dispatch(refreshDevices())}>
-          {t('deskRefreshDevices')}
-        </Button>
-      </>
-    );
-  } else {
-    title = app ? (app.name && app.name !== app.id ? app.name : app.id) : t('deskNoApp');
-    sub = (
-      <>
-        <span className={`vi-dot ${isDeviceRunning(device) ? 'vi-tone-ok' : 'vi-tone-off'}`} />
-        {device.name} · {deviceSubtitle(device, t)}
-        {app && <span className="vi-mono">{[app.id, appVersionLabel(app)].filter(Boolean).join(' · ')}</span>}
-      </>
-    );
-    actions = isDeviceRunning(device) ? (
-      <>
-        <Button
-          type="primary"
-          icon={<IconFocus2 size={16} />}
-          onClick={() => navigate(hasSession ? '/inspector' : '/session')}
-        >
-          {hasSession ? t('deskOpenSession') : t('deskNewSession')}
-        </Button>
-        <Button icon={<IconAccessible size={16} />} onClick={() => navigate('/a11y')}>
-          {t('deskAuditScreen')}
-        </Button>
-      </>
-    ) : (
-      canBoot(device) && (
-        <Button
-          type="primary"
-          icon={<IconPlayerPlay size={16} />}
-          loading={booting === device.id}
-          onClick={() => boot(device)}
-        >
-          {t('wsBoot')}
-        </Button>
-      )
-    );
-  }
-
-  return (
-    <section className={styles.session} aria-labelledby="desk-session">
-      <div className={styles.sessionMain}>
-        <div className={styles.sessionText}>
-          <span className={`vi-eyebrow ${styles.sessionEyebrow}`}>
-            {hasSession && <span className="vi-dot vi-dot-live vi-tone-danger" />}
-            {hasSession ? t('deskSessionLive', {time: dayjs(startedAt).format('HH:mm')}) : t('deskSessionEyebrow')}
-          </span>
-          <h1 id="desk-session" className={styles.sessionTitle}>
-            {title}
-          </h1>
-          <span className={styles.sessionSub}>{sub}</span>
-        </div>
-        <div className={styles.sessionSide}>
-          {hasSession && <span className={styles.timer}>{formatElapsed(startedAt ? now - startedAt : 0)}</span>}
-          <div className={styles.sessionActions}>{actions}</div>
-        </div>
-      </div>
-      {device && appsError && (
-        <Alert className={styles.deviceProblem} type="warning" showIcon title={appsProblemText(appsError, t)} />
-      )}
-    </section>
-  );
-};
-
 const TOOLS = ['proxy', 'logs', 'a11y', 'builds'];
+const SEVERITY_SHOWN = ['high', 'medium', 'low'];
 
 /**
  * What the session has been checked on so far, as a sentence.
@@ -250,60 +106,76 @@ const coverageText = (analysis, t) =>
     .join(' · ');
 
 /**
- * The problems of the session: how many and how bad, which tool found them,
- * and every one of them, worst first, each opening its tool.
+ * The problems of the current test: small counters, a filter by tool, and
+ * the list itself, worst first, each opening its tool.
  */
-const Problems = ({analysis}) => {
+const Problems = ({analysis, expanded, onToggleExpanded}) => {
   const {t} = useTranslation();
   const navigate = useNavigate();
   const hasSession = useSelector((state) => !!state.inspector.driver);
-  const [severity, setSeverity] = useState('all');
   const [tool, setTool] = useState('all');
   const [showAll, setShowAll] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const {message} = App.useApp();
   const {rows} = analysis;
   const coverage = coverageText(analysis, t);
   const hadSession = hasSession || !!coverage;
 
   const bySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, rows.filter((row) => row.severity === s).length]));
-  const byTool = TOOLS.map((key) => {
-    const own = rows.filter((row) => row.tool === key);
-    return {key, total: own.length, parts: SEVERITIES.map((s) => own.filter((row) => row.severity === s).length)};
-  });
-  const peak = Math.max(1, ...byTool.map((entry) => entry.total));
-  const filtered = rows.filter(
-    (row) => (severity === 'all' || row.severity === severity) && (tool === 'all' || row.tool === tool),
-  );
-  const shown = showAll ? filtered : filtered.slice(0, LISTED);
+  const byTool = Object.fromEntries(TOOLS.map((key) => [key, rows.filter((row) => row.tool === key).length]));
+  const filtered = tool === 'all' ? rows : rows.filter((row) => row.tool === tool);
+  // the expanded analytics show every problem; the desk shows the first few
+  const shown = showAll || expanded ? filtered : filtered.slice(0, LISTED);
 
-  if (!hadSession || !rows.length) {
+  const newTest = hadSession && (
+    <>
+      <Button icon={<IconRefresh size={15} />} onClick={() => setResetOpen(true)}>
+        {t('deskNewTest')}
+      </Button>
+      <NewTestDialog
+        open={resetOpen}
+        onClose={() => setResetOpen(false)}
+        onDone={(time) => message.success(t('deskNewTestDone', {time}))}
+      />
+    </>
+  );
+
+  const expandButton = (
+    <Tooltip title={expanded ? t('deskAnalyticsCollapse') : t('deskAnalyticsExpand')}>
+      <Button
+        type="text"
+        aria-label={expanded ? t('deskAnalyticsCollapse') : t('deskAnalyticsExpand')}
+        aria-pressed={expanded}
+        icon={expanded ? <IconArrowsMinimize size={16} /> : <IconArrowsMaximize size={16} />}
+        onClick={onToggleExpanded}
+      />
+    </Tooltip>
+  );
+
+  if (!hadSession) {
     return (
       <section className={`vi-panel ${styles.problems}`} aria-labelledby="desk-problems">
         <div className={styles.problemsHead}>
-          <h2 id="desk-problems" className={styles.cardTitle}>
+          <h2 id="desk-problems" className={styles.problemsTitle}>
             {t('deskProblems')}
           </h2>
+          <span className={styles.spacer} />
+          {expandButton}
         </div>
-        <div className={styles.analysisEmpty}>
-          <span className={`${styles.emptyIcon} ${hadSession ? styles.emptyIconOk : ''}`} aria-hidden="true">
-            {hadSession ? <IconCircleCheck size={26} stroke={1.5} /> : <IconListSearch size={26} stroke={1.5} />}
+        <div className={styles.analyticsEmpty}>
+          <span className={styles.analyticsEmptyTitle}>{t('deskNoSessionTitle2')}</span>
+          <span className={styles.dim}>{t('deskNoSessionLine')}</span>
+          <span className={styles.emptyButtons}>
+            <Button icon={<IconPlugConnected size={15} />} onClick={() => navigate('/proxy')}>
+              {t('deskCheck_proxy')}
+            </Button>
+            <Button icon={<IconTerminal2 size={15} />} onClick={() => navigate('/logs')}>
+              {t('deskCheck_logs')}
+            </Button>
+            <Button icon={<IconAccessible size={15} />} onClick={() => navigate('/a11y')}>
+              {t('deskAuditScreen')}
+            </Button>
           </span>
-          <strong className={styles.emptyTitle}>{hadSession ? t('deskCleanTitle') : t('deskNoSessionTitle')}</strong>
-          <span className={styles.emptyText}>
-            {hadSession ? t('deskCoverage', {list: coverage || t('deskCoverageSession')}) : t('deskNoSessionText')}
-          </span>
-          {!hadSession && (
-            <div className={styles.emptyActions}>
-              <Button icon={<IconPlugConnected size={16} />} onClick={() => navigate('/proxy')}>
-                {t('deskStartProxy')}
-              </Button>
-              <Button icon={<IconTerminal2 size={16} />} onClick={() => navigate('/logs')}>
-                {t('deskStartLogs')}
-              </Button>
-              <Button icon={<IconAccessible size={16} />} onClick={() => navigate('/a11y')}>
-                {t('deskAuditScreen')}
-              </Button>
-            </div>
-          )}
         </div>
       </section>
     );
@@ -312,83 +184,75 @@ const Problems = ({analysis}) => {
   return (
     <section className={`vi-panel ${styles.problems}`} aria-labelledby="desk-problems">
       <div className={styles.problemsHead}>
-        <h2 id="desk-problems" className={styles.cardTitle}>
+        <h2 id="desk-problems" className={styles.problemsTitle}>
           {t('deskProblems')}
         </h2>
-        {coverage && <span className={styles.dim}>{t('deskCoverage', {list: coverage})}</span>}
+        {rows.length > 0 && (
+          <span className={styles.counters}>
+            {SEVERITY_SHOWN.filter((s) => bySeverity[s]).map((s) => (
+              <span key={s}>
+                <span className={`${styles.sevDot} ${styles[`sev_${s}`]}`} aria-hidden="true" />
+                {t(`deskCount_${s}`, {count: bySeverity[s]})}
+              </span>
+            ))}
+          </span>
+        )}
+        <span className={styles.spacer} />
+        {newTest}
+        {expandButton}
+      </div>
+      <div className={styles.problemsSub}>
+        <span className={styles.dim}>{coverage ? t('deskCoverage', {list: coverage}) : t('deskCoverageSession')}</span>
+        <span className={styles.spacer} />
+        {rows.length > 0 && (
+          <div className={styles.toolFilter} role="group" aria-label={t('deskByTool')}>
+            {['all', ...TOOLS].map((key) =>
+              key === 'all' || byTool[key] ? (
+                <button
+                  key={key}
+                  aria-pressed={tool === key}
+                  className={`${styles.toolFilterItem} ${tool === key ? styles.toolFilterOn : ''}`}
+                  onClick={() => setTool(key)}
+                >
+                  {key === 'all' ? t('findingsAll') : t(`wsTool_${key}`)}
+                  <span className="vi-num">{key === 'all' ? rows.length : byTool[key]}</span>
+                </button>
+              ) : null,
+            )}
+          </div>
+        )}
       </div>
 
-      <div className={styles.summary}>
-        <div className={styles.severities} role="group" aria-label={t('findingsFilter')}>
-          {['all', ...SEVERITIES.filter((s) => s !== 'info' || bySeverity.info)].map((key) => (
-            <button
-              key={key}
-              aria-pressed={severity === key}
-              className={`${styles.severityTile} ${styles[`tile_${key}`]} ${severity === key ? styles.tileOn : ''}`}
-              onClick={() => setSeverity(key)}
-            >
-              <span className={`vi-num ${styles.tileValue}`}>{key === 'all' ? rows.length : bySeverity[key]}</span>
-              <span className={styles.tileLabel}>
-                {key === 'all' ? t('deskProblemsTotal') : t(`findingSeverity_${key}`)}
-              </span>
-            </button>
-          ))}
+      {rows.length === 0 ? (
+        <div className={styles.cleanLine}>
+          <IconCircleCheck size={18} stroke={1.6} />
+          {t('deskCleanTitle')}
         </div>
-        <div className={styles.byTool} role="group" aria-label={t('deskByTool')}>
-          <span className="vi-eyebrow">{t('deskByTool')}</span>
-          {byTool.map((entry) => (
-            <button
-              key={entry.key}
-              aria-pressed={tool === entry.key}
-              disabled={!entry.total}
-              className={`${styles.toolRow} ${styles[`tool_${entry.key}`]} ${tool === entry.key ? styles.toolRowOn : ''}`}
-              onClick={() => setTool(tool === entry.key ? 'all' : entry.key)}
-            >
-              <span className={styles.toolTag}>
-                <span className={styles.toolDot} aria-hidden="true" />
-                {t(`wsTool_${entry.key}`)}
-              </span>
-              <span className={styles.toolBar} aria-hidden="true">
-                {entry.parts.map((part, i) =>
-                  part ? (
-                    <span
-                      key={SEVERITIES[i]}
-                      className={styles[`sev_${SEVERITIES[i]}`]}
-                      style={{width: `${(part / peak) * 100}%`}}
-                    />
-                  ) : null,
-                )}
-              </span>
-              <span className={`vi-num ${styles.toolCount}`}>{entry.total}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <ul className={styles.findings}>
-        {shown.map((row) => (
-          <li key={row.id}>
-            <button className={styles.finding} onClick={() => navigate(TOOL_PATHS[row.tool])}>
-              <SeverityTag severity={row.severity} />
-              <span className={styles.findingText}>
+      ) : (
+        <ul className={styles.findings}>
+          {shown.map((row) => (
+            <li key={row.id}>
+              <button className={styles.finding} onClick={() => navigate(TOOL_PATHS[row.tool])}>
+                <span
+                  className={`${styles.sevDot} ${styles[`sev_${row.severity}`]}`}
+                  title={t(`findingSeverity_${row.severity}`)}
+                />
                 <span className={styles.findingTitle}>{row.title}</span>
-                <span className={styles.findingMeta}>
-                  <span className={`${styles.toolTag} ${styles[`tool_${row.tool}`]}`}>
-                    <span className={styles.toolDot} aria-hidden="true" />
-                    {t(`wsTool_${row.tool}`)}
-                  </span>
-                  {row.where && <span>{row.where}</span>}
-                  {row.time && <span className="vi-num">{dayjs(row.time).format('HH:mm:ss')}</span>}
+                <span className={`${styles.toolTag} ${styles[`tool_${row.tool}`]}`}>
+                  <span className={styles.toolDot} aria-hidden="true" />
+                  {t(`wsTool_${row.tool}`)}
                 </span>
-              </span>
-              {row.count > 1 && <span className={`vi-num ${styles.findingCount}`}>×{row.count}</span>}
-              <IconChevronRight size={16} className={styles.findingGo} aria-hidden="true" />
-            </button>
-          </li>
-        ))}
-        {!shown.length && <li className={styles.noMatch}>{t('deskNoMatch')}</li>}
-      </ul>
-      {filtered.length > LISTED && (
+                <span className={styles.findingMeta}>
+                  {row.where || (row.time ? dayjs(row.time).format('HH:mm:ss') : '')}
+                </span>
+                <span className={`vi-num ${styles.findingCount}`}>{row.count > 1 ? `×${row.count}` : ''}</span>
+                <IconChevronRight size={15} className={styles.findingGo} aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!expanded && filtered.length > LISTED && (
         <button className={styles.more} onClick={() => setShowAll(!showAll)}>
           {showAll ? t('deskAnalysisShowLess') : t('deskAnalysisShowAll', {count: filtered.length})}
         </button>
@@ -398,22 +262,24 @@ const Problems = ({analysis}) => {
 };
 
 /**
- * The workstation's home: whether the machine is ready, the session, and the
- * problems found in it.
+ * The workstation's home: the environment and the devices side by side, each
+ * a fixed five rows, and below them the analytics of the current test, which
+ * can take the whole desk.
  */
 const Desk = () => {
   const analysis = useSessionAnalysis();
+  const [expanded, setExpanded] = useState(false);
   return (
     <div className={styles.desk}>
-      <Stagger className={styles.inner}>
-        <StaggerItem>
-          <DoctorPanel />
-        </StaggerItem>
-        <StaggerItem>
-          <SessionBar />
-        </StaggerItem>
-        <StaggerItem>
-          <Problems analysis={analysis} />
+      <Stagger className={`${styles.inner} ${expanded ? styles.innerExpanded : ''}`}>
+        {!expanded && (
+          <StaggerItem className={styles.top}>
+            <DoctorPanel />
+            <DevicesPanel />
+          </StaggerItem>
+        )}
+        <StaggerItem className={styles.analytics}>
+          <Problems analysis={analysis} expanded={expanded} onToggleExpanded={() => setExpanded(!expanded)} />
         </StaggerItem>
       </Stagger>
     </div>

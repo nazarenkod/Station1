@@ -1,27 +1,22 @@
-import {IconAlertTriangle, IconCircleCheck, IconCircleX, IconRefresh, IconStethoscope} from '@tabler/icons-react';
-import {Button, Skeleton} from 'antd';
+import {IconChevronDown, IconCopy, IconPlayerPlay, IconRefresh, IconSettings} from '@tabler/icons-react';
+import {App, Button, Popover, Skeleton} from 'antd';
 import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
-import {activeDevice, ensureAppium, isDeviceRunning} from '../../actions/Workstation.js';
+import {ensureAppium} from '../../actions/Workstation.js';
 import {backend} from '../../polyfills.js';
 import {useLogs} from '../Logs/logs-store.js';
 import {useProxy} from '../Proxy/proxy-store.js';
+import {fixForCheck} from './doctor-fixes.js';
 
 import styles from './Desk.module.css';
 
 // the environment check runs shell commands: once per app run, again on request
 let cachedReport = null;
 
-const STATUS_ICON = {
-  ok: IconCircleCheck,
-  warn: IconAlertTriangle,
-  error: IconCircleX,
-};
-
-// the short name of each check of the doctor, for its tile
+// the short name of each check of the doctor, for its row
 const CHECK_NAME = {
   node: 'node',
   appium: 'appium',
@@ -36,19 +31,139 @@ const CHECK_NAME = {
 };
 
 /**
- * Whether this machine is ready for work: what the doctor finds about the
- * environment, plus the server, the device, the proxy and the log right now.
+ * A command to paste into a terminal, with a button that copies it.
+ */
+export const Command = ({command}) => {
+  const {t} = useTranslation();
+  const {message} = App.useApp();
+  return (
+    <div className={styles.command}>
+      <code>{command}</code>
+      <Button
+        size="small"
+        type="text"
+        icon={<IconCopy size={14} />}
+        onClick={() => navigator.clipboard.writeText(command).then(() => message.success(t('deskFixCopied')))}
+      >
+        {t('deskFixCopy')}
+      </Button>
+    </div>
+  );
+};
+
+/**
+ * What a row of a status list says when pointed at: what is wrong and how to
+ * fix it, with the command to run or a button that does it.
+ */
+export const StatusCard = ({name, value, status, text, fixText, command, action}) => {
+  const {t} = useTranslation();
+  return (
+    <div className={styles.statusCard}>
+      <div className={styles.statusCardHead}>
+        <span className={`${styles.statusDot} ${styles[`status_${status}`]}`} aria-hidden="true" />
+        <span className={styles.statusCardName}>
+          <b>{name}</b>
+          {value && <span className={styles.statusCardValue}>{value}</span>}
+        </span>
+        <span className={`${styles.statusCardState} ${styles[`statusText_${status}`]}`}>
+          {t(`deskStatus_${status}`)}
+        </span>
+      </div>
+      {text && (
+        <div className={styles.statusCardBlock}>
+          {(status === 'warn' || status === 'error') && <span className="vi-eyebrow">{t('deskWhatsWrong')}</span>}
+          <span>{text}</span>
+        </div>
+      )}
+      {(fixText || command || action) && (
+        <div className={styles.statusCardBlock}>
+          <span className="vi-eyebrow">{t('deskHowToFix')}</span>
+          {fixText && <span>{fixText}</span>}
+          {command && <Command command={command} />}
+          {action}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * One line of a status list; pointing at it (or focusing it) shows its card.
+ */
+export const needsFix = (status) => status === 'warn' || status === 'error';
+
+/**
+ * Shows the card of a row that needs fixing; a fine row only gets a plain
+ * tooltip, there is nothing to tell about it.
+ */
+export const RowCard = ({card: {key: _key, ...card}, placement, children}) =>
+  needsFix(card.status) ? (
+    <Popover
+      content={<StatusCard {...card} />}
+      placement={placement}
+      trigger={['hover', 'focus']}
+      mouseEnterDelay={0.15}
+      arrow={false}
+    >
+      {children}
+    </Popover>
+  ) : (
+    children
+  );
+
+export const StatusRow = ({row}) => (
+  <li>
+    <RowCard card={row} placement="rightTop">
+      <button
+        className={`${styles.statusRow} ${styles[`statusRow_${row.status}`]}`}
+        title={needsFix(row.status) ? undefined : row.text}
+      >
+        <span className={`${styles.statusDot} ${styles[`status_${row.status}`]}`} aria-hidden="true" />
+        <span className={styles.statusName}>{row.name}</span>
+        <span className={styles.statusValue}>{row.value}</span>
+      </button>
+    </RowCard>
+  </li>
+);
+
+// both lists on the desk show this many rows, so the two panels line up
+export const VISIBLE_ROWS = 5;
+
+/**
+ * The foot of a fixed-size list: how many rows are out of view, and a
+ * button that opens the list to its full length.
+ */
+export const PanelFoot = ({open, onToggle, hidden, summary}) => {
+  const {t} = useTranslation();
+  if (!hidden && !open) {
+    return <div className={styles.panelFoot}>{summary}</div>;
+  }
+  return (
+    <button className={`${styles.panelFoot} ${styles.expand}`} aria-expanded={open} onClick={onToggle}>
+      <span className={styles.expandText}>{open ? t('deskCollapse') : t('deskExpandMore', {count: hidden})}</span>
+      <IconChevronDown size={14} className={open ? styles.chevronOpen : styles.chevron} />
+    </button>
+  );
+};
+
+const isProblem = (row) => needsFix(row.status);
+
+/**
+ * The environment, as a list with a coloured status per line: every check of
+ * the doctor, the Appium server, the proxy, the log and the integrations.
+ * Problems stay in view; the rest folds into one line until opened.
  */
 const DoctorPanel = () => {
   const {t} = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const workstation = useSelector((state) => state.workstation);
+  const appium = useSelector((state) => state.workstation.appium);
   const proxy = useProxy();
   const logs = useLogs();
   const [report, setReport] = useState(cachedReport);
   const [loading, setLoading] = useState(false);
   const [fixing, setFixing] = useState(null);
+  const [open, setOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!backend.doctor) {
@@ -56,7 +171,12 @@ const DoctorPanel = () => {
     }
     setLoading(true);
     try {
-      cachedReport = await backend.doctor.environment();
+      const [environment, jira, gitlab] = await Promise.all([
+        backend.doctor.environment(),
+        backend.jira?.hasToken().catch(() => false) ?? false,
+        backend.gitlab?.hasToken().catch(() => false) ?? false,
+      ]);
+      cachedReport = {...environment, integrations: {jira, gitlab}};
       setReport(cachedReport);
     } finally {
       setLoading(false);
@@ -73,27 +193,78 @@ const DoctorPanel = () => {
     return null;
   }
 
-  const installDriver = async (driver) => {
-    setFixing(driver);
+  const runFix = async (key, task) => {
+    setFixing(key);
     try {
-      await backend.doctor.installDriver(driver);
+      await task();
       await load();
     } finally {
       setFixing(null);
     }
   };
 
-  const device = activeDevice(workstation);
-  const appium = workstation.appium;
-  const tiles = [
-    ...(report?.checks ?? []).map((check, i) => ({
-      key: `${check.id}-${check.params?.driver ?? i}`,
-      name: t(`deskCheck_${CHECK_NAME[check.id] ?? check.id}`, check.params),
-      value: check.params?.version || t(`deskCheckValue_${check.status}`),
-      status: check.status,
-      text: t(`doctorCheck_${check.id}_${check.status}`, check.params),
-      check,
-    })),
+  const actionFor = (fix) => {
+    if (fix?.action?.kind === 'installDriver') {
+      return (
+        <Button
+          size="small"
+          type="primary"
+          loading={fixing === fix.action.driver}
+          onClick={() => runFix(fix.action.driver, () => backend.doctor.installDriver(fix.action.driver))}
+        >
+          {t('doctorInstallDriver', {driver: fix.action.driver})}
+        </Button>
+      );
+    }
+    if (fix?.action?.kind === 'installAppium') {
+      return (
+        <Button
+          size="small"
+          type="primary"
+          loading={fixing === 'appium'}
+          onClick={() =>
+            runFix('appium', () =>
+              backend.doctor.installAppium(['uiautomator2', ...(/mac/i.test(navigator.platform) ? ['xcuitest'] : [])]),
+            )
+          }
+        >
+          {t('deskFixInstallAppium')}
+        </Button>
+      );
+    }
+    return null;
+  };
+
+  const toSettings = (
+    <Button size="small" icon={<IconSettings size={14} />} onClick={() => navigate('/settings')}>
+      {t('deskOpenSettings')}
+    </Button>
+  );
+
+  const serverStatus =
+    appium?.status === 'running' || appium?.status === 'starting'
+      ? 'ok'
+      : appium?.status === 'failed'
+        ? 'error'
+        : 'warn';
+
+  const rows = [
+    ...(report?.checks ?? []).map((check, i) => {
+      const fix = fixForCheck(check);
+      return {
+        key: `${check.id}-${check.params?.driver ?? i}`,
+        name: t(`deskCheck_${CHECK_NAME[check.id] ?? check.id}`, check.params),
+        // a missing tool says so instead of a bare status
+        value:
+          check.params?.version ||
+          t(check.id.endsWith('Missing') ? 'deskCheckValue_missing' : `deskCheckValue_${check.status}`),
+        status: check.status,
+        text: t(`doctorCheck_${check.id}_${check.status}`, check.params),
+        fixText: fix ? t(`deskFix_${fix.key}`, {defaultValue: ''}) : '',
+        command: fix?.command,
+        action: actionFor(fix),
+      };
+    }),
     {
       key: 'server',
       name: t('deskCheck_server'),
@@ -104,117 +275,94 @@ const DoctorPanel = () => {
             ? t('deskCheckValue_starting')
             : t('deskCheckValue_stopped'),
       // starting on its own is not a problem; stopped or failed is, with a button to fix it
-      status:
-        appium?.status === 'running' || appium?.status === 'starting'
-          ? 'ok'
-          : appium?.status === 'failed'
-            ? 'error'
-            : 'warn',
-      text: appium?.error
-        ? t(`doctorServerError_${appium.error.split(':')[0]}`, {
-            port: 4723,
-            detail: appium.error.split(':')[1],
-            defaultValue: appium.error,
-          })
-        : t('deskCheckServerOff'),
-      fix: 'startAppium',
-    },
-    {
-      key: 'device',
-      name: t('deskCheck_device'),
-      value: device?.name ?? t('deskCheckValue_none'),
-      status: isDeviceRunning(device) ? 'ok' : 'warn',
-      text: t('deskCheckDeviceOff'),
+      status: serverStatus,
+      text:
+        serverStatus === 'ok'
+          ? t('deskCheckServerOn')
+          : appium?.error
+            ? t(`doctorServerError_${appium.error.split(':')[0]}`, {
+                port: 4723,
+                detail: appium.error.split(':')[1],
+                defaultValue: appium.error,
+              })
+            : t('deskCheckServerOff'),
+      fixText: serverStatus === 'ok' ? '' : t('deskFix_server'),
+      action: serverStatus !== 'ok' && (
+        <Button
+          size="small"
+          type="primary"
+          icon={<IconPlayerPlay size={14} />}
+          onClick={() => dispatch(ensureAppium())}
+        >
+          {t('deskStartAppium')}
+        </Button>
+      ),
     },
     {
       key: 'proxy',
       name: t('deskCheck_proxy'),
       value: proxy.status.running ? `:${proxy.status.port}` : t('deskCheckValue_stopped'),
       status: proxy.status.running ? 'ok' : 'off',
+      text: proxy.status.running ? t('deskCheckProxyOn') : t('deskCheckProxyOff'),
     },
     {
       key: 'logs',
       name: t('deskCheck_logs'),
       value: logs.started ? t('deskCheckValue_recording') : t('deskCheckValue_stopped'),
       status: logs.started ? 'ok' : 'off',
+      text: logs.started ? t('deskCheckLogsOn') : t('deskCheckLogsOff'),
     },
+    ...['jira', 'gitlab'].map((key) => ({
+      key,
+      name: t(`deskCheck_${key}`),
+      value: report?.integrations?.[key] ? t('deskCheckValue_connected') : t('deskCheckValue_notConnected'),
+      status: report?.integrations?.[key] ? 'ok' : 'off',
+      text: report?.integrations?.[key] ? t(`deskCheck_${key}On`) : t(`deskCheck_${key}Off`),
+      action: !report?.integrations?.[key] && toSettings,
+    })),
   ];
-  // the proxy and the log are off until someone needs them: not a problem
-  const problems = tiles.filter((tile) => tile.status === 'warn' || tile.status === 'error');
+  const problems = rows.filter(isProblem);
+  const rest = rows.filter((row) => !isProblem(row));
 
   return (
-    <section className={`vi-panel ${styles.doctor}`} aria-labelledby="desk-doctor">
-      <div className={styles.doctorHead}>
-        <span className={styles.doctorIcon} aria-hidden="true">
-          <IconStethoscope size={18} stroke={1.7} />
-        </span>
-        <h2 id="desk-doctor" className={styles.cardTitle}>
-          {t('deskDoctor')}
+    <section className={`vi-panel ${styles.listPanel} ${open ? styles.listPanelOpen : ''}`} aria-labelledby="desk-env">
+      <div className={styles.panelHead}>
+        <h2 id="desk-env" className={styles.cardTitle}>
+          {t('deskEnvironment')}
         </h2>
         {report &&
           (problems.length ? (
-            <span className="vi-pill vi-tone-warn">{t('deskDoctorIssues', {count: problems.length})}</span>
+            <span className={styles.headWarn}>{t('deskEnvIssues', {count: problems.length})}</span>
           ) : (
-            <span className="vi-pill vi-tone-ok">{t('deskDoctorOk')}</span>
+            <span className={styles.headOk}>{t('deskDoctorOk')}</span>
           ))}
-        <Button size="small" type="text" icon={<IconRefresh size={14} />} loading={loading} onClick={load}>
-          {t('deskDoctorRecheck')}
-        </Button>
-        <Button size="small" onClick={() => navigate('/session')}>
-          {t('deskDoctorOpen')}
-        </Button>
+        <span className={styles.spacer} />
+        <Button
+          size="small"
+          type="text"
+          aria-label={t('deskDoctorRecheck')}
+          title={t('deskDoctorRecheck')}
+          icon={<IconRefresh size={14} />}
+          loading={loading}
+          onClick={load}
+        />
       </div>
 
       {!report ? (
-        <Skeleton active title={false} paragraph={{rows: 2}} className={styles.doctorSkeleton} />
+        <Skeleton active title={false} paragraph={{rows: 4}} className={styles.panelSkeleton} />
       ) : (
         <>
-          <ul className={styles.checkGrid}>
-            {tiles.map((tile) => {
-              const Icon = STATUS_ICON[tile.status];
-              return (
-                <li
-                  key={tile.key}
-                  className={`${styles.checkTile} ${styles[`check_${tile.status}`]}`}
-                  title={tile.text}
-                >
-                  <span className={styles.checkName}>
-                    {Icon ? (
-                      <Icon size={15} stroke={1.8} className={styles.checkIcon} aria-hidden="true" />
-                    ) : (
-                      <span className="vi-dot vi-tone-off" />
-                    )}
-                    {tile.name}
-                  </span>
-                  <span className={styles.checkValue}>{tile.value}</span>
-                </li>
-              );
-            })}
+          <ul className={styles.statusList}>
+            {[...problems, ...rest].map((row) => (
+              <StatusRow key={row.key} row={row} />
+            ))}
           </ul>
-          {problems.length > 0 && (
-            <ul className={styles.fixList}>
-              {problems.map((tile) => (
-                <li key={tile.key} className={styles.fixRow}>
-                  <span className={`vi-dot ${tile.status === 'error' ? 'vi-tone-danger' : 'vi-tone-warn'}`} />
-                  <span className={styles.fixText}>{tile.text}</span>
-                  {tile.fix === 'startAppium' && (
-                    <Button size="small" type="primary" onClick={() => dispatch(ensureAppium())}>
-                      {t('deskStartAppium')}
-                    </Button>
-                  )}
-                  {tile.check?.fix?.action === 'installDriver' && (
-                    <Button
-                      size="small"
-                      loading={fixing === tile.check.fix.driver}
-                      onClick={() => installDriver(tile.check.fix.driver)}
-                    >
-                      {t('doctorInstallDriver', {driver: tile.check.fix.driver})}
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+          <PanelFoot
+            open={open}
+            onToggle={() => setOpen(!open)}
+            hidden={Math.max(0, rows.length - VISIBLE_ROWS)}
+            summary={t('deskEnvTotal', {count: rows.length})}
+          />
         </>
       )}
     </section>
