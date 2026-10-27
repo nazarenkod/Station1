@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import {checkKiro} from '../agent/kiro-doctor.js';
-import {run, runTool, shellEnv, shellEnvFailure} from './exec.js';
+import {rereadShellEnvIfFailed, run, runTool, shellEnvFailure, shellEnvStatus} from './exec.js';
 
 export const CHECK_STATUS = {OK: 'ok', WARN: 'warn', ERROR: 'error'};
 const {OK, WARN, ERROR} = CHECK_STATUS;
@@ -213,7 +213,8 @@ async function checkXcode() {
  * status; the UI turns them into text.
  */
 export async function checkEnvironment({appium: own} = {}) {
-  const env = await shellEnv();
+  // a terminal environment that failed to load is tried again on every check, not only after a restart
+  const env = await rereadShellEnvIfFailed();
   const runner = await appiumRunner(own);
   const [node, appium, android, xcode, kiro] = await Promise.all([
     checkNode(),
@@ -225,9 +226,15 @@ export async function checkEnvironment({appium: own} = {}) {
   ]);
   const drivers = await checkDrivers(appium.version, runner);
   const shell = await shellEnvFailure();
+  const read = await shellEnvStatus();
   return {
     checks: [
-      ...(shell ? [{id: 'shellEnv', status: WARN, params: shell}] : []),
+      // always in the list: without it Java, adb and the rest are looked up on a bare PATH
+      ...(shell
+        ? [{id: 'shellEnv', status: WARN, params: shell}]
+        : read
+          ? [{id: 'shellEnv', status: OK, params: {shell: read.shell, seconds: (read.ms / 1000).toFixed(1)}}]
+          : []),
       node,
       appium.check,
       ...drivers.checks,

@@ -11,11 +11,14 @@ vi.mock('../../app/common/node/doctor/exec.js', () => ({
   runTool: vi.fn(async () => ({ok: false, missing: true, stdout: '', stderr: ''})),
   shellEnv: vi.fn(async () => ({})),
   shellEnvFailure: vi.fn(async () => null),
+  shellEnvStatus: vi.fn(async () => ({shell: '/bin/zsh', ok: true, ms: 3240, timedOut: false})),
+  rereadShellEnvIfFailed: vi.fn(async () => ({})),
 }));
 vi.mock('../../app/common/node/agent/kiro-doctor.js', () => ({checkKiro: async () => ({id: 'kiro', status: 'ok'})}));
 
 import {envTools} from '../../app/common/node/agent/env-tools.js';
 import {checkEnvironment} from '../../app/common/node/doctor/environment.js';
+import * as exec from '../../app/common/node/doctor/exec.js';
 import {doctorSeverity} from '../../app/common/renderer/components/Desk/doctor-store.js';
 
 const CHECKS = [
@@ -130,5 +133,24 @@ describe('the doctor checks the Appium the station starts', () => {
   it('finds Appium missing when the station has none and PATH has none', async () => {
     const {checks} = await checkEnvironment({appium: {resolveBinary: async () => null}});
     expect(checks.find((c) => c.id.startsWith('appium'))).toMatchObject({id: 'appiumMissing'});
+  });
+});
+
+describe('the terminal environment in the doctor', () => {
+  it('is always a row, with how long it took to read', async () => {
+    const {checks} = await checkEnvironment({appium: {resolveBinary: async () => null}});
+    expect(checks[0]).toEqual({id: 'shellEnv', status: 'ok', params: {shell: '/bin/zsh', seconds: '3.2'}});
+  });
+
+  it('is read again on every check while it has not loaded, and says why it did not', async () => {
+    exec.shellEnvFailure.mockResolvedValueOnce({shell: '/bin/zsh', timedOut: true, seconds: 20});
+    const before = exec.rereadShellEnvIfFailed.mock.calls.length;
+    const {checks} = await checkEnvironment({appium: {resolveBinary: async () => null}});
+    expect(exec.rereadShellEnvIfFailed.mock.calls.length).toBe(before + 1);
+    expect(checks[0]).toEqual({
+      id: 'shellEnv',
+      status: 'warn',
+      params: {shell: '/bin/zsh', timedOut: true, seconds: 20},
+    });
   });
 });

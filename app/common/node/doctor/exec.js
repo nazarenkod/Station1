@@ -6,10 +6,13 @@ import {journal, setSummary} from '../journal.js';
 
 const ENV_START = '__VISION_ENV_START__';
 const ENV_TIMEOUT_MS = 8000;
+// a second try, asked by a recheck, waits longer: a cold ~/.zshrc with jenv or nvm can take that
+const ENV_RETRY_TIMEOUT_MS = 20000;
 const MAX_OUTPUT = 16 * 1024 * 1024;
 
 let shellEnvPromise = null;
 let shellEnvProblem = null;
+let shellEnvRead = null;
 
 /**
  * Parses the NUL-separated output of `env -0` into an object.
@@ -61,9 +64,32 @@ export function androidToolDirs(env) {
  */
 export function shellEnv() {
   if (!shellEnvPromise) {
-    shellEnvPromise = readShellEnv();
+    shellEnvPromise = readShellEnv(ENV_TIMEOUT_MS);
   }
   return shellEnvPromise;
+}
+
+/**
+ * How the terminal environment was read: the shell, whether it worked and
+ * how long it took. Null where there is no login shell to read (Windows).
+ */
+export async function shellEnvStatus() {
+  await shellEnv();
+  return shellEnvRead;
+}
+
+/**
+ * Reads the terminal environment again, waiting longer, when the first read
+ * failed: until then every tool runs without its PATH and JAVA_HOME, and only
+ * a restart of the station would bring them back.
+ */
+export async function rereadShellEnvIfFailed() {
+  await shellEnv();
+  if (shellEnvProblem) {
+    shellEnvProblem = null;
+    shellEnvPromise = readShellEnv(ENV_RETRY_TIMEOUT_MS);
+  }
+  return await shellEnvPromise;
 }
 
 /**
@@ -74,22 +100,23 @@ export async function shellEnvFailure() {
   return shellEnvProblem;
 }
 
-async function readShellEnv() {
+async function readShellEnv(timeout) {
   const base = withoutNpmRun(process.env);
   let env = {...base};
   if (process.platform !== 'win32') {
     const shell = process.env.SHELL || '/bin/zsh';
     const started = Date.now();
     const result = await run(shell, ['-ilc', `printf %s ${ENV_START}; env -0`], {
-      timeout: ENV_TIMEOUT_MS,
+      timeout,
       env: base,
     });
-    setSummary({shell, shellEnv: {ok: result.ok, ms: Date.now() - started, timedOut: result.timedOut}});
+    shellEnvRead = {shell, ok: result.ok, ms: Date.now() - started, timedOut: result.timedOut};
+    setSummary({shell, shellEnv: shellEnvRead});
     if (result.ok) {
       env = withoutNpmRun({...env, ...parseEnvOutput(result.stdout)});
     } else {
       // the tools are looked up on the app's bare PATH then; the doctor says why
-      shellEnvProblem = {shell, timedOut: result.timedOut, seconds: ENV_TIMEOUT_MS / 1000};
+      shellEnvProblem = {shell, timedOut: result.timedOut, seconds: timeout / 1000};
     }
   }
   const extraDirs = androidToolDirs(env).filter((dir) => !(env.PATH || '').split(path.delimiter).includes(dir));

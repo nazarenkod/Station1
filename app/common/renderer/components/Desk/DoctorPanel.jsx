@@ -160,6 +160,9 @@ export const PanelFoot = ({open, onToggle, hidden, summary}) => {
 
 const isProblem = (row) => needsFix(row.status);
 
+// the terminal environment and Java: when either goes missing the rest fails in odd ways
+const PINNED_CHECKS = ['shellEnv', 'java'];
+
 /**
  * What the operator is asked to fix: the check, what is wrong, and what the
  * station would do about it, so it can start fixing right away.
@@ -187,7 +190,10 @@ const EnvList = ({id, title, rows, report, loading, onRecheck, fit = false, okTe
   const {t} = useTranslation();
   const [open, setOpen] = useState(false);
   const problems = rows.filter(isProblem);
-  const rest = rows.filter((row) => !isProblem(row));
+  const rest = [
+    ...rows.filter((row) => !isProblem(row) && row.pinned),
+    ...rows.filter((row) => !isProblem(row) && !row.pinned),
+  ];
   return (
     <section
       className={`vi-panel ${styles.listPanel} ${open ? styles.listPanelOpen : ''} ${fit ? styles.listPanelFit : ''}`}
@@ -323,6 +329,7 @@ const DoctorPanel = () => {
       // a missing tool says so instead of a bare status
       value:
         check.params?.version ||
+        t(`deskCheckValue_${check.id}_${check.status}`, {...check.params, defaultValue: ''}) ||
         t(`deskCheckValue_${check.id}`, {defaultValue: ''}) ||
         t(check.id.endsWith('Missing') ? 'deskCheckValue_missing' : `deskCheckValue_${check.status}`),
       status: check.status,
@@ -337,6 +344,8 @@ const DoctorPanel = () => {
           : null,
       // Kiro CLI is the operator's way out of the Mac: an integration, as Jira and GitLab are
       integration: check.id.startsWith('kiro'),
+      // what everything else stands on stays in sight, never folded away
+      pinned: PINNED_CHECKS.includes(check.id),
     };
   });
   // the tools on this Mac the station needs
