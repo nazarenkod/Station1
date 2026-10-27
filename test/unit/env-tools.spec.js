@@ -17,7 +17,7 @@ vi.mock('../../app/common/node/doctor/exec.js', () => ({
 vi.mock('../../app/common/node/agent/kiro-doctor.js', () => ({checkKiro: async () => ({id: 'kiro', status: 'ok'})}));
 
 import {envTools} from '../../app/common/node/agent/env-tools.js';
-import {checkEnvironment} from '../../app/common/node/doctor/environment.js';
+import {checkEnvironment, homeShort} from '../../app/common/node/doctor/environment.js';
 import * as exec from '../../app/common/node/doctor/exec.js';
 import {doctorSeverity} from '../../app/common/renderer/components/Desk/doctor-store.js';
 
@@ -139,7 +139,7 @@ describe('the doctor checks the Appium the station starts', () => {
 describe('the terminal environment in the doctor', () => {
   it('is always a row, with how long it took to read', async () => {
     const {checks} = await checkEnvironment({appium: {resolveBinary: async () => null}});
-    expect(checks[0]).toEqual({id: 'shellEnv', status: 'ok', params: {shell: '/bin/zsh', seconds: '3.2'}});
+    expect(checks[0]).toEqual({id: 'shellEnv', status: 'ok', params: {shell: '/bin/zsh', name: 'zsh', seconds: '3.2'}});
   });
 
   it('is read again on every check while it has not loaded, and says why it did not', async () => {
@@ -152,5 +152,12 @@ describe('the terminal environment in the doctor', () => {
       status: 'warn',
       params: {shell: '/bin/zsh', timedOut: true, seconds: 20},
     });
+  });
+});
+
+describe('the Android SDK in the doctor', () => {
+  it('shows its path with the home folder as ~', () => {
+    expect(homeShort('/Users/qa/Library/Android/sdk', '/Users/qa')).toBe('~/Library/Android/sdk');
+    expect(homeShort('/opt/android-sdk', '/Users/qa')).toBe('/opt/android-sdk');
   });
 });

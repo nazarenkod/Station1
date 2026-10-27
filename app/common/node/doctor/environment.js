@@ -5,6 +5,10 @@ import path from 'node:path';
 import {checkKiro} from '../agent/kiro-doctor.js';
 import {rereadShellEnvIfFailed, run, runTool, shellEnvFailure, shellEnvStatus} from './exec.js';
 
+// a path as a person reads it: the home folder as ~
+export const homeShort = (folder, home = os.homedir()) =>
+  home && folder?.startsWith(home) ? `~${folder.slice(home.length)}` : folder;
+
 export const CHECK_STATUS = {OK: 'ok', WARN: 'warn', ERROR: 'error'};
 const {OK, WARN, ERROR} = CHECK_STATUS;
 
@@ -168,7 +172,7 @@ async function checkAndroid(env) {
     // Appium refuses to start Android sessions without ANDROID_HOME
     checks.push({id: 'androidHome', status: WARN, params: {path: sdk.path}});
   } else {
-    checks.push({id: 'androidSdk', status: OK, params: {path: sdk.path}});
+    checks.push({id: 'androidSdk', status: OK, params: {path: sdk.path, short: homeShort(sdk.path)}});
   }
 
   const adb = await runTool('adb', ['version']);
@@ -233,7 +237,13 @@ export async function checkEnvironment({appium: own} = {}) {
       ...(shell
         ? [{id: 'shellEnv', status: WARN, params: shell}]
         : read
-          ? [{id: 'shellEnv', status: OK, params: {shell: read.shell, seconds: (read.ms / 1000).toFixed(1)}}]
+          ? [
+              {
+                id: 'shellEnv',
+                status: OK,
+                params: {shell: read.shell, name: path.basename(read.shell), seconds: (read.ms / 1000).toFixed(1)},
+              },
+            ]
           : []),
       node,
       appium.check,
