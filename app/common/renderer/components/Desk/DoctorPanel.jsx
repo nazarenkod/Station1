@@ -28,6 +28,8 @@ const CHECK_NAME = {
   adb: 'adb',
   java: 'java',
   xcode: 'xcode',
+  shellEnv: 'shellEnv',
+  doctorFailed: 'doctorFailed',
 };
 
 /**
@@ -178,6 +180,9 @@ const DoctorPanel = () => {
       ]);
       cachedReport = {...environment, integrations: {jira, gitlab}};
       setReport(cachedReport);
+    } catch (error) {
+      // a failed check shows as a row, not as a list that never loads
+      setReport({checks: [{id: 'doctorFailed', status: 'error', params: {detail: error?.message ?? String(error)}}]});
     } finally {
       setLoading(false);
     }
@@ -257,6 +262,7 @@ const DoctorPanel = () => {
         // a missing tool says so instead of a bare status
         value:
           check.params?.version ||
+          t(`deskCheckValue_${check.id}`, {defaultValue: ''}) ||
           t(check.id.endsWith('Missing') ? 'deskCheckValue_missing' : `deskCheckValue_${check.status}`),
         status: check.status,
         text: t(`doctorCheck_${check.id}_${check.status}`, check.params),

@@ -19,7 +19,7 @@ import {
   parseInstalledDrivers,
   parseVersion,
 } from '../../app/common/node/doctor/environment.js';
-import {androidToolDirs, parseEnvOutput} from '../../app/common/node/doctor/exec.js';
+import {androidToolDirs, parseEnvOutput, run} from '../../app/common/node/doctor/exec.js';
 
 describe('doctor: devices', function () {
   it('parses adb devices with states and models', function () {
@@ -246,6 +246,37 @@ describe('doctor: shell environment', function () {
   it('adds the Android SDK tool folders', function () {
     expect(androidToolDirs({ANDROID_SDK_ROOT: '/sdk'})).toEqual(['/sdk/platform-tools', '/sdk/emulator']);
     expect(androidToolDirs({})).toEqual([]);
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('doctor: running a tool', function () {
+  it('returns what the tool printed and its exit code', async function () {
+    const result = await run('/bin/sh', ['-c', 'echo out; echo err >&2; exit 3']);
+    expect(result).toMatchObject({
+      ok: false,
+      missing: false,
+      timedOut: false,
+      code: 3,
+      stdout: 'out\n',
+      stderr: 'err\n',
+    });
+    expect(await run('/bin/sh', ['-c', 'printf ok'])).toMatchObject({ok: true, code: 0, stdout: 'ok'});
+  });
+
+  it('tells a missing binary', async function () {
+    expect(await run('no-such-tool-for-the-doctor')).toMatchObject({ok: false, missing: true});
+  });
+
+  it('gives a prompt in a shell profile nothing to read', async function () {
+    const result = await run('/bin/sh', ['-c', 'read answer; echo "got [$answer]"'], {timeout: 2000});
+    expect(result).toMatchObject({ok: true, timedOut: false, stdout: 'got []\n'});
+  });
+
+  it('ends by the timeout a shell that ignores SIGTERM and its background job', async function () {
+    const started = Date.now();
+    const result = await run('/bin/sh', ['-c', "trap '' TERM; sleep 30 & sleep 30"], {timeout: 300});
+    expect(result).toMatchObject({ok: false, timedOut: true});
+    expect(Date.now() - started).toBeLessThan(2000);
   });
 });
 

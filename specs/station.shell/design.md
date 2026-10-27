@@ -4,7 +4,7 @@
 
 ## Де в коді й точка розширення
 
-Панель UI. Код: `app/common/renderer/components/Workstation/` (`tools.js`, `ToolTabs.jsx`, `WorkstationHeader.jsx`, `Workstation.jsx`), робочий стіл — `app/common/renderer/components/Desk/` (`Desk.jsx`; `DoctorPanel.jsx` і `doctor-fixes.js` — стан середовища з виправленнями; `DevicesPanel.jsx`; `NewTestDialog.jsx` — очищення зібраного, дія `A11Y_SCAN_CLEARED` у `reducers/SessionInspector.js`).
+Панель UI. Код: `app/common/renderer/components/Workstation/` (`tools.js`, `ToolTabs.jsx`, `WorkstationHeader.jsx`, `Workstation.jsx`), робочий стіл — `app/common/renderer/components/Desk/` (`Desk.jsx`; `DoctorPanel.jsx` і `doctor-fixes.js` — стан середовища з виправленнями, помилка перевірки стає рядком `doctorFailed`; `DevicesPanel.jsx`; `NewTestDialog.jsx` — очищення зібраного, дія `A11Y_SCAN_CLEARED` у `reducers/SessionInspector.js`).
 
 ## Модель даних
 

@@ -6,6 +6,8 @@
 
 Джерело даних. Код: `app/common/node/doctor/devices.js`, `app/common/node/device/apps.js`, `app/common/renderer/actions/Workstation.js`.
 
+Усі інструменти запускає `run()` з `app/common/node/doctor/exec.js` з оточенням login-shell (`shellEnv()`, читається один раз). stdin закрито, тож запит у профілі оболонки отримує порожній ввід; після тайм-ауту вся група процесів отримує SIGKILL, бо інтерактивна оболонка ігнорує SIGTERM. Профіль, що не відповів за 8 с, доктор показує перевіркою `shellEnv`. Список пристроїв, який не вдалося прочитати, лишається попереднім, але вважається завантаженим.
+
 ## Модель даних
 
 Пристрій: `id`, `kind` (`android-device`, `android-emulator`, `android-avd`, `ios-simulator`, `ios-device`), `name`, `platformName`, `platformVersion`, `state`, `capabilities`. Застосунок: `id`, `name`, `version`, `build`, `installed`.

@@ -129,7 +129,8 @@ export function refreshDevices({quiet = false} = {}) {
       }
     } catch (error) {
       log.error(error);
-      dispatch({type: SET_WORKSTATION_DEVICES_LOADING, loading: false});
+      // the list stays as it was, but counts as loaded: the desk must not wait for it forever
+      dispatch({type: SET_WORKSTATION_DEVICES, devices: getState().workstation.devices});
     }
   };
 }

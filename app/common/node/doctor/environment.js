@@ -2,7 +2,7 @@ import {access} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import {runTool, shellEnv} from './exec.js';
+import {runTool, shellEnv, shellEnvFailure} from './exec.js';
 
 export const CHECK_STATUS = {OK: 'ok', WARN: 'warn', ERROR: 'error'};
 const {OK, WARN, ERROR} = CHECK_STATUS;
@@ -203,8 +203,16 @@ export async function checkEnvironment() {
     process.platform === 'darwin' ? checkXcode() : [],
   ]);
   const drivers = await checkDrivers(appium.version);
+  const shell = await shellEnvFailure();
   return {
-    checks: [node, appium.check, ...drivers.checks, ...android.checks, ...xcode],
+    checks: [
+      ...(shell ? [{id: 'shellEnv', status: WARN, params: shell}] : []),
+      node,
+      appium.check,
+      ...drivers.checks,
+      ...android.checks,
+      ...xcode,
+    ],
     appiumVersion: appium.version?.raw ?? null,
     drivers: drivers.drivers,
     androidSdk: android.sdk?.exists ? android.sdk.path : null,

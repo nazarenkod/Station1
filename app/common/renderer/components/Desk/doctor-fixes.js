@@ -20,6 +20,8 @@ const COMMANDS = {
   java: {mac: 'brew install --cask temurin@17', win: 'winget install EclipseAdoptium.Temurin.17.JDK'},
   javaHome: {mac: `echo 'export JAVA_HOME="$(/usr/libexec/java_home)"' >> ~/.zshrc`},
   xcode: {mac: 'sudo xcode-select -s /Applications/Xcode.app/Contents/Developer'},
+  // shows how long the profile takes and where it stops to ask something
+  shellEnv: ({shell}) => `time ${shell} -ilc exit`,
 };
 
 const commandFor = (key, params = {}) => {
