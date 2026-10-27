@@ -32,6 +32,12 @@ export class PerfSession {
     this.timers = [];
     this.busy = {look: false, memory: false};
     this.pending = {samples: [], markers: []};
+    this.paused = false;
+  }
+
+  /** A paused test takes no samples; the graph shows a gap there. */
+  setPaused(paused) {
+    this.paused = !!paused;
   }
 
   snapshot() {
@@ -92,7 +98,7 @@ export class PerfSession {
   }
 
   async look() {
-    if (this.busy.look || this.status.state === 'stopped') {
+    if (this.busy.look || this.paused || this.status.state === 'stopped') {
       return;
     }
     this.busy.look = true;

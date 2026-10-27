@@ -245,7 +245,14 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor}) {
           states[repo.id] = await inspectRepo(paths[repo.id].path);
         }
       }
-      return agentWorkspace(profile?.source ?? {repos: []}, paths, states);
+      // the device in the title bar says which platform's code the operator reads
+      const state = await askWindow('state').catch(() => null);
+      const platform = /ios/i.test(state?.device?.platform ?? '')
+        ? 'ios'
+        : /android/i.test(state?.device?.platform ?? '')
+          ? 'android'
+          : null;
+      return agentWorkspace(profile?.source ?? {repos: []}, paths, states, platform);
     },
   });
 

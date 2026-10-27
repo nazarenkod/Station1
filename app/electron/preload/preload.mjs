@@ -128,6 +128,8 @@ window.electronIPC = {
   source: {
     pickFolder: async () => await ipcRenderer.invoke('source:pickFolder'),
     setPath: async (profileId, repoId, folder) => await ipcRenderer.invoke('source:setPath', profileId, repoId, folder),
+    setModulePath: async (profileId, repoId, modulePath, folder) =>
+      await ipcRenderer.invoke('source:setModulePath', profileId, repoId, modulePath, folder),
     inspect: async (profileId) => await ipcRenderer.invoke('source:inspect', profileId),
     branches: async (profileId, repoId) => await ipcRenderer.invoke('source:branches', profileId, repoId),
     preview: async (profileId, repoId) => await ipcRenderer.invoke('source:preview', profileId, repoId),
@@ -170,6 +172,7 @@ window.electronIPC = {
     onProgress: subscribe('builds:progress'),
   },
   logs: {
+    setPaused: async (paused) => await ipcRenderer.invoke('logs:setPaused', paused),
     start: async (device, appId, rules) => await ipcRenderer.invoke('logs:start', device, appId, rules),
     stop: async () => await ipcRenderer.invoke('logs:stop'),
     snapshot: async () => await ipcRenderer.invoke('logs:snapshot'),
@@ -180,6 +183,7 @@ window.electronIPC = {
     onBatch: subscribe('logs:batch'),
   },
   perf: {
+    setPaused: async (paused) => await ipcRenderer.invoke('perf:setPaused', paused),
     start: async (device, appId) => await ipcRenderer.invoke('perf:start', device, appId),
     stop: async () => await ipcRenderer.invoke('perf:stop'),
     snapshot: async () => await ipcRenderer.invoke('perf:snapshot'),
@@ -190,11 +194,14 @@ window.electronIPC = {
     previous: async () => await ipcRenderer.invoke('journal:previous'),
     clear: async () => await ipcRenderer.invoke('journal:clear'),
     open: async () => await ipcRenderer.invoke('journal:open'),
+    health: async () => await ipcRenderer.invoke('journal:health'),
+    onHealth: subscribe('journal:health'),
     save: async (text, name) => await ipcRenderer.invoke('journal:save', text, name),
     report: (error) => ipcRenderer.send('journal:report', error),
     onChanged: subscribe('journal:changed'),
   },
   proxy: {
+    setPaused: async (paused) => await ipcRenderer.invoke('proxy:setPaused', paused),
     start: async (options) => await ipcRenderer.invoke('proxy:start', options),
     stop: async () => await ipcRenderer.invoke('proxy:stop'),
     snapshot: async () => await ipcRenderer.invoke('proxy:snapshot'),

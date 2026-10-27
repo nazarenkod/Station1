@@ -1,4 +1,4 @@
-// The model every conversation of the dispatcher runs on. Kiro picks one by
+// The model every conversation of the operator runs on. Kiro picks one by
 // itself («auto») unless told; the station pins the one in its settings, and
 // when the account does not offer it, the newest model of the same family
 // (Sonnet 4.5 while Sonnet 5.5 is not there yet).

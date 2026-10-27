@@ -18,7 +18,7 @@ import styles from './Workstation.module.css';
  * The window's title bar in one row: the brand, the tools, the project (its
  * profile names the app) and the device every tool shares, the session (or
  * the button that starts it with everything around it), the journal and the
- * dispatcher.
+ * operator.
  */
 const WorkstationHeader = () => {
   const {t} = useTranslation();

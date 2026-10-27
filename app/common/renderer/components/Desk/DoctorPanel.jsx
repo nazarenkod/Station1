@@ -161,7 +161,7 @@ export const PanelFoot = ({open, onToggle, hidden, summary}) => {
 const isProblem = (row) => needsFix(row.status);
 
 /**
- * What the dispatcher is asked to fix: the check, what is wrong, and what the
+ * What the operator is asked to fix: the check, what is wrong, and what the
  * station would do about it, so it can start fixing right away.
  */
 const fixPrompt = (t, check, fix) => {
@@ -241,9 +241,10 @@ const EnvList = ({id, title, rows, report, loading, onRecheck, fit = false, okTe
 };
 
 /**
- * The environment as two lists with a coloured status per line: the tools
- * (every check of the doctor, the Appium server, the proxy, the log) and the
- * integrations. Problems stay in view; the rest folds away until opened.
+ * The environment as lists with a coloured status per line: the tools of
+ * this Mac (the doctor's checks), the station's own services (the Appium
+ * server, the proxy, the log) and the integrations (Kiro CLI, Jira, GitLab).
+ * Problems stay in view; the rest folds away until opened.
  */
 const DoctorPanel = () => {
   const {t} = useTranslation();
@@ -314,26 +315,31 @@ const DoctorPanel = () => {
 
   const serverStatus = serverStatusOf(appium);
 
-  const rows = [
-    ...(report?.checks ?? []).map((check, i) => {
-      const fix = fixForCheck(check);
-      return {
-        key: `${check.id}-${check.params?.driver ?? i}`,
-        name: t(`deskCheck_${CHECK_NAME[check.id] ?? check.id}`, check.params),
-        // a missing tool says so instead of a bare status
-        value:
-          check.params?.version ||
-          t(`deskCheckValue_${check.id}`, {defaultValue: ''}) ||
-          t(check.id.endsWith('Missing') ? 'deskCheckValue_missing' : `deskCheckValue_${check.status}`),
-        status: check.status,
-        text: t(`doctorCheck_${check.id}_${check.status}`, check.params),
-        fixText: fix ? t(`deskFix_${fix.key}`, {defaultValue: ''}) : '',
-        command: fix?.command,
-        action: actionFor(fix),
-        // the dispatcher gets the whole problem with the station's advice and fixes it with the person's yes
-        agent: needsFix(check.status) && check.id !== 'doctorFailed' ? () => askOnTask(fixPrompt(t, check, fix)) : null,
-      };
-    }),
+  const checks = (report?.checks ?? []).map((check, i) => {
+    const fix = fixForCheck(check);
+    return {
+      key: `${check.id}-${check.params?.driver ?? i}`,
+      name: t(`deskCheck_${CHECK_NAME[check.id] ?? check.id}`, check.params),
+      // a missing tool says so instead of a bare status
+      value:
+        check.params?.version ||
+        t(`deskCheckValue_${check.id}`, {defaultValue: ''}) ||
+        t(check.id.endsWith('Missing') ? 'deskCheckValue_missing' : `deskCheckValue_${check.status}`),
+      status: check.status,
+      text: t(`doctorCheck_${check.id}_${check.status}`, check.params),
+      fixText: fix ? t(`deskFix_${fix.key}`, {defaultValue: ''}) : '',
+      command: fix?.command,
+      action: actionFor(fix),
+      // the operator gets the whole problem with the station's advice and fixes it with the person's yes
+      agent: needsFix(check.status) && check.id !== 'doctorFailed' ? () => askOnTask(fixPrompt(t, check, fix)) : null,
+      // Kiro CLI is the operator's way out of the Mac: an integration, as Jira and GitLab are
+      integration: check.id.startsWith('kiro'),
+    };
+  });
+  // the tools on this Mac the station needs
+  const environment = checks.filter((row) => !row.integration);
+  // what the station itself runs
+  const services = [
     {
       key: 'server',
       name: t('deskCheck_server'),
@@ -382,25 +388,29 @@ const DoctorPanel = () => {
       text: logs.started ? t('deskCheckLogsOn') : t('deskCheckLogsOff'),
     },
   ];
-  const integrations = ['jira', 'gitlab'].map((key) => ({
-    key,
-    name: t(`deskCheck_${key}`),
-    value: report?.integrations?.[key] ? t('deskCheckValue_connected') : t('deskCheckValue_notConnected'),
-    status: report?.integrations?.[key] ? 'ok' : 'off',
-    text: report?.integrations?.[key] ? t(`deskCheck_${key}On`) : t(`deskCheck_${key}Off`),
-    action: !report?.integrations?.[key] && toSettings,
-  }));
+  const integrations = [
+    ...checks.filter((row) => row.integration),
+    ...['jira', 'gitlab'].map((key) => ({
+      key,
+      name: t(`deskCheck_${key}`),
+      value: report?.integrations?.[key] ? t('deskCheckValue_connected') : t('deskCheckValue_notConnected'),
+      status: report?.integrations?.[key] ? 'ok' : 'off',
+      text: report?.integrations?.[key] ? t(`deskCheck_${key}On`) : t(`deskCheck_${key}Off`),
+      action: !report?.integrations?.[key] && toSettings,
+    })),
+  ];
 
   return (
     <div className={styles.envColumn}>
       <EnvList
-        id="desk-tools"
-        title={t('deskEnvTools')}
-        rows={rows}
+        id="desk-environment"
+        title={t('deskEnvMac')}
+        rows={environment}
         report={report}
         loading={loading}
         onRecheck={load}
       />
+      <EnvList id="desk-services" title={t('deskEnvServices')} rows={services} report={report} fit />
       <EnvList
         id="desk-integrations"
         title={t('deskEnvIntegrations')}

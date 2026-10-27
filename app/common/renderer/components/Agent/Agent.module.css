@@ -462,3 +462,10 @@
   color: var(--vi-text-3);
   font-size: var(--vi-text-xs);
 }
+
+/* the next steps the operator offers under its answer */
+.nextSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

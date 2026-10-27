@@ -31,6 +31,8 @@ export const GITLAB_CONFIG = 'GITLAB_CONFIG';
 export const WORKSTATION = 'WORKSTATION';
 // the builds opened lately, to install them again
 export const BUILDS_HISTORY = 'BUILDS_HISTORY';
+// what «Start session» starts besides the session: the proxy on this Mac, the device log, the measurement
+export const TEST_START = 'TEST_START';
 // the jobs each GitLab project leaves its builds in, by project path, and the build picked in their archive
 export const BUILD_JOBS = 'BUILD_JOBS';
 // the pipelines the Builds tool follows, with the devices their build goes to
@@ -94,6 +96,7 @@ export const DEFAULT_SETTINGS = {
   [GITLAB_CONFIG]: null,
   [WORKSTATION]: {deviceId: null, app: null, deviceUse: {}},
   [BUILDS_HISTORY]: [],
+  [TEST_START]: {proxy: true, logs: true, perf: false},
   [BUILD_JOBS]: {},
   [PIPELINE_WATCHES]: [],
   [LOG_RULES_CONFIG]: {overrides: {}, custom: []},

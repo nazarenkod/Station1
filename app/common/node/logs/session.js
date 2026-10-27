@@ -275,8 +275,16 @@ export class LogSession {
     }
   }
 
+  /** A paused test: the app's processes are still followed, the lines are not kept. */
+  setPaused(paused) {
+    this.paused = !!paused;
+  }
+
   add(raw) {
     this.followProcesses(raw);
+    if (this.paused) {
+      return;
+    }
     const entry = {...raw, seq: ++this.seq};
     this.decorate(entry);
     this.store(entry);

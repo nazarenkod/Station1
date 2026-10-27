@@ -98,6 +98,7 @@ export function setupProxyIPC() {
   ipcMain.handle('proxy:setModes', (_evt, modes) => proxy.setModes(modes));
   ipcMain.handle('proxy:setTrafficRules', (_evt, rules) => proxy.setTrafficRules(rules));
   ipcMain.handle('proxy:clear', () => proxy.clear());
+  ipcMain.handle('proxy:setPaused', (_evt, paused) => proxy.setPaused(paused));
   ipcMain.handle('proxy:resume', (_evt, pauseId, decision) => proxy.resume(pauseId, decision));
   ipcMain.handle('proxy:replay', async (_evt, request) => await replay(proxy, request));
   ipcMain.handle('proxy:revealCa', () => proxy.ca && shell.showItemInFolder(proxy.ca.certPath));

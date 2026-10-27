@@ -15,6 +15,8 @@ const broadcast = (channel, payload) => {
 export function setupPerfIPC() {
   let session = null;
   let contents = null;
+  // a paused test outlives a measurement started again: the new one starts paused
+  let paused = false;
 
   const stop = () => {
     session?.stop();
@@ -33,7 +35,12 @@ export function setupPerfIPC() {
     contents = evt.sender;
     contents.setBackgroundThrottling(false);
     session = new PerfSession({device, appId, onBatch: (batch) => broadcast('perf:batch', batch)});
+    session.setPaused(paused);
     return await session.start();
+  });
+  ipcMain.handle('perf:setPaused', (_evt, on) => {
+    paused = !!on;
+    session?.setPaused(paused);
   });
   ipcMain.handle('perf:stop', () => stop());
   ipcMain.handle('perf:snapshot', () => session?.snapshot() ?? null);

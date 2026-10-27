@@ -5,6 +5,12 @@
 
 export const REPO_ROLES = ['app', 'android', 'ios', 'backend', 'shared', 'other'];
 
+// the platforms of a submodule: one shared by the Android and iOS apps is «all»
+export const MODULE_PLATFORMS = ['all', 'android', 'ios'];
+
+// a repository of one platform is left out of the operator's folders while the device is of the other
+const ROLE_PLATFORM = {android: 'android', ios: 'ios'};
+
 export const DEFAULT_DEV_BRANCH = 'develop';
 export const DEFAULT_RELEASE_BRANCH = 'main';
 
@@ -39,7 +45,90 @@ export function projectSource(source) {
     devBranch: branchName(source?.devBranch, DEFAULT_DEV_BRANCH),
     releaseBranch: branchName(source?.releaseBranch, DEFAULT_RELEASE_BRANCH),
     repos,
+    modules: cleanModules(source?.modules, ids),
   };
+}
+
+/**
+ * The platform of each submodule, by repository and the submodule's path in
+ * it; «all» is the default and is not kept.
+ * @returns {Record<string, Record<string, {platform: string}>>}
+ */
+function cleanModules(modules, repoIds) {
+  const clean = {};
+  for (const [repoId, byPath] of Object.entries(modules && typeof modules === 'object' ? modules : {})) {
+    if (!repoIds.has(repoId) || !byPath || typeof byPath !== 'object') {
+      continue;
+    }
+    for (const [modulePath, value] of Object.entries(byPath)) {
+      const platform = value?.platform;
+      if (modulePath && MODULE_PLATFORMS.includes(platform) && platform !== 'all') {
+        clean[repoId] = {...clean[repoId], [modulePath]: {platform}};
+      }
+    }
+  }
+  return clean;
+}
+
+/** The profile's code with one submodule's platform set (`all` takes the setting off). */
+export function setModulePlatform(source, repoId, modulePath, platform) {
+  const byPath = {...source.modules?.[repoId], [modulePath]: {platform}};
+  return projectSource({...source, modules: {...source.modules, [repoId]: byPath}});
+}
+
+/**
+ * The submodules as a tree: each with its depth and the path of the
+ * submodule it is in (`ap24f/submodules/core-kit` is in `ap24f`), in the
+ * order of their paths, so a parent comes before what is in it.
+ * @param {{path: string}[]} modules
+ * @returns {{path: string, depth: number, parent: string | null}[]}
+ */
+export function moduleTree(modules) {
+  const paths = (modules ?? []).map((module) => module.path);
+  const parentOf = (modulePath) =>
+    paths
+      .filter((other) => other !== modulePath && modulePath.startsWith(`${other}/`))
+      .sort((a, b) => b.length - a.length)[0] ?? null;
+  const depthOf = (modulePath) => {
+    let depth = 0;
+    for (let parent = parentOf(modulePath); parent; parent = parentOf(parent)) {
+      depth++;
+    }
+    return depth;
+  };
+  return [...(modules ?? [])]
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .map((module) => ({...module, depth: depthOf(module.path), parent: parentOf(module.path)}));
+}
+
+/**
+ * The platform a submodule is for: its own setting, else that of the
+ * submodule it is in, else «all».
+ */
+export function modulePlatform(source, repoId, modulePath, tree) {
+  for (let current = modulePath; current; current = tree.find((one) => one.path === current)?.parent ?? null) {
+    const platform = source.modules?.[repoId]?.[current]?.platform;
+    if (platform) {
+      return platform;
+    }
+  }
+  return 'all';
+}
+
+/**
+ * Where a submodule is on this Mac: its own folder when one is set (a clone
+ * of its own), or under the folder of the submodule it is in, else inside
+ * the repository.
+ */
+export function moduleFolder(root, modulePath, own = {}, tree = []) {
+  if (own[modulePath]) {
+    return own[modulePath];
+  }
+  const parent = tree.find((one) => one.path === modulePath)?.parent;
+  if (parent) {
+    return `${moduleFolder(root, parent, own, tree)}/${modulePath.slice(parent.length + 1)}`;
+  }
+  return `${root}/${modulePath}`;
 }
 
 /** A new repository for the profile, named after its folder. */
@@ -152,27 +241,43 @@ export function repoWarnings(state, source) {
 }
 
 /**
- * The folders an agent conversation opens: the main repository is where it
- * works, the other repositories and the checked-out submodules are open
- * beside it. A repository without a folder or not found is left out.
+ * The folders an operator conversation opens: the repositories and their
+ * checked-out submodules (or the folders set for them). While the device is
+ * Android or iOS, the repositories and submodules of the other platform are
+ * left out, and the repository of the device's platform is where it works.
+ * A submodule two repositories share (the same address) comes once. A
+ * repository without a folder or not found is left out.
  * @param {object} source the profile's code
- * @param {Record<string, {path: string}>} paths the folders of this profile
+ * @param {Record<string, {path: string, modules?: Record<string, string>}>} paths the folders of this profile
  * @param {Record<string, object>} states the state of each repository by id
+ * @param {string | null} [platform] `android`, `ios`, or null for all
  * @returns {{cwd: string | null, additionalDirectories: string[]}}
  */
-export function agentWorkspace(source, paths = {}, states = {}) {
+export function agentWorkspace(source, paths = {}, states = {}, platform = null) {
+  const fits = (wanted) => !platform || !wanted || wanted === 'all' || wanted === platform;
+  const ownPlatform = (repo) => Number(!!platform && ROLE_PLATFORM[repo.role] === platform);
+  const repos = [...source.repos].sort((a, b) => ownPlatform(b) - ownPlatform(a));
   const folders = [];
-  for (const repo of source.repos) {
+  const seen = new Set();
+  for (const repo of repos) {
     const state = states[repo.id];
     const root = state?.ok ? state.root : null;
-    if (!root || !paths[repo.id]?.path) {
+    if (!root || !paths[repo.id]?.path || !fits(ROLE_PLATFORM[repo.role])) {
       continue;
     }
     folders.push(root);
-    for (const module of state.submodules ?? []) {
-      if (module.initialized) {
-        folders.push(`${root}/${module.path}`);
+    const own = paths[repo.id]?.modules ?? {};
+    const tree = moduleTree(state.submodules ?? []);
+    for (const module of tree) {
+      if (!(module.initialized || own[module.path]) || !fits(modulePlatform(source, repo.id, module.path, tree))) {
+        continue;
       }
+      const same = module.url || `${repo.id}:${module.path}`;
+      if (seen.has(same)) {
+        continue;
+      }
+      seen.add(same);
+      folders.push(moduleFolder(root, module.path, own, tree));
     }
   }
   const unique = [...new Set(folders)];

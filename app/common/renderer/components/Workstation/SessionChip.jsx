@@ -1,4 +1,3 @@
-import {IconNotebook} from '@tabler/icons-react';
 import {Tooltip} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -16,8 +15,34 @@ export function formatElapsed(ms) {
   return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
 }
 
+const DOT_CLASS = {ok: 'dotOn', warn: 'dotWarn', error: 'dotError'};
+
 /**
- * The running Appium session and how long it lasts; without one, the way to
+ * The station's journal as a dot: green when nothing went wrong since the
+ * journal was last looked at, amber for warnings, red for errors.
+ */
+const JournalDot = () => {
+  const {t} = useTranslation();
+  const [health, setHealth] = useState({status: 'ok', errors: 0, warnings: 0});
+  useEffect(() => {
+    backend.journal.health?.().then((now) => now && setHealth(now));
+    return backend.journal.onHealth?.(setHealth);
+  }, []);
+  const title =
+    health.status === 'ok'
+      ? t('wsJournalOk')
+      : t('wsJournalIssues', {errors: health.errors, warnings: health.warnings});
+  return (
+    <Tooltip title={`${t('journalTitle')} · ${title} · ⌥⌘L`}>
+      <button className={styles.journalDot} aria-label={t('journalTitle')} onClick={() => backend.journal.open()}>
+        <span className={`${styles.dot} ${styles[DOT_CLASS[health.status]]}`} />
+      </button>
+    </Tooltip>
+  );
+};
+
+/**
+ * The running Appium session and how long it lasts; without one, the dot of
  * the station's journal.
  */
 const SessionChip = () => {
@@ -50,18 +75,11 @@ const SessionChip = () => {
     );
   }
 
-  // no session: the station's journal, where its commands and errors are, Appium's among them
+  // no session: the station's journal as a dot, green while nothing went wrong since it was last opened
   if (!backend.journal) {
     return null;
   }
-  return (
-    <Tooltip title={`${t('journalTitle')} · ⌥⌘L`}>
-      <button className={styles.chip} onClick={() => backend.journal.open()}>
-        <IconNotebook size={16} stroke={1.7} />
-        <span className={styles.chipText}>{t('journalTitle')}</span>
-      </button>
-    </Tooltip>
-  );
+  return <JournalDot />;
 };
 
 export default SessionChip;

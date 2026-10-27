@@ -47,6 +47,18 @@ export function setupSourceIPC(station) {
     station.setSourcePath(profileId, repoId, {path: folder || null, previousBranch: null}),
   );
 
+  // a submodule taken from a folder of its own (a separate clone) instead of the copy inside the repository
+  ipcMain.handle('source:setModulePath', async (_evt, profileId, repoId, modulePath, folder) => {
+    const known = (await station.sourcePaths(profileId))[repoId] ?? {};
+    const modules = {...known.modules};
+    if (folder) {
+      modules[modulePath] = folder;
+    } else {
+      delete modules[modulePath];
+    }
+    return await station.setSourcePath(profileId, repoId, {modules});
+  });
+
   ipcMain.handle('source:inspect', async (_evt, profileId) => {
     const source = await profileSource(profileId);
     if (!source) {
@@ -60,6 +72,7 @@ export function setupSourceIPC(station) {
           repoId: repo.id,
           path: known.path ?? null,
           previousBranch: known.previousBranch ?? null,
+          modules: known.modules ?? {},
           state: known.path ? await inspectRepo(known.path, source) : null,
         };
       }),

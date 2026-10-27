@@ -4,6 +4,7 @@ import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useNavigate} from 'react-router';
 
+import {problemFor, useStartProblems} from '../../lib/session/test-run.js';
 import {addProfile, switchProfile, useProfiles} from '../../lib/settings/profiles-store.js';
 import {backend} from '../../polyfills.js';
 import {NameDialog} from '../Settings/ProfilesSettings.jsx';
@@ -16,6 +17,11 @@ import styles from './Workstation.module.css';
  */
 const ProfilePicker = () => {
   const {t} = useTranslation();
+  // «Start session» waits for this one: it is outlined
+  const problem = problemFor(useStartProblems(), 'app');
+  const attention = problem
+    ? `${styles.pickerAttention} ${problem.severity === 'error' ? styles.pickerAttention_error : ''}`
+    : '';
   const navigate = useNavigate();
   const profiles = useProfiles();
   const [open, setOpen] = useState(false);
@@ -85,7 +91,7 @@ const ProfilePicker = () => {
         onOpenChange={setOpen}
         arrow={false}
       >
-        <button className={styles.picker} aria-label={t('wsPickProfile')} title={t('wsPickProfile')}>
+        <button className={`${styles.picker} ${attention}`} aria-label={t('wsPickProfile')} title={t('wsPickProfile')}>
           <IconFolders size={16} stroke={1.6} />
           <span className={styles.pickerMain}>{active?.name ?? t('wsPickProfile')}</span>
           <IconChevronDown size={14} opacity={0.6} />

@@ -8,6 +8,9 @@ import {afterAll, beforeAll, describe, expect, it, vi} from 'vitest';
 import {
   agentWorkspace,
   branchToRemember,
+  moduleFolder,
+  modulePlatform,
+  moduleTree,
   newRepo,
   parseGitmodules,
   parseStatus,
@@ -15,6 +18,7 @@ import {
   projectSource,
   repoWarnings,
   safeRemote,
+  setModulePlatform,
 } from '../../app/common/shared/settings/source.js';
 
 // git runs with the environment of the test, not of a login shell; local
@@ -40,7 +44,7 @@ const {changesToDiscard, fetchRepo, inspectRepo, listBranches, pullRepo, switchB
 
 describe('projectSource', () => {
   it('gives develop and main to a profile without code', () => {
-    expect(projectSource(undefined)).toEqual({devBranch: 'develop', releaseBranch: 'main', repos: []});
+    expect(projectSource(undefined)).toEqual({devBranch: 'develop', releaseBranch: 'main', repos: [], modules: {}});
   });
 
   it('keeps the branches the person set and drops names git would not take', () => {
@@ -164,6 +168,86 @@ describe('agentWorkspace', () => {
 
   it('has no folder when no repository is on this Mac', () => {
     expect(agentWorkspace(source, {}, {})).toEqual({cwd: null, additionalDirectories: []});
+  });
+
+  // ap24v6 (Android) and the iOS app both take ap24f, which has submodules of its own
+  const shared = 'git@git.example:mob/ap24f.git';
+  const mobile = setModulePlatform(
+    projectSource({
+      repos: [
+        {id: 'and', role: 'android'},
+        {id: 'ios', role: 'ios'},
+      ],
+    }),
+    'and',
+    'tapandpay',
+    'android',
+  );
+  const mobilePaths = {
+    and: {path: '/code/and', modules: {'ap24f/submodules/core-kit': '/code/core-kit'}},
+    ios: {path: '/code/ios'},
+  };
+  const mobileStates = {
+    and: {
+      ok: true,
+      root: '/code/and',
+      submodules: [
+        {path: 'tapandpay', initialized: true, url: 'git@git.example:mob/tapandpay.git'},
+        {path: 'ap24f', initialized: true, url: shared},
+        {path: 'ap24f/submodules/core-kit', initialized: false, url: 'git@git.example:mob/core-kit.git'},
+      ],
+    },
+    ios: {ok: true, root: '/code/ios', submodules: [{path: 'Shared/ap24f', initialized: true, url: shared}]},
+  };
+
+  it('opens the repository of the device platform, its submodules and the shared ones once', () => {
+    expect(agentWorkspace(mobile, mobilePaths, mobileStates, 'android')).toEqual({
+      cwd: '/code/and',
+      additionalDirectories: ['/code/and/ap24f', '/code/core-kit', '/code/and/tapandpay'],
+    });
+    expect(agentWorkspace(mobile, mobilePaths, mobileStates, 'ios')).toEqual({
+      cwd: '/code/ios',
+      additionalDirectories: ['/code/ios/Shared/ap24f'],
+    });
+  });
+
+  it('opens everything when no device is picked', () => {
+    const all = agentWorkspace(mobile, mobilePaths, mobileStates, null);
+    expect(all.cwd).toBe('/code/and');
+    expect(all.additionalDirectories).toContain('/code/ios');
+    expect(all.additionalDirectories).toContain('/code/and/tapandpay');
+  });
+});
+
+describe('submodules as a tree', () => {
+  it('puts a submodule of a submodule under it, and takes the platform and folder from above', () => {
+    const tree = moduleTree([
+      {path: 'ap24f/submodules/pb_core'},
+      {path: 'auth'},
+      {path: 'ap24f'},
+      {path: 'ap24f/submodules/core-kit'},
+    ]);
+    expect(tree.map(({path: p, depth, parent}) => [p, depth, parent])).toEqual([
+      ['ap24f', 0, null],
+      ['ap24f/submodules/core-kit', 1, 'ap24f'],
+      ['ap24f/submodules/pb_core', 1, 'ap24f'],
+      ['auth', 0, null],
+    ]);
+    const source = setModulePlatform(projectSource({repos: [{id: 'r'}]}), 'r', 'ap24f', 'ios');
+    expect(modulePlatform(source, 'r', 'ap24f/submodules/pb_core', tree)).toBe('ios');
+    expect(modulePlatform(source, 'r', 'auth', tree)).toBe('all');
+    expect(moduleFolder('/code', 'ap24f/submodules/pb_core', {ap24f: '/clones/ap24f'}, tree)).toBe(
+      '/clones/ap24f/submodules/pb_core',
+    );
+  });
+
+  it('keeps only platforms other than «all», of repositories the profile has', () => {
+    const source = projectSource({
+      repos: [{id: 'r'}],
+      modules: {r: {a: {platform: 'ios'}, b: {platform: 'all'}, c: {platform: 'tv'}}, gone: {x: {platform: 'ios'}}},
+    });
+    expect(source.modules).toEqual({r: {a: {platform: 'ios'}}});
+    expect(setModulePlatform(source, 'r', 'a', 'all').modules).toEqual({});
   });
 });
 

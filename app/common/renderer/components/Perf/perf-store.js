@@ -122,6 +122,20 @@ export async function startPerf(device, appId, {markScreen = true} = {}) {
   }
 }
 
+/**
+ * A new test: what was measured so far is dropped, the measurement goes on
+ * from now and marks the screen it is on again.
+ */
+export function clearPerf() {
+  state.samples.length = 0;
+  state.markers.length = 0;
+  lastScreenId = null;
+  publish({startedAt: state.running ? Date.now() : state.startedAt});
+  if (state.running) {
+    noteScreen();
+  }
+}
+
 export async function stopPerf() {
   if (!state.running) {
     return;

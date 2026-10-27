@@ -9,7 +9,6 @@ import A11yTab from './A11yTab/A11yTab.jsx';
 import Commands from './CommandsTab/Commands.jsx';
 import GestureEditor from './GesturesTab/GestureEditor/GestureEditor.jsx';
 import SavedGestures from './GesturesTab/SavedGestures.jsx';
-import Recorder from './RecorderTab/Recorder.jsx';
 import SessionInfo from './SessionInfoTab/SessionInfo.jsx';
 import SourceTab from './SourceTab/SourceTab.jsx';
 
@@ -100,12 +99,6 @@ const SessionInspectorTabs = (props) => {
       ) : (
         <SavedGestures {...props} />
       ),
-    },
-    {
-      label: t('Recorder'),
-      key: INSPECTOR_TABS.RECORDER,
-      disabled: !showScreenshot,
-      children: <Recorder {...props} />,
     },
     {
       label: t('Session Information'),

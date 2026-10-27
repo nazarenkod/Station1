@@ -113,6 +113,8 @@ describe('the code of a profile', () => {
       {id: 'r-app', name: 'bank-android', role: 'android'},
       {id: 'r-ui', name: 'design', role: 'shared'},
     ],
+    // the platform of a submodule is the team's: it goes with the profile
+    modules: {'r-app': {tapandpay: {platform: 'android'}}},
   };
   const withCode = (all) => {
     const profiles = profilesOf(all);

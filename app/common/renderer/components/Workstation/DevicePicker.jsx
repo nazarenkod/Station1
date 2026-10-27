@@ -5,6 +5,7 @@ import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 
 import {activeDevice, isDeviceRunning, refreshDevices, selectDevice} from '../../actions/Workstation.js';
+import {problemFor, useStartProblems} from '../../lib/session/test-run.js';
 import {backend} from '../../polyfills.js';
 
 import styles from './Workstation.module.css';
@@ -29,6 +30,11 @@ const canBoot = (device) => device.state === 'stopped' && ['android-avd', 'ios-s
  */
 const DevicePicker = () => {
   const {t} = useTranslation();
+  // «Start session» waits for this one: it is outlined
+  const problem = problemFor(useStartProblems(), 'device');
+  const attention = problem
+    ? `${styles.pickerAttention} ${problem.severity === 'error' ? styles.pickerAttention_error : ''}`
+    : '';
   const dispatch = useDispatch();
   const workstation = useSelector((state) => state.workstation);
   const {devices, devicesLoaded} = workstation;
@@ -113,7 +119,11 @@ const DevicePicker = () => {
 
   return (
     <Popover content={content} trigger="click" placement="bottomLeft" open={open} onOpenChange={setOpen} arrow={false}>
-      <button className={styles.picker} aria-label={t('wsPickDevice')} title={device?.name ?? t('wsNoDevice')}>
+      <button
+        className={`${styles.picker} ${attention}`}
+        aria-label={t('wsPickDevice')}
+        title={device?.name ?? t('wsNoDevice')}
+      >
         {devicesLoading && !devicesLoaded ? <Spin size="small" /> : <IconDeviceMobile size={16} stroke={1.6} />}
         {device ? (
           <>

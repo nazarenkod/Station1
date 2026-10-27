@@ -166,7 +166,15 @@ export async function openConversation({taskKey = currentTaskKey()} = {}) {
 
 async function openAnew(profileId, taskKey, key) {
   backend.agent.consented(profileId).then((consent) => publish({consent}));
-  publish({status: 'starting', error: null, key, chat: emptyChat(), sessionId: null, changes: [], turns: {}});
+  publish({
+    status: 'starting',
+    error: null,
+    key,
+    chat: emptyChat(),
+    sessionId: null,
+    changes: [],
+    turns: {},
+  });
   // the first time this window opens a conversation it has no chat of it: Kiro replays it
   const replay = !chats.size;
   const result = await backend.agent.open({profileId, taskKey, replay});

@@ -2,7 +2,7 @@ import {writeFile} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import {app, dialog, ipcMain} from 'electron';
+import {app, BrowserWindow, dialog, ipcMain} from 'electron';
 
 import {
   getSummary,
@@ -12,6 +12,7 @@ import {
   startJournalFile,
   trackHandler,
 } from '../../common/node/journal.js';
+import {journalHealth} from '../../common/shared/journal.js';
 import {PRODUCT_NAME} from '../../common/shared/product.js';
 import {getJournalWindow, openJournalWindow} from './windows.js';
 
@@ -19,6 +20,34 @@ import {getJournalWindow, openJournalWindow} from './windows.js';
 const SEND_EVERY_MS = 250;
 
 const journalDir = () => path.join(app.getPath('userData'), 'journal');
+
+// what was recorded before this moment the person has seen: the journal was open
+let seenAt = 0;
+
+const health = () => {
+  if (getJournalWindow()) {
+    seenAt = Date.now();
+  }
+  return journalHealth(journal.list(), seenAt);
+};
+
+// the other windows show the journal as a dot in the title bar
+function sendHealth() {
+  const journalWindow = getJournalWindow();
+  const now = health();
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (window !== journalWindow && !window.isDestroyed()) {
+      window.webContents.send('journal:health', now);
+    }
+  }
+}
+
+/** Opens the journal window; what is in the journal counts as seen from now. */
+export function openJournal() {
+  seenAt = Date.now();
+  openJournalWindow();
+  sendHealth();
+}
 
 /**
  * Starts the journal before anything else runs: every IPC handler set up
@@ -61,13 +90,15 @@ export function setupJournal() {
       }
       pending = [];
       cleared = false;
+      sendHealth();
     }, SEND_EVERY_MS);
   });
 
   ipcMain.handle('journal:list', () => ({summary: getSummary(), entries: journal.list()}));
   ipcMain.handle('journal:previous', async () => await readPreviousJournal(journalDir()));
   ipcMain.handle('journal:clear', () => journal.clear());
-  ipcMain.handle('journal:open', () => openJournalWindow());
+  ipcMain.handle('journal:open', () => openJournal());
+  ipcMain.handle('journal:health', () => health());
   ipcMain.handle('journal:save', async (_evt, text, name) => {
     const {canceled, filePath} = await dialog.showSaveDialog(getJournalWindow() ?? undefined, {
       defaultPath: path.join(app.getPath('downloads'), name),

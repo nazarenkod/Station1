@@ -9,6 +9,7 @@ import {SET_BUILD} from '../../actions/Builds.js';
 import {newGoalRun} from '../../lib/goals/goals-store.js';
 import {clearScreenHistory} from '../A11yTool/screen-history.js';
 import {clearLogs, useLogs} from '../Logs/logs-store.js';
+import {clearPerf, usePerf} from '../Perf/perf-store.js';
 import {clearTraffic, useProxy} from '../Proxy/proxy-store.js';
 
 import styles from './Desk.module.css';
@@ -23,14 +24,16 @@ const NewTestDialog = ({open, onClose, onDone}) => {
   const dispatch = useDispatch();
   const proxy = useProxy();
   const logs = useLogs();
+  const perf = usePerf();
   const scan = useSelector((state) => state.inspector.a11yScan);
   const screen = useSelector((state) => state.inspector.a11yScreen);
   const build = useSelector((state) => state.builds.current);
-  const [picked, setPicked] = useState({traffic: true, logs: true, audit: true, build: false});
+  const [picked, setPicked] = useState({traffic: true, logs: true, perf: true, audit: true, build: false});
 
   const items = [
     {key: 'traffic', dot: 'proxy', count: proxy.order.length, sub: t('deskResetTrafficSub')},
     {key: 'logs', dot: 'logs', count: logs.entries.length, sub: t('deskResetLogsSub')},
+    {key: 'perf', dot: 'perf', count: perf.samples.length, sub: t('deskResetPerfSub')},
     {
       key: 'audit',
       dot: 'a11y',
@@ -54,6 +57,9 @@ const NewTestDialog = ({open, onClose, onDone}) => {
     }
     if (picked.logs) {
       await clearLogs();
+    }
+    if (picked.perf) {
+      clearPerf();
     }
     if (picked.audit) {
       dispatch({type: A11Y_SCAN_CLEARED});

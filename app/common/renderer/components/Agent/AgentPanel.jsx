@@ -1,5 +1,6 @@
 import {
   IconArrowBackUp,
+  IconArrowRight,
   IconBrain,
   IconBookmark,
   IconHistory,
@@ -17,9 +18,9 @@ import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
 
 import {chatCredits} from '../../../shared/agent/acp-events.js';
-import {approxTokens} from '../../../shared/agent/budget.js';
 import {chip} from '../../../shared/agent/context.js';
 import {formatCredits} from '../../../shared/agent/credits.js';
+import {splitNextSteps} from '../../../shared/agent/next-steps.js';
 import {activeDevice} from '../../actions/Workstation.js';
 import {
   addProposal,
@@ -108,7 +109,6 @@ const ToolRow = ({item}) => {
       {running ? <IconLoader2 size={14} className={styles.spin} /> : <IconTool size={14} />}
       <span className={styles.toolName}>{item.tool ?? item.title}</span>
       {item.server && item.server !== 'station' && <span className={styles.toolServer}>{item.server}</span>}
-      {item.chars > 0 && <span className={styles.toolSize}>{t('agentTokens', {count: approxTokens(item.chars)})}</span>}
       {item.failure && (
         <span className={styles.toolServer}>{t(`agentToolFailure_${item.failure}`, {defaultValue: item.failure})}</span>
       )}
@@ -157,7 +157,6 @@ const TurnLine = ({item, turn, changes, language, notes, chips}) => {
         {[
           item.credits !== null && t('agentTurnUsed', {credits: formatCredits(item.credits, language)}),
           item.ms && `${(item.ms / 1000).toFixed(1)} ${t('agentSeconds')}`,
-          item.toolChars && t('agentTurnContext', {count: approxTokens(item.toolChars)}),
         ]
           .filter(Boolean)
           .join(' · ')}
@@ -300,6 +299,9 @@ const ContextUsage = ({context}) => {
     ['agentContext_responses', parts.kiroResponses?.tokens],
   ].filter(([, tokens]) => tokens !== undefined);
   const files = parts.contextFiles?.items ?? [];
+  // Kiro bills in credits: the parts are shown as shares of what the context holds, not as tokens
+  const total = rows.reduce((sum, [, tokens]) => sum + (tokens ?? 0), 0) || 1;
+  const share = (tokens) => `${Math.round(((tokens ?? 0) / total) * 100)}%`;
   return (
     <Popover
       title={t('agentContextTitle')}
@@ -308,13 +310,13 @@ const ContextUsage = ({context}) => {
           {rows.map(([key, tokens]) => (
             <div key={key}>
               <span>{t(key)}</span>
-              <span>{tokens}</span>
+              <span>{share(tokens)}</span>
             </div>
           ))}
           {files.map((file) => (
             <div key={file.uri} className={styles.muted}>
               <span>{file.name}</span>
-              <span>{file.tokens}</span>
+              <span>{share(file.tokens)}</span>
             </div>
           ))}
         </div>
@@ -392,6 +394,9 @@ const AgentPanel = () => {
   };
 
   const credits = chatCredits(agent.chat);
+  // the steps the last answer offers, until the next message
+  const lastAnswer = agent.chat.items.findLast((item) => item.type === 'agent' || item.type === 'user');
+  const nextSteps = lastAnswer?.type === 'agent' ? splitNextSteps(lastAnswer.text).steps : [];
   const busy = agent.status === 'busy';
 
   return (
@@ -484,7 +489,7 @@ const AgentPanel = () => {
           if (item.type === 'agent') {
             return (
               <div key={item.id} className={styles.agent}>
-                <AgentText text={item.text} />
+                <AgentText text={splitNextSteps(item.text).text} />
               </div>
             );
           }
@@ -532,6 +537,21 @@ const AgentPanel = () => {
               </div>
             </div>
           ))}
+        {nextSteps.length > 0 && !busy && (
+          <div className={styles.nextSteps} role="group" aria-label={t('agentNextSteps')}>
+            {nextSteps.map((step) => (
+              <Tooltip key={step.label} title={step.message}>
+                <Button
+                  size="small"
+                  icon={<IconArrowRight size={13} />}
+                  onClick={() => sendMessage(step.message, allChips)}
+                >
+                  {step.label}
+                </Button>
+              </Tooltip>
+            ))}
+          </div>
+        )}
         {agent.goalProposals.map((proposal) => (
           <GoalCard key={proposal.id} proposal={proposal} />
         ))}

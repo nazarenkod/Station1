@@ -90,6 +90,12 @@ export class ProxyServer {
     this.seq = 0;
     this.pending = {exchanges: new Map(), findings: new Set(), changed: false};
     this.timer = null;
+    // a paused test: requests still go through (with mocks and breakpoints), they are not recorded
+    this.paused = false;
+  }
+
+  setPaused(paused) {
+    this.paused = !!paused;
   }
 
   status() {
@@ -371,7 +377,7 @@ export class ProxyServer {
   }
 
   async onRequest(request) {
-    if (new URL(request.url).hostname === CA_HOST) {
+    if (new URL(request.url).hostname === CA_HOST || this.paused) {
       return;
     }
     const body = await bodyText(request.body, request.headers);

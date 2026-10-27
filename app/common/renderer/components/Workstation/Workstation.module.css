@@ -163,6 +163,29 @@
 
 .dotWarn {
   background: var(--vi-warn);
+  box-shadow: 0 0 0 3px var(--vi-warn-bg);
+}
+
+.dotError {
+  background: var(--vi-danger);
+  box-shadow: 0 0 0 3px var(--vi-danger-bg);
+}
+
+/* the journal: just its dot, with room to hit it */
+.journalDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--vi-radius-pill);
+  background: none;
+  cursor: pointer;
+}
+
+.journalDot:hover {
+  background: var(--vi-hover);
 }
 
 .dotOff {
@@ -237,7 +260,8 @@
 /* the tools, down the left edge: an icon and a name each, the badge on the icon */
 .rail {
   flex: none;
-  width: 96px;
+  /* «Продуктивність» in bold fits inside its outline */
+  width: 108px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -693,4 +717,65 @@
   .taskChip {
     display: none;
   }
+}
+
+/* «Start session» when something is not set up: amber lets it go, red stops it */
+.startWarned:global(.ant-btn.ant-btn-variant-solid),
+.startWarned:global(.ant-btn.ant-btn-variant-solid):hover {
+  background: var(--vi-warn);
+  /* the window's own background reads on amber in both themes */
+  color: var(--ant-color-bg-container);
+}
+
+.startBlocked:global(.ant-btn.ant-btn-variant-solid),
+.startBlocked:global(.ant-btn.ant-btn-variant-solid):hover {
+  background: var(--vi-danger);
+}
+
+.startProblems {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 340px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.startProblems li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--vi-text-sm);
+}
+
+.startProblems li > span {
+  flex: 1;
+}
+
+.startProblem_error > svg {
+  color: var(--vi-danger);
+}
+
+.startProblem_warn > svg {
+  color: var(--vi-warn);
+}
+
+.startTool {
+  pointer-events: none;
+}
+
+/* a paused test: the button says so in amber */
+.testPaused:global(.ant-btn.ant-btn) {
+  color: var(--vi-warn-fg);
+  border-color: var(--vi-warn);
+}
+
+/* the part of the title bar the start waits for */
+.pickerAttention {
+  box-shadow: inset 0 0 0 1.5px var(--vi-warn);
+}
+
+.pickerAttention_error {
+  box-shadow: inset 0 0 0 1.5px var(--vi-danger);
 }

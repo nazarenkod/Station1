@@ -7,11 +7,19 @@ import {
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react';
-import {App, Button, Input, Modal, Popconfirm, Select, Spin, Tag} from 'antd';
+import {App, Button, Input, Modal, Popconfirm, Select, Spin, Tag, Tooltip} from 'antd';
 import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
-import {newRepo, REPO_ROLES, repoWarnings} from '../../../shared/settings/source.js';
+import {
+  MODULE_PLATFORMS,
+  modulePlatform,
+  moduleTree,
+  newRepo,
+  REPO_ROLES,
+  repoWarnings,
+  setModulePlatform,
+} from '../../../shared/settings/source.js';
 import {setProfileSource} from '../../lib/settings/profiles-store.js';
 import {backend} from '../../polyfills.js';
 
@@ -124,7 +132,95 @@ const SwitchDialog = ({open, profileId, repo, source, onClose, onDone}) => {
   );
 };
 
-const RepoState = ({info, source}) => {
+/**
+ * The submodules of a repository as a tree: a submodule of a submodule sits
+ * under it. Each says which platform it is for (taken from above when not
+ * set) and may come from a folder of its own instead of the copy inside.
+ */
+const ModuleTree = ({profileId, repo, info, source, onRefresh}) => {
+  const {t} = useTranslation();
+  const tree = moduleTree(info.state.submodules);
+  const own = info.modules ?? {};
+
+  const pickFolder = async (modulePath) => {
+    const folder = await backend.source.pickFolder();
+    if (folder) {
+      await backend.source.setModulePath(profileId, repo.id, modulePath, folder);
+      onRefresh();
+    }
+  };
+  const clearFolder = async (modulePath) => {
+    await backend.source.setModulePath(profileId, repo.id, modulePath, null);
+    onRefresh();
+  };
+  const setPlatform = (modulePath, platform) =>
+    setProfileSource(profileId, setModulePlatform(source, repo.id, modulePath, platform));
+
+  return (
+    <div className={styles.sourceModules}>
+      <span>{t('settingsSourceSubmodules')}</span>
+      {tree.map((module) => {
+        const set = source.modules?.[repo.id]?.[module.path]?.platform;
+        const inherited = module.parent ? modulePlatform(source, repo.id, module.parent, tree) : 'all';
+        const name = module.parent ? module.path.slice(module.parent.length + 1) : module.path;
+        return (
+          <div
+            key={module.path}
+            className={`${styles.sourceModule} ${module.depth ? styles.sourceModuleNested : ''}`}
+            style={{'--depth': module.depth}}
+          >
+            <span className={`${styles.mono} ${styles.sourceModuleName}`} title={module.url || module.path}>
+              {name}
+            </span>
+            {!module.initialized && !own[module.path] && (
+              <Tag className={styles.sourceModuleOff}>{t('settingsSourceSubmoduleOff')}</Tag>
+            )}
+            <span className={styles.spacer} />
+            <Select
+              size="small"
+              value={set ?? null}
+              placeholder={t(`settingsSourcePlatform_${inherited}`)}
+              allowClear
+              onChange={(platform) => setPlatform(module.path, platform ?? 'all')}
+              options={MODULE_PLATFORMS.map((platform) => ({
+                value: platform,
+                label: t(`settingsSourcePlatform_${platform}`),
+              }))}
+              className={styles.sourceModulePlatform}
+              aria-label={t('settingsSourceModulePlatform', {name})}
+            />
+            {own[module.path] ? (
+              <Tag
+                closable
+                onClose={(e) => {
+                  e.preventDefault();
+                  clearFolder(module.path);
+                }}
+                title={own[module.path]}
+                className={styles.mono}
+              >
+                {own[module.path].split('/').slice(-2).join('/')}
+              </Tag>
+            ) : (
+              <Tooltip title={t('settingsSourceModuleFolderHint')}>
+                <Button
+                  size="small"
+                  type="text"
+                  icon={<IconFolderOpen size={14} />}
+                  onClick={() => pickFolder(module.path)}
+                >
+                  {t('settingsSourceModuleFolder')}
+                </Button>
+              </Tooltip>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const RepoState = ({profileId, repo, info, source, onRefresh}) => {
   const {t} = useTranslation();
   if (!info?.path) {
     return <span className={styles.profileHint}>{t('settingsSourceNoFolder')}</span>;
@@ -155,15 +251,7 @@ const RepoState = ({info, source}) => {
         </span>
       ))}
       {state.submodules.length > 0 && (
-        <div className={styles.sourceModules}>
-          <span>{t('settingsSourceSubmodules')}</span>
-          {state.submodules.map((module) => (
-            <span key={module.path} className={styles.profileHint}>
-              <span className={styles.mono}>{module.path}</span>
-              {!module.initialized && ` — ${t('settingsSourceSubmoduleOff')}`}
-            </span>
-          ))}
-        </div>
+        <ModuleTree profileId={profileId} repo={repo} info={info} source={source} onRefresh={onRefresh} />
       )}
     </>
   );
@@ -233,7 +321,7 @@ const RepoRow = ({profileId, repo, main, info, source, onChange, onRefresh}) => 
           {t('settingsSourcePickFolder')}
         </Button>
       </div>
-      <RepoState info={info} source={source} />
+      <RepoState profileId={profileId} repo={repo} info={info} source={source} onRefresh={onRefresh} />
       {ready && (
         <div className={styles.sourceActions}>
           <Button

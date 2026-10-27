@@ -21,6 +21,8 @@ export const logLine = (entry) =>
  */
 export function setupLogsIPC() {
   let session = null;
+  // a paused test outlives a log started again: the new one starts paused
+  let paused = false;
 
   const stop = () => {
     session?.stop();
@@ -30,6 +32,7 @@ export function setupLogsIPC() {
   ipcMain.handle('logs:start', async (_evt, device, appId, rules) => {
     stop();
     session = new LogSession({device, appId, rules, onBatch: (batch) => broadcast('logs:batch', batch)});
+    session.setPaused(paused);
     return await session.start();
   });
   ipcMain.handle('logs:stop', () => stop());
@@ -37,6 +40,10 @@ export function setupLogsIPC() {
   ipcMain.handle('logs:setApp', async (_evt, appId) => await session?.setApp(appId));
   ipcMain.handle('logs:setRules', (_evt, rules) => session?.setRules(rules));
   ipcMain.handle('logs:clear', () => session?.clear());
+  ipcMain.handle('logs:setPaused', (_evt, on) => {
+    paused = !!on;
+    session?.setPaused(paused);
+  });
   ipcMain.handle('logs:save', async (evt, suggestedName) => {
     if (!session) {
       return null;

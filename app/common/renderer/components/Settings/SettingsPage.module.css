@@ -593,3 +593,41 @@ button.cardHead:hover {
 .mcpRow .spacer {
   flex: 1;
 }
+
+/* a submodule in the tree: indented by how deep it is, its platform and folder on the right */
+.sourceModule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding-left: calc(var(--depth, 0) * 20px);
+  border-radius: var(--vi-radius-sm);
+}
+
+.sourceModule:hover {
+  background: var(--vi-hover);
+}
+
+.sourceModule .spacer {
+  flex: 1;
+}
+
+.sourceModuleName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* a submodule of a submodule hangs from its parent */
+.sourceModuleNested .sourceModuleName::before {
+  content: '└ ';
+  color: var(--vi-text-4);
+}
+
+.sourceModulePlatform {
+  width: 120px;
+}
+
+.sourceModuleOff {
+  margin: 0;
+}

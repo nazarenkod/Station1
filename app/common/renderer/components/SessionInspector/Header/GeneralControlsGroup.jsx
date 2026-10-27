@@ -1,8 +1,7 @@
-import {IconPlayerPause, IconPlayerPlay, IconRefresh, IconSearch, IconVideo} from '@tabler/icons-react';
+import {IconPlayerPause, IconPlayerPlay, IconRefresh, IconSearch} from '@tabler/icons-react';
 import {Button, Space, Tooltip} from 'antd';
 import {useTranslation} from 'react-i18next';
 
-import {BUTTON} from '../../../constants/antd-types.js';
 import LocatorSearchModal from './LocatorSearch/LocatorSearchModal.jsx';
 
 /**
@@ -77,44 +76,11 @@ const SearchForElementButton = (props) => {
 };
 
 /**
- * Button for toggling recording of user interactions.
- */
-const ToggleRecordingButton = ({isRecording, startRecording, pauseRecording}) => {
-  const {t} = useTranslation();
-  const pauseLabel = t('Pause Recording');
-  const startLabel = t('Start Recording');
-
-  return isRecording ? (
-    <Tooltip title={pauseLabel}>
-      <Button
-        aria-label={pauseLabel}
-        id="btnPause"
-        icon={<IconVideo size={18} />}
-        type={BUTTON.PRIMARY}
-        danger
-        onClick={pauseRecording}
-      />
-    </Tooltip>
-  ) : (
-    <Tooltip title={startLabel}>
-      <Button aria-label={startLabel} id="btnStartRecording" icon={<IconVideo size={18} />} onClick={startRecording} />
-    </Tooltip>
-  );
-};
-
-/**
- * Controls for general session actions.
+ * Controls for general session actions. The upstream recorder is left out:
+ * the station records the session itself (screens, traffic, log).
  */
 const GeneralControlsGroup = (props) => {
-  const {
-    isUsingMjpegMode,
-    isSourceRefreshOn,
-    setRefreshingState,
-    applyClientMethod,
-    isRecording,
-    startRecording,
-    pauseRecording,
-  } = props;
+  const {isUsingMjpegMode, isSourceRefreshOn, setRefreshingState, applyClientMethod} = props;
   return (
     <Space.Compact>
       {isUsingMjpegMode && (
@@ -126,11 +92,6 @@ const GeneralControlsGroup = (props) => {
       )}
       <ManualRefreshButton applyClientMethod={applyClientMethod} />
       <SearchForElementButton {...props} />
-      <ToggleRecordingButton
-        isRecording={isRecording}
-        startRecording={startRecording}
-        pauseRecording={pauseRecording}
-      />
     </Space.Compact>
   );
 };

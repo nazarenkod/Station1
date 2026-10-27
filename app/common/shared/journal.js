@@ -156,6 +156,32 @@ export function mergeEntries(entries, changed) {
   return [...byId.values()].sort((a, b) => a.id - b.id);
 }
 
+/**
+ * What the dot of the journal in the title bar says: the errors and
+ * warnings recorded since the person last looked at the journal, each record
+ * once (a command that failed is one record, however often it changed).
+ * @returns {{errors: number, warnings: number, status: 'ok' | 'warn' | 'error'}}
+ */
+export function journalHealth(entries, since = 0) {
+  const latest = new Map();
+  for (const entry of entries ?? []) {
+    latest.set(entry.id, entry);
+  }
+  let errors = 0;
+  let warnings = 0;
+  for (const entry of latest.values()) {
+    if ((entry.time ?? 0) < since) {
+      continue;
+    }
+    if (entry.level === 'error') {
+      errors++;
+    } else if (entry.level === 'warn') {
+      warnings++;
+    }
+  }
+  return {errors, warnings, status: errors ? 'error' : warnings ? 'warn' : 'ok'};
+}
+
 const LEVEL_FILTER = {
   error: ['error'],
   warn: ['error', 'warn'],

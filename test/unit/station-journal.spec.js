@@ -8,6 +8,7 @@ import {
   describeCommand,
   filterEntries,
   formatJournal,
+  journalHealth,
   formatSummary,
   mergeEntries,
   redact,
@@ -262,5 +263,20 @@ describe('station journal: secrets', function () {
     expect(redact('adb -s emulator-5554 shell getprop ro.build.version.release')).toBe(
       'adb -s emulator-5554 shell getprop ro.build.version.release',
     );
+  });
+});
+
+describe('station journal: the dot in the title bar', function () {
+  it('counts the errors and warnings since the journal was last looked at, a record once', function () {
+    const entries = [
+      {id: 1, time: 100, level: 'error'},
+      {id: 2, time: 200, level: 'warn', state: 'running'},
+      {id: 2, time: 200, level: 'error', state: 'failed'},
+      {id: 3, time: 300, level: 'warn'},
+      {id: 4, time: 400, level: 'info'},
+    ];
+    expect(journalHealth(entries)).toEqual({errors: 2, warnings: 1, status: 'error'});
+    expect(journalHealth(entries, 250)).toEqual({errors: 0, warnings: 1, status: 'warn'});
+    expect(journalHealth(entries, 1000)).toEqual({errors: 0, warnings: 0, status: 'ok'});
   });
 });

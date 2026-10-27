@@ -3,8 +3,9 @@ import {app, dialog, Menu, shell} from 'electron';
 import webdriverPackageJson from '../../../node_modules/webdriver/package.json';
 import {PRODUCT_NAME} from '../../common/shared/product.js';
 import {isDev, t} from './helpers.js';
+import {openJournal} from './journal.js';
 import {checkForUpdates, UPDATES_ENABLED} from './updater.js';
-import {launchNewSessionWindow, openJournalWindow} from './windows.js';
+import {launchNewSessionWindow} from './windows.js';
 
 const APPIUM_DOCS_URL = 'https://appium.io';
 const APPIUM_FORUM_URL = 'https://discuss.appium.io';
@@ -134,7 +135,7 @@ function dropdownHelp() {
   return {
     label: t('Help'),
     submenu: [
-      {label: t('journalMenu'), accelerator: 'Alt+CmdOrCtrl+L', click: () => openJournalWindow()},
+      {label: t('journalMenu'), accelerator: 'Alt+CmdOrCtrl+L', click: () => openJournal()},
       separator,
       {label: t('Appium Documentation'), click: () => shell.openExternal(APPIUM_DOCS_URL)},
       {label: t('Appium Discussion Forum'), click: () => shell.openExternal(APPIUM_FORUM_URL)},
