@@ -5,6 +5,7 @@ import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 import {useLocation, useNavigate, useOutlet} from 'react-router';
 
+import {refreshA11yScreen} from '../../actions/A11y.js';
 import {activeDevice, initWorkstation, isDeviceRunning, setProjectApps} from '../../actions/Workstation.js';
 import {followProfile, startAgent, toggleAgent} from '../../lib/agent/agent-store.js';
 import {startAgentBridge} from '../../lib/agent/bridge.js';
@@ -13,12 +14,16 @@ import {counts, followGoals, startGoals, useGoals} from '../../lib/goals/goals-s
 import {profileForApp, startProfiles, switchProfile, useProfiles} from '../../lib/settings/profiles-store.js';
 import {followTaskProfile, startTasks, useTask} from '../../lib/task/task-store.js';
 import {loadSessionFileIfOpened} from '../../polyfills.js';
+import {useScreenFollower} from '../A11yTool/screen-follower.js';
+import {useScreenHistory} from '../A11yTool/screen-history.js';
+import {useScreenRecorder} from '../A11yTool/screen-recorder.js';
 import AgentPanel from '../Agent/AgentPanel.jsx';
 import {PageTransition} from '../AppShell/motion.jsx';
 import {startPipelineWatches} from '../Builds/pipeline-watch.js';
 import {loadDoctor} from '../Desk/doctor-store.js';
 import GoalForm from '../Goals/GoalForm.jsx';
 import {logsState, startLogs} from '../Logs/logs-store.js';
+import {followSelection, usePerf} from '../Perf/perf-store.js';
 import SessionExpiryModal from '../SessionInspector/SessionExpiryModal.jsx';
 import {useInspectorActions} from '../SessionInspector/use-inspector.js';
 import ToolRail from './ToolRail.jsx';
@@ -42,6 +47,62 @@ const SessionKeepAlive = () => {
       setUserWaitTimeout={actions.setUserWaitTimeout}
     />
   );
+};
+
+/**
+ * A session started outside the Inspector (by the Performance tab) is kept
+ * alive and timed as one started from it. The Inspector does the same when it
+ * opens; whichever comes first does it once.
+ */
+const SessionBootstrap = () => {
+  const driver = useSelector((state) => state.inspector.driver);
+  const store = useStore();
+  const {actions} = useInspectorActions();
+  useEffect(() => {
+    if (!driver || store.getState().inspector.keepAliveInterval) {
+      return;
+    }
+    actions.storeSessionSettings();
+    actions.getSavedClientFramework();
+    actions.runKeepAliveLoop();
+    actions.setSessionTime(Date.now());
+  }, [actions, store, driver]);
+  return null;
+};
+
+/**
+ * Follows and checks the screens while the app is measured and the Inspector,
+ * which does it itself, is closed: the measurement marks its graphs with them.
+ * The person works on the device meanwhile, often with the station behind
+ * other windows, so it goes on while the window is hidden.
+ */
+const PerfScreenWatch = () => {
+  const dispatch = useDispatch();
+  const {viewingKey} = useScreenHistory();
+  useEffect(() => {
+    dispatch(refreshA11yScreen());
+  }, [dispatch]);
+  useScreenFollower({enabled: true, paused: !!viewingKey, whileHidden: true});
+  useScreenRecorder();
+  return null;
+};
+
+/**
+ * The measurement belongs to the device and app it started with: another
+ * one in the title bar stops it. While it runs, the screens are followed.
+ */
+const PerfFollower = () => {
+  const location = useLocation();
+  const workstation = useSelector((state) => state.workstation);
+  const hasSession = useSelector((state) => !!state.inspector.driver);
+  const perf = usePerf();
+  const deviceId = activeDevice(workstation)?.id ?? null;
+  const appId = workstation.app?.id ?? null;
+  useEffect(() => {
+    followSelection(deviceId, appId);
+  }, [deviceId, appId]);
+  const inspectorOpen = location.pathname === '/inspector';
+  return perf.running && hasSession && !inspectorOpen ? <PerfScreenWatch /> : null;
 };
 
 /**
@@ -218,6 +279,8 @@ const Workstation = () => {
       <GoalForm />
       <SessionKeepAlive />
       <LogsFollower />
+      <SessionBootstrap />
+      <PerfFollower />
       <ProfileFollower />
       <ProjectAppsFollower />
     </div>

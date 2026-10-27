@@ -400,6 +400,10 @@
   --tool-color: var(--vi-teal-fg);
 }
 
+.tool_perf {
+  --tool-color: var(--vi-tool-perf);
+}
+
 /* narrower windows: drop the secondary words first, the tools never */
 @media (max-width: 1599px) {
   .pickerSub {

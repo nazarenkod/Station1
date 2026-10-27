@@ -13,6 +13,7 @@ import {setupDoctorIPC} from './ipc/doctor.js';
 import {setupGitLabIPC} from './ipc/gitlab.js';
 import {setupJiraIPC} from './ipc/jira.js';
 import {setupLogsIPC} from './ipc/logs.js';
+import {setupPerfIPC} from './ipc/perf.js';
 import {setupProxyIPC} from './ipc/proxy.js';
 import {setupSettingsIPC} from './ipc/settings.js';
 import {setupSourceIPC} from './ipc/source.js';
@@ -57,6 +58,7 @@ app.on('ready', async () => {
   setupDeviceIPC();
   setupBuildsIPC();
   const logs = setupLogsIPC();
+  setupPerfIPC();
   const proxy = setupProxyIPC();
   const station = setupSettingsIPC();
   setupSourceIPC(station);

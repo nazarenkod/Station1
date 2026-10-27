@@ -12,6 +12,7 @@ import Desk from './components/Desk/Desk.jsx';
 import StationPage from './components/Desk/StationPage.jsx';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.jsx';
 import LogsTool from './components/Logs/LogsTool.jsx';
+import PerfTool from './components/Perf/PerfTool.jsx';
 import ProxyTool from './components/Proxy/ProxyTool.jsx';
 import SessionBuilderPage from './components/SessionBuilder/SessionBuilder.jsx';
 import SessionInspectorPage from './components/SessionInspector/SessionInspector.jsx';
@@ -50,6 +51,7 @@ createRoot(container).render(
                 <Route path="/a11y" element={<OpenA11y />} />
                 <Route path="/proxy" element={<ProxyTool />} />
                 <Route path="/logs" element={<LogsTool />} />
+                <Route path="/perf" element={<PerfTool />} />
                 <Route path="/builds" element={<BuildsTool />} />
                 <Route path="/station" element={<StationPage />} />
                 <Route path="/settings" element={<SettingsPage />} />

@@ -5,92 +5,24 @@ import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
-import {pickSigningTeam, wdaSigningCapabilities} from '../../../shared/ios/signing.js';
-import {IOS_SIGNING} from '../../../shared/setting-defs.js';
 import {activeDevice, isDeviceRunning, selectDevice} from '../../actions/Workstation.js';
-import {backend, getSetting} from '../../polyfills.js';
-import {getRandomId} from '../../utils/other.js';
+import {DEFAULT_PORT, startQuickSession} from '../../lib/session/quick-session.js';
 import {appsProblemText, appVersionLabel} from '../Workstation/app-labels.js';
 import {deviceSubtitle} from '../Workstation/DevicePicker.jsx';
 
 import styles from './SessionBuilder.module.css';
 
-const DEFAULT_PORT = 4723;
+// the Performance tab starts sessions with the same code
+export {endSessionsOnDevice, quickCapabilities} from '../../lib/session/quick-session.js';
+
 // devices a session cannot start on, whatever the capabilities say
 const UNUSABLE = ['broken', 'offline', 'unauthorized', 'disconnected'];
-
-const isIos = (device) => /ios/i.test(device?.platformName ?? '');
-
-/**
- * How WebDriverAgent gets signed for a real iPhone, or why it cannot be:
- * the team chosen in the settings, else the only one this Mac has.
- */
-async function iosSigning() {
-  const saved = (await getSetting(IOS_SIGNING)) ?? {};
-  const teams = (await backend.device?.signingTeams?.().catch(() => [])) ?? [];
-  const team = pickSigningTeam(teams, saved.teamId);
-  if (!team) {
-    return {problem: teams.length ? 'quickSigningPickTeam' : 'quickSigningNoTeam', count: teams.length};
-  }
-  return {caps: wdaSigningCapabilities({teamId: team.teamId, bundleId: saved.bundleId})};
-}
-
-/**
- * Ends the sessions our own Appium server still holds on this device: left by
- * a window closed or reloaded mid-session, they keep WebDriverAgent or
- * UiAutomator2 busy and the new session hangs on it.
- */
-export async function endSessionsOnDevice(port, udid) {
-  const base = `http://127.0.0.1:${port}`;
-  try {
-    const listed = await (await fetch(`${base}/appium/sessions`, {signal: AbortSignal.timeout(5000)})).json();
-    const stale = (listed.value ?? []).filter((session) => session.capabilities?.udid === udid);
-    await Promise.all(
-      stale.map((session) =>
-        fetch(`${base}/session/${session.id}`, {method: 'DELETE', signal: AbortSignal.timeout(30000)}).catch(
-          () => null,
-        ),
-      ),
-    );
-    return stale.length;
-  } catch {
-    // an older server without the list, or one that does not answer: start as before
-    return 0;
-  }
-}
-
-/**
- * Capabilities for the device and app picked in the title bar.
- */
-export function quickCapabilities(device, app, {keepData, signing = null}) {
-  // what the device's own capabilities say about signing wins over what was found
-  const caps = {...signing, ...device.capabilities};
-  if (app?.id) {
-    caps[isIos(device) ? 'appium:bundleId' : 'appium:appPackage'] = app.id;
-    // apps that launch through an activity alias (a switchable icon) open another activity than
-    // the one Appium resolves, which it would wait for in vain: any activity of the app will do
-    if (!isIos(device) && !caps['appium:appWaitActivity']) {
-      caps['appium:appWaitActivity'] = '*';
-    }
-  }
-  caps['appium:noReset'] = keepData;
-  return caps;
-}
-
-const toCapList = (caps) =>
-  Object.entries(caps).map(([name, value]) => ({
-    id: getRandomId(),
-    type: typeof value === 'boolean' ? 'boolean' : 'text',
-    enabled: true,
-    name,
-    value,
-  }));
 
 /**
  * A session in one press: the device and app from the title bar, our own
  * Appium server (started if it is not running), capabilities written for you.
  */
-const QuickStart = ({loadNewSession, applyLocalServer, onAdvanced}) => {
+const QuickStart = ({loadNewSession, onAdvanced}) => {
   const {t} = useTranslation();
   const dispatch = useDispatch();
   const workstation = useSelector((state) => state.workstation);
@@ -107,42 +39,19 @@ const QuickStart = ({loadNewSession, applyLocalServer, onAdvanced}) => {
 
   const start = async () => {
     setError(null);
-    // Appium would only fail to find the app's activity or bundle: say what is wrong instead
-    if (app?.installed === false) {
-      setError(t('quickAppMissing', {app: app.id, device: device.name}));
-      return;
-    }
-    let signing = null;
-    if (device.kind === 'ios-device') {
-      const found = await iosSigning();
-      if (found.problem) {
-        setError({text: t(found.problem, {count: found.count}), settings: true});
-        return;
-      }
-      signing = found.caps;
-    }
     try {
-      let port = serverRunning ? appium.port : null;
-      if (!port) {
-        setBusy('server');
-        const result = await backend.doctor.startServer({port: DEFAULT_PORT});
-        if (result.status !== 'running') {
-          const [reason, detail] = (result.error ?? 'failed').split(':');
-          setError(
-            t(`doctorServerError_${reason}`, {port: DEFAULT_PORT, detail, defaultValue: result.error ?? reason}),
-          );
-          return;
-        }
-        port = DEFAULT_PORT;
+      const result = await startQuickSession({
+        dispatch,
+        device,
+        app,
+        appium,
+        keepData,
+        open: loadNewSession,
+        onStage: setBusy,
+      });
+      if (result.error) {
+        setError({text: t(result.error.key, result.error.params), settings: result.error.settings});
       }
-      await applyLocalServer({hostname: '127.0.0.1', port, path: ''});
-      setBusy('session');
-      // only on our own server: one we found running may be in the middle of someone's test run
-      const udid = device.capabilities?.['appium:udid'];
-      if (udid && !appium?.external) {
-        await endSessionsOnDevice(port, udid);
-      }
-      await loadNewSession(toCapList(quickCapabilities(device, app, {keepData, signing})));
     } finally {
       setBusy(null);
     }

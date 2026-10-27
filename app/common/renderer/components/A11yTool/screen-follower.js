@@ -11,10 +11,11 @@ import {CHANGED, screenSignature, signatureDistance} from './screen-signature.js
  * with the one checked last, every half a second right after the Inspector
  * acted on the device and every 1.5 s otherwise. Once the screen has changed
  * and stopped moving (two looks alike), the new screen is read and checked.
- * Nothing is read while the page is hidden, a command runs, or a past screen
- * is shown.
+ * Nothing is read while the page is hidden (unless `whileHidden`: the app is
+ * being measured while the person works on the device), a command runs, or a
+ * past screen is shown.
  */
-export function useScreenFollower({enabled, paused}) {
+export function useScreenFollower({enabled, paused, whileHidden = false}) {
   const store = useStore();
   const dispatch = useDispatch();
   const [state, setState] = useState({status: 'idle', changedAt: null});
@@ -32,7 +33,13 @@ export function useScreenFollower({enabled, paused}) {
 
     const tick = async () => {
       const {driver, screenshot, methodCallInProgress, a11yStatus} = store.getState().inspector;
-      if (busy.current || document.hidden || !driver || methodCallInProgress || a11yStatus === 'scanning') {
+      if (
+        busy.current ||
+        (document.hidden && !whileHidden) ||
+        !driver ||
+        methodCallInProgress ||
+        a11yStatus === 'scanning'
+      ) {
         return;
       }
       busy.current = true;
@@ -74,7 +81,7 @@ export function useScreenFollower({enabled, paused}) {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [enabled, paused, store, dispatch]);
+  }, [enabled, paused, whileHidden, store, dispatch]);
 
   return state;
 }

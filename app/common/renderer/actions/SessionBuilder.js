@@ -227,6 +227,9 @@ export function applyLocalServer({hostname, port, path = ''}) {
   return async (dispatch) => {
     await dispatch(changeServerType(SERVER_TYPES.REMOTE));
     await dispatch(setServerParam('hostname', hostname, SERVER_TYPES.REMOTE));
+    // the remote vendor writes `host` into the server it is given: set it here, so it writes no change
+    // into the state (a session started before the builder ever loaded its saved server has none)
+    await dispatch(setServerParam('host', hostname, SERVER_TYPES.REMOTE));
     await dispatch(setServerParam('port', String(port), SERVER_TYPES.REMOTE));
     await dispatch(setServerParam('path', path, SERVER_TYPES.REMOTE));
     await dispatch(setServerParam('ssl', false, SERVER_TYPES.REMOTE));

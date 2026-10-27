@@ -179,6 +179,12 @@ window.electronIPC = {
     save: async (name) => await ipcRenderer.invoke('logs:save', name),
     onBatch: subscribe('logs:batch'),
   },
+  perf: {
+    start: async (device, appId) => await ipcRenderer.invoke('perf:start', device, appId),
+    stop: async () => await ipcRenderer.invoke('perf:stop'),
+    snapshot: async () => await ipcRenderer.invoke('perf:snapshot'),
+    onBatch: subscribe('perf:batch'),
+  },
   journal: {
     list: async () => await ipcRenderer.invoke('journal:list'),
     previous: async () => await ipcRenderer.invoke('journal:previous'),

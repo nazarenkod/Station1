@@ -36,6 +36,8 @@ const subscribe = (listener) => {
 
 export const useScreenHistory = () => useSyncExternalStore(subscribe, () => state);
 export const screenHistory = () => state;
+// the Performance tab marks its graphs with the screens as they change
+export const subscribeScreenHistory = subscribe;
 
 /**
  * A command the Inspector sent to the device: the follower looks more often

@@ -90,8 +90,10 @@ async function readShellEnv() {
  * profile reads nothing instead of waiting; on timeout the whole process group
  * is killed with SIGKILL, because an interactive shell ignores SIGTERM and a
  * background job it started may hold the output open.
+ *
+ * `quiet` keeps a command polled every second out of the journal, unless it fails.
  */
-export function run(command, args = [], {timeout = 15000, env, cwd} = {}) {
+export function run(command, args = [], {timeout = 15000, env, cwd, quiet = false} = {}) {
   return new Promise((resolve) => {
     const out = [];
     const err = [];
@@ -102,11 +104,13 @@ export function run(command, args = [], {timeout = 15000, env, cwd} = {}) {
     const group = process.platform !== 'win32';
 
     // the journal shows the command while it runs, then how it ended
-    const record = journal.begin({
-      source: 'command',
-      text: describeCommand(command, args),
-      detail: cwd && `cwd: ${cwd}`,
-    });
+    const begin = () =>
+      journal.begin({
+        source: 'command',
+        text: describeCommand(command, args),
+        detail: cwd && `cwd: ${cwd}`,
+      });
+    const record = quiet ? null : begin();
 
     const finish = (result) => {
       if (done) {
@@ -120,7 +124,9 @@ export function run(command, args = [], {timeout = 15000, env, cwd} = {}) {
         stderr: Buffer.concat(err).toString(),
         ...result,
       };
-      journal.end(record, commandOutcome(full));
+      if (!quiet || !full.ok) {
+        journal.end(record ?? begin(), commandOutcome(full));
+      }
       resolve(full);
     };
 

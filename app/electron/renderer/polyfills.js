@@ -48,6 +48,9 @@ const backend = {
   get logs() {
     return window.electronIPC.logs;
   },
+  get perf() {
+    return window.electronIPC.perf;
+  },
   get proxy() {
     return window.electronIPC.proxy;
   },

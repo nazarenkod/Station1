@@ -144,11 +144,7 @@ const Session = () => {
       <Spin size="large" spinning={!!newSessionLoading} wrapperClassName={shellStyles.pageBody}>
         {!advanced ? (
           <div className={styles.quickPage}>
-            <QuickStart
-              loadNewSession={loadNewSession}
-              applyLocalServer={props.applyLocalServer}
-              onAdvanced={() => setAdvanced(true)}
-            />
+            <QuickStart loadNewSession={loadNewSession} onAdvanced={() => setAdvanced(true)} />
           </div>
         ) : (
           <div className={styles.sessionContainer}>

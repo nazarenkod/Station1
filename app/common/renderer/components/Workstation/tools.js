@@ -1,4 +1,5 @@
 import {
+  IconActivity,
   IconArrowsExchange,
   IconDeviceMobileCog,
   IconFocus2,
@@ -17,6 +18,7 @@ export const TOOLS = [
   {key: 'inspector', path: '/session', paths: ['/session', '/inspector', '/a11y'], icon: IconFocus2, ready: true},
   {key: 'proxy', path: '/proxy', paths: ['/proxy'], icon: IconArrowsExchange, ready: true},
   {key: 'logs', path: '/logs', paths: ['/logs'], icon: IconTerminal2, ready: true},
+  {key: 'perf', path: '/perf', paths: ['/perf'], icon: IconActivity, ready: true},
   {key: 'builds', path: '/builds', paths: ['/builds'], icon: IconPackage, ready: true},
   // the doctor of this Mac and the devices: the station itself, apart from the work on a task
   {key: 'station', path: '/station', paths: ['/station'], icon: IconDeviceMobileCog, ready: true},
