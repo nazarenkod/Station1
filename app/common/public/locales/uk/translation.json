@@ -2306,5 +2306,8 @@
   "projectAdviceSwitch": "Перейти на «{{name}}»",
   "projectAdviceAddPlatform": "Додати {{platform}} у проєкт",
   "wsDevicesForeign": "Не для цього проєкту",
-  "wsDeviceNotForProject": "не для цього проєкту"
+  "wsDeviceNotForProject": "не для цього проєкту",
+  "quickChangeDevice": "Змінити",
+  "quickPickDevice": "Обрати пристрій",
+  "quickToBuilds": "До збірок"
 }

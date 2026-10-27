@@ -5,7 +5,7 @@ import {startProblems} from '../../../shared/start-problems.js';
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {useDoctor} from '../../components/Desk/doctor-store.js';
 import {backend} from '../../polyfills.js';
-import {adviceFocus, useProjectAdvice} from '../settings/project-advice.js';
+import {adviceFocus, adviceText, useProjectAdvice} from '../settings/project-advice.js';
 
 // The test the title bar runs: whether its recording is paused. A paused test
 // lets the traffic through and the app run, but the proxy, the log and the
@@ -54,6 +54,12 @@ export function useStartProblems() {
     fix: advice ? adviceFocus(advice) : null,
   });
 }
+
+/** What a problem says: one about the project in the words every tool uses (project.platforms). */
+export const startProblemText = (t, problem) =>
+  problem.key === 'noPlatform' || problem.key === 'noAppFor'
+    ? adviceText(t, problem.params)
+    : t(`wsStartProblem_${problem.key}`, problem.params);
 
 /** The worst problem pointing at a part of the title bar, for its outline. */
 export const problemFor = (problems, target) =>

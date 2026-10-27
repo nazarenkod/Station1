@@ -1,14 +1,26 @@
-import {IconAdjustments, IconApps, IconDeviceMobile, IconPlayerPlay, IconServer} from '@tabler/icons-react';
-import {Alert, Button, Checkbox} from 'antd';
+import {
+  IconAdjustments,
+  IconApps,
+  IconCheck,
+  IconChevronDown,
+  IconDeviceMobile,
+  IconPlayerPlay,
+  IconServer,
+} from '@tabler/icons-react';
+import {Alert, Button, Checkbox, Dropdown} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
+import {platformKey, platformOfDevice} from '../../../shared/settings/platforms.js';
 import {activeDevice, isDeviceRunning, noteSessionDevice, selectDevice} from '../../actions/Workstation.js';
 import {DEFAULT_PORT, startQuickSession} from '../../lib/session/quick-session.js';
+import {startProblemText, useStartProblems} from '../../lib/session/test-run.js';
+import {useProfiles} from '../../lib/settings/profiles-store.js';
 import {appsProblemText, appVersionLabel} from '../Workstation/app-labels.js';
 import {deviceSubtitle} from '../Workstation/DevicePicker.jsx';
+import {AdviceActions} from '../Workstation/ProjectAdvice.jsx';
 
 import styles from './SessionBuilder.module.css';
 
@@ -32,6 +44,9 @@ const QuickStart = ({loadNewSession, onAdvanced}) => {
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  // what «Start session» would stumble on, each on the row it is about
+  const problems = useStartProblems();
+  const profiles = useProfiles();
 
   const serverRunning = appium?.status === 'running';
   const usable = device && !UNUSABLE.includes(device.state);
@@ -59,35 +74,107 @@ const QuickStart = ({loadNewSession, onAdvanced}) => {
     }
   };
 
+  const profile = profiles.list?.find((one) => one.id === profiles.activeId);
+  const notForProject = (candidate) => !!profile && !platformKey(profile, platformOfDevice(candidate));
+  const deviceMenu = {
+    items: running.map((candidate) => ({
+      key: candidate.id,
+      icon: candidate.id === device?.id ? <IconCheck size={14} /> : <span className={styles.quickMenuGap} />,
+      label: (
+        <span className={styles.quickMenuItem}>
+          <span>{candidate.name}</span>
+          <span className={styles.quickMenuSub}>
+            {deviceSubtitle(candidate, t)}
+            {notForProject(candidate) ? ` · ${t('wsDeviceNotForProject')}` : ''}
+          </span>
+        </span>
+      ),
+    })),
+    onClick: ({key}) => dispatch(selectDevice(key)),
+  };
+
+  // the worst of a row's problems colours it; the first one says what to do
+  const forRow = (target) => {
+    const own = problems.filter((problem) => problem.target === target);
+    const worst = own.find((problem) => problem.severity === 'error') ?? own[0] ?? null;
+    return {problem: worst, tone: worst ? (worst.severity === 'error' ? 'error' : 'warn') : null};
+  };
+  const fixFor = (problem) => {
+    if (!problem) {
+      return null;
+    }
+    if (problem.key === 'noPlatform' || problem.key === 'noAppFor') {
+      return <AdviceActions advice={problem.params} size="small" primary={false} />;
+    }
+    if (problem.key === 'appMissing') {
+      return (
+        <Button size="small" onClick={() => navigate('/builds')}>
+          {t('quickToBuilds')}
+        </Button>
+      );
+    }
+    if (problem.target === 'station') {
+      return (
+        <Button size="small" onClick={() => navigate('/station')}>
+          {t('wsStartFix_station')}
+        </Button>
+      );
+    }
+    return null;
+  };
+
+  const deviceRow = forRow('device');
+  const appRow = forRow('app');
+  const serverRow = forRow('station');
   const rows = [
     {
       key: 'device',
       icon: IconDeviceMobile,
       label: t('quickDevice'),
       value: device ? device.name : t('quickNoDevice'),
-      sub: !device ? t('quickNoDeviceHint') : appsError ? appsProblemText(appsError, t) : deviceSubtitle(device, t),
-      tone: !device || !usable || appsError ? 'warn' : 'ok',
+      sub: deviceRow.problem
+        ? startProblemText(t, deviceRow.problem)
+        : !device
+          ? t('quickNoDeviceHint')
+          : appsError
+            ? appsProblemText(appsError, t)
+            : deviceSubtitle(device, t),
+      tone: deviceRow.tone ?? (!device || !usable || appsError ? 'warn' : 'ok'),
+      action: running.length > 0 && (
+        <Dropdown menu={deviceMenu} trigger={['click']} placement="bottomRight">
+          <Button size="small">
+            {device ? t('quickChangeDevice') : t('quickPickDevice')}
+            <IconChevronDown size={14} />
+          </Button>
+        </Dropdown>
+      ),
     },
     {
       key: 'app',
       icon: IconApps,
       label: t('quickApp'),
       value: app?.id ?? t('quickNoApp'),
-      sub: app
-        ? app.installed === false
-          ? t('wsAppNotInstalled')
-          : appVersionLabel(app) || t('quickAppLaunch')
-        : t('quickNoAppHint'),
+      sub: appRow.problem
+        ? startProblemText(t, appRow.problem)
+        : app
+          ? appVersionLabel(app) || t('quickAppLaunch')
+          : t('quickNoAppHint'),
       mono: !!app,
-      tone: app && app.installed === false ? 'warn' : 'ok',
+      tone: appRow.tone ?? 'ok',
+      action: fixFor(appRow.problem),
     },
     {
       key: 'server',
       icon: IconServer,
       label: t('quickServer'),
       value: serverRunning ? `Appium :${appium.port}` : t('quickServerAuto'),
-      sub: serverRunning ? t('quickServerRunning') : t('quickServerAutoHint', {port: DEFAULT_PORT}),
-      tone: 'ok',
+      sub: serverRow.problem
+        ? startProblemText(t, serverRow.problem)
+        : serverRunning
+          ? t('quickServerRunning')
+          : t('quickServerAutoHint', {port: DEFAULT_PORT}),
+      tone: serverRow.tone ?? 'ok',
+      action: fixFor(serverRow.problem),
     },
   ];
 
@@ -109,7 +196,10 @@ const QuickStart = ({loadNewSession, onAdvanced}) => {
         {rows.map((row) => {
           const Icon = row.icon;
           return (
-            <li key={row.key} className={`${styles.quickRow} ${row.tone === 'warn' ? styles.quickRowWarn : ''}`}>
+            <li
+              key={row.key}
+              className={`${styles.quickRow} ${row.tone === 'warn' ? styles.quickRowWarn : ''} ${row.tone === 'error' ? styles.quickRowError : ''}`}
+            >
               <span className={styles.quickIcon} aria-hidden="true">
                 <Icon size={18} stroke={1.6} />
               </span>
@@ -118,6 +208,7 @@ const QuickStart = ({loadNewSession, onAdvanced}) => {
                 <span className={`${styles.quickValue} ${row.mono ? 'vi-mono' : ''}`}>{row.value}</span>
                 <span className={styles.quickSub}>{row.sub}</span>
               </span>
+              {row.action && <span className={styles.quickRowAction}>{row.action}</span>}
             </li>
           );
         })}

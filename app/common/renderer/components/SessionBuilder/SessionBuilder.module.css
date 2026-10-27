@@ -152,6 +152,46 @@
   color: var(--vi-warn-fg);
 }
 
+.quickRowError {
+  background: var(--vi-danger-bg);
+}
+
+.quickRowError .quickIcon {
+  background: var(--vi-danger-bg);
+  color: var(--vi-danger-fg);
+}
+
+.quickRowError .quickSub {
+  color: var(--vi-danger-fg);
+}
+
+.quickRowWarn .quickSub {
+  color: var(--vi-warn-fg);
+}
+
+.quickRowAction {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.quickMenuItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.quickMenuSub {
+  font-size: 11px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.quickMenuGap {
+  display: inline-block;
+  width: 14px;
+}
+
 .quickRowText {
   flex: 1;
   min-width: 0;

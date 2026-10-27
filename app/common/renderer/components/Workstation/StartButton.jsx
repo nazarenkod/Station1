@@ -9,8 +9,7 @@ import {DEFAULT_SETTINGS, TEST_START} from '../../../shared/setting-defs.js';
 import {canStart} from '../../../shared/start-problems.js';
 import {activeDevice, noteSessionDevice} from '../../actions/Workstation.js';
 import {startEverything} from '../../lib/session/start-all.js';
-import {setTestPaused, useStartProblems, useTestRun} from '../../lib/session/test-run.js';
-import {adviceText} from '../../lib/settings/project-advice.js';
+import {setTestPaused, startProblemText, useStartProblems, useTestRun} from '../../lib/session/test-run.js';
 import {backend, getSetting, setSetting} from '../../polyfills.js';
 import NewTestDialog from '../Desk/NewTestDialog.jsx';
 
@@ -21,12 +20,6 @@ const TOOLS = ['proxy', 'logs', 'perf'];
 // where each problem is fixed
 const FIX_PATH = {device: '/station', app: '/settings', station: '/station'};
 
-// a problem with the project says it in the words every tool uses
-const problemText = (t, problem) =>
-  problem.key === 'noPlatform' || problem.key === 'noAppFor'
-    ? adviceText(t, problem.params)
-    : t(`wsStartProblem_${problem.key}`, problem.params);
-
 /** What the start needs, each with the way to fix it. */
 const ProblemList = ({problems, onGo}) => {
   const {t} = useTranslation();
@@ -35,7 +28,7 @@ const ProblemList = ({problems, onGo}) => {
       {problems.map((problem) => (
         <li key={problem.key} className={styles[`startProblem_${problem.severity}`]}>
           <IconAlertTriangle size={14} />
-          <span>{problemText(t, problem)}</span>
+          <span>{startProblemText(t, problem)}</span>
           <Button size="small" type="link" onClick={() => onGo(FIX_PATH[problem.target], problem.fix)}>
             {t(`wsStartFix_${problem.target}`)}
           </Button>

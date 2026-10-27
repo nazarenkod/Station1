@@ -2290,5 +2290,8 @@
   "projectAdviceSwitch": "Go to «{{name}}»",
   "projectAdviceAddPlatform": "Add {{platform}} to the project",
   "wsDevicesForeign": "Not for this project",
-  "wsDeviceNotForProject": "not for this project"
+  "wsDeviceNotForProject": "not for this project",
+  "quickChangeDevice": "Change",
+  "quickPickDevice": "Pick a device",
+  "quickToBuilds": "To builds"
 }
