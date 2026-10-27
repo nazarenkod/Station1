@@ -149,7 +149,7 @@ const PrefEditor = ({open, format, entry, onCancel, onSave}) => {
       destroyOnHidden
     >
       <div className={styles.form}>
-        <label>
+        <label className={styles.field}>
           <span>{t('dataKey')}</span>
           <Input
             className={styles.mono}
@@ -158,7 +158,7 @@ const PrefEditor = ({open, format, entry, onCancel, onSave}) => {
             onChange={(event) => setKey(event.target.value)}
           />
         </label>
-        <label>
+        <label className={styles.field}>
           <span>{t('dataType')}</span>
           <Select
             value={type}
@@ -170,7 +170,7 @@ const PrefEditor = ({open, format, entry, onCancel, onSave}) => {
             options={(TYPES[format] ?? TYPES['shared-prefs']).map((value) => ({value, label: value}))}
           />
         </label>
-        <label>
+        <label className={styles.field}>
           <span>{t('dataValue')}</span>
           <Editor type={type} draft={draft} onChange={setDraft} />
         </label>

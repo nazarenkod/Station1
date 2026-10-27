@@ -4,6 +4,7 @@ import {useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {flutterKey} from '../../../shared/app-data/prefs-android.js';
+import {valueText} from '../../../shared/app-data/values.js';
 import {removePref, setPref} from './app-data-store.js';
 import PrefEditor from './PrefEditor.jsx';
 import {ValueCell, ValueDrawer} from './ValueView.jsx';
@@ -109,7 +110,7 @@ const PrefsView = ({prefs, marks, changes, pinned, onTogglePin, platform}) => {
             />
             {change && (
               <Tooltip title={t('dataWas')}>
-                <span className={styles.was}>{String(JSON.stringify(change.before) ?? '').slice(0, 60)}</span>
+                <span className={styles.was}>{valueText(change.before).slice(0, 60)}</span>
               </Tooltip>
             )}
           </div>

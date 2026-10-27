@@ -25,7 +25,7 @@
 | Файл | Що робить |
 |---|---|
 | `transport.js` | доступ до пісочниці одним інтерфейсом: `list`, `read`, `write`, `remove`, `stop`, `launch`, `clear`, `readPrefs`/`writePrefs` для iOS |
-| `android.js` | `adb exec-out run-as <pkg> …` або `adb exec-out su 0 …`; запис через `adb exec-in … sh -c 'cat > …'`; зупинка `am force-stop`, запуск `monkey -p … 1`, скидання `pm clear` |
+| `android.js` | читання `adb exec-out run-as <pkg> …` або `adb exec-out su 0 …`; запис — `adb push` у `/data/local/tmp`, потім `cat` у пісочницю з `umask 007` (root віддає файл і теки застосунку: `chown`, `restorecon`); зупинка `am force-stop`, запуск `monkey -p … 1`, скидання `pm clear` |
 | `simulator.js` | контейнер `simctl get_app_container <udid> <app> data` і `groups` — звичайна файлова система Mac; налаштування через `simctl spawn <udid> defaults export/import <шлях>`, щоб cfprefsd симулятора не перезаписав їх зі свого кешу; `simctl terminate/launch` |
 | `iphone.js` | `devicectl device info files`, `copy from`, `copy to` з `--domain-type appDataContainer`; зупинка й запуск — `devicectl device process` |
 | `plist-files.js` | двійковий plist ↔ XML через `plutil` |
@@ -83,6 +83,7 @@ MCP: чотири інструменти читання з [spec.md](spec.md), �
 - **2026-10-27. Групи застосунків на iPhone не показуються.** `devicectl` вміє `appGroupDataContainer`, але не каже, які групи має застосунок; на симуляторі їх дає `get_app_container … groups`.
 - **2026-10-27. Скидання даних без копії «до».** Копія всієї пісочниці — це вже «Знімок стану», окрема фіча.
 - **2026-10-27. Цілі з бази читаються як BigInt.** Інакше одне число понад 2^53 (кеш URLSession) зупиняє читання всієї таблиці. Точні числа віддаються числами, решта — текстом.
+- **2026-10-28. Запис на Android — через `adb push` і копію, а не `adb exec-in`.** `exec-in` обриває команду, щойно закінчився вхід: запис міг урізатися, а `chown` після нього не виконувався. Так само робить Android Studio.
 - **2026-10-27. Час файлів на Android — `stat %y` з дробом секунди.** `%Y` дає цілі секунди, і запис того самого розміру в ту саму секунду лишився б непоміченим.
 
 ## Тести
@@ -99,4 +100,4 @@ MCP: чотири інструменти читання з [spec.md](spec.md), �
 | `test/unit/settings-backup.spec.js` | 19 |
 | `test/unit/station-mcp.spec.js` | 21, 22 |
 
-Наживо (2026-10-27): симулятор iPhone 15, iOS 17 — читання, стеження, запис ключа, SQL-зміна, відкат, пошук, закріплення, перегляд файлів. Android і iPhone наживо не перевірено.
+Наживо (2026-10-27): симулятор iPhone 15, iOS 17 — читання, стеження, запис ключа, SQL-зміна, відкат, пошук, закріплення, перегляд файлів. 2026-10-28: емулятор Android 13 (Google APIs) — `run-as` на debug-збірці (SharedPreferences Flutter, DataStore, SQLite, стеження, діалог зміни, SQL, відкат, скидання даних) і root на системному застосунку (новий файл належить застосунку, права 660). iPhone наживо не перевірено.

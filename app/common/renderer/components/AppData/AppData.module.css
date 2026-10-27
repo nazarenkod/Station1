@@ -656,13 +656,13 @@
   gap: 12px;
 }
 
-.form label {
+.field {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.form label > span {
+.field > span {
   font-size: var(--vi-text-sm);
   color: var(--ant-color-text-secondary);
 }
