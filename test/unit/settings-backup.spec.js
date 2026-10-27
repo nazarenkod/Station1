@@ -19,7 +19,7 @@ import {
   SESSION_SERVER_PARAMS,
   WORKSTATION,
 } from '../../app/common/shared/setting-defs.js';
-import {ensureProfiles} from '../../app/common/shared/settings/profiles.js';
+import {ensureProfiles, setProfileApps} from '../../app/common/shared/settings/profiles.js';
 import {
   applyImport,
   buildExport,
@@ -154,6 +154,31 @@ describe('import', () => {
     });
     expect(next.list).toHaveLength(1);
     expect(patch[LOG_RULES_CONFIG].custom).toEqual([{id: 'pay'}]);
+  });
+
+  it('reads apps of old files as plain ids, and an app of a platform in the file replaces the one here', () => {
+    const data = JSON.parse(exportOf(station(), 'profile'));
+    data.profiles[0].apps = ['ua.acme.old', {id: 'ua.acme.bank2', platform: 'android'}];
+    const file = parseSettingsFile(JSON.stringify(data)).file;
+    expect(file.profiles[0].apps).toEqual([
+      {id: 'ua.acme.bank2', platform: 'android'},
+      {id: 'ua.acme.old', platform: null},
+    ]);
+    data.profiles[0].apps = [{platform: 'ios'}];
+    expect(parseSettingsFile(JSON.stringify(data))).toMatchObject({ok: false, error: 'shape', detail: 'apps'});
+
+    const mine = station();
+    const here = profilesOf(mine);
+    const withApps = setProfileApps(here, here.activeId, [
+      {id: 'ua.acme.bank', platform: 'android'},
+      {id: 'ua.pb.acme', platform: 'ios'},
+    ]);
+    const {profiles} = applyImport(file, withApps, mine, {profiles: [{index: 0, mode: 'replace', groups: []}]});
+    expect(profiles.list[0].apps).toEqual([
+      {id: 'ua.acme.bank2', platform: 'android'},
+      {id: 'ua.pb.acme', platform: 'ios'},
+      {id: 'ua.acme.old', platform: null},
+    ]);
   });
 
   it('adds a profile as new without touching the one that is on', () => {

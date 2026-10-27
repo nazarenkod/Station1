@@ -17,7 +17,7 @@
 
 ## Модель даних
 
-- **Профіль:** `{id, name, apps: string[], updatedAt, groups: {proxy, logs, filters, a11y, builds, jira}}`.
+- **Профіль:** `{id, name, apps: [{id, platform: 'android' | 'ios' | null}], updatedAt, groups: {proxy, logs, filters, a11y, builds, jira}}`. `projectApps()` у `profiles.js` чистить список: без порожніх і повторених id, по одному на платформу, застосунки з платформою перед старими. Рядок зі старого профілю чи файлу читається як `{id, platform: null}`; файл експорту приймає обидва вигляди, імпорт із заміною ставить застосунки файлу першими.
 - **Групи профілю:** `proxy` — `PROXY_CONFIG` без `port`; `logs` — `LOG_RULES_CONFIG`; `filters` — `PROXY_VIEW` і `LOGS_VIEW`; `a11y` — `A11Y_CONFIG` і `A11Y_ISSUE_STATES`; `builds` — `BUILD_JOBS` і `GITLAB_CONFIG.project`; `jira` — `JIRA_CONFIG` без `url` і `email`, `JIRA_MEMORY`.
 - **Групи станції:** `general` — мова й тема; `integrations` — сайт і акаунт Jira, сайт GitLab, `AI_CONFIG` без `consent`; `devices` — `IOS_SIGNING` і порт проксі; `inspector` — `SAVED_SESSIONS` без `server`, жести, атрибути, мова кодгену.
 - **Файл експорту:** `{format: 'station-settings', version: 1, product, exportedAt, kind: 'profile' | 'all', activeProfile?, station?: {група: значення}, profiles: [{name, apps, groups}]}`.

@@ -1,5 +1,5 @@
 import {GROUPS, PROFILE_GROUPS, readGroups, STATION_GROUPS, withoutSecrets, writeGroups} from './groups.js';
-import {activeProfile, addProfile, keepActive, profilePatch, setProfileApps} from './profiles.js';
+import {activeProfile, addProfile, keepActive, profilePatch, projectApps, setProfileApps} from './profiles.js';
 
 // The file the settings travel in between Macs and people. It holds groups
 // of settings only (see groups.js), never tokens or keys.
@@ -34,7 +34,7 @@ export function buildExport({profiles, all, kind, profileId, groups, product, no
   const wanted = (ids) => ids.filter((id) => !groups || groups.includes(id));
   const profileEntry = (profile) => ({
     name: profile.name,
-    apps: profile.apps ?? [],
+    apps: projectApps(profile.apps),
     groups: Object.fromEntries(
       wanted(PROFILE_GROUPS)
         .filter((id) => profile.groups?.[id] !== undefined)
@@ -114,7 +114,10 @@ export function parseSettingsFile(text) {
     }
     if (
       entry.apps !== undefined &&
-      !(Array.isArray(entry.apps) && entry.apps.every((app) => typeof app === 'string'))
+      !(
+        Array.isArray(entry.apps) &&
+        entry.apps.every((app) => typeof app === 'string' || (typeof app?.id === 'string' && app.id))
+      )
     ) {
       return fail('shape', 'apps');
     }
@@ -122,7 +125,7 @@ export function parseSettingsFile(text) {
     if (!read.ok) {
       return read;
     }
-    profiles.push({name: entry.name.trim(), apps: entry.apps ?? [], groups: read.groups});
+    profiles.push({name: entry.name.trim(), apps: projectApps(entry.apps), groups: read.groups});
   }
   const station = readFileGroups(data.station, 'station');
   if (!station.ok) {
@@ -206,7 +209,8 @@ export function applyImport(file, profiles, all, choice) {
             : profile,
         ),
       };
-      next = setProfileApps(next, existing.id, [...new Set([...(existing.apps ?? []), ...entry.apps])]);
+      // the file's app of a platform takes the place of the one here
+      next = setProfileApps(next, existing.id, [...entry.apps, ...(existing.apps ?? [])]);
       if (existing.id === next.activeId) {
         write(chosen);
       }

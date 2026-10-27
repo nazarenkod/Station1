@@ -10,7 +10,7 @@
 
 Назва Android-пристрою — `androidDeviceName()`: AVD емулятора з `adb emu avd name` (консоль без токена відповідає `KO`) або з `ro.boot.qemu.avd_name`, для телефона `ro.product.marketname`, інакше `ro.product.manufacturer` і модель з `adb devices -l`. Рядок під назвою (`deviceSubtitle()` у `DevicePicker.jsx`) для `android-device` і `android-emulator` додає `id` — серійний номер adb.
 
-Застосунок — `appForProject()` в `actions/Workstation.js` із `workstation.projectApps`. Їх кладе `setProjectApps()`, яку викликає `ProjectAppsFollower` у `Workstation.jsx`, коли вмикається профіль чи змінюються його застосунки; `refreshApps()` обирає застосунок знову, лише коли поточного на пристрої немає. Застосунок збірки (`actions/Builds.js`) обирає `selectApp()` напряму.
+Застосунок — `appForProject({projectApps, platform, installed, current})` в `actions/Workstation.js` із `workstation.projectApps` (`[{id, platform}]`, settings.backup). Платформу пристрою дає `devicePlatform()` (`platformName` малими літерами: `android`, `ios`); застосунки іншої платформи відкидаються, `platform: null` підходить обом. Застосунки кладе `setProjectApps()`, яку викликає `ProjectAppsFollower` у `Workstation.jsx`, коли вмикається профіль чи змінюються його застосунки; `refreshApps()` обирає застосунок знову, коли поточного на пристрої немає або коли це застосунок проєкту іншої платформи (навіть без списку застосунків). Застосунок збірки (`actions/Builds.js`) обирає `selectApp()` напряму.
 
 ## Модель даних
 

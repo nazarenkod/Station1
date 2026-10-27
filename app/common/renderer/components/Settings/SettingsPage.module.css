@@ -310,6 +310,24 @@ button.cardHead:hover {
   gap: 6px;
 }
 
+.profileApp {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.profileAppPlatform {
+  color: var(--vi-text-2);
+}
+
+.appOption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
 .profileHint {
   color: var(--vi-text-3);
   font-size: var(--vi-text-sm);

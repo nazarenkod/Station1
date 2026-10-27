@@ -25,27 +25,31 @@ async function persist(getState) {
   await setSetting(WORKSTATION, {deviceId, app});
 }
 
+// the platform of a project app a device runs
+export const devicePlatform = (device) => device?.platformName?.toLowerCase() ?? null;
+
 /**
- * The app to work with, from the apps of the project (package names and
- * bundle ids, in the project's order): the current one while it is a project
- * app the device has, else the first project app the device has, else the
- * current project app or the first one, shown as not installed (to install a
- * build of it, say). None when the project has no apps. When the apps of the
- * device are unknown (installed is null) the current project app stays.
+ * The app to work with, from the apps of the project ({id, platform}): the
+ * one for the platform of the device (an old one without a platform fits
+ * either), the one the device has first. One the device does not have stays,
+ * shown as not installed (to install a build of it, say). None when the
+ * project has no app for this platform. When the apps of the device are
+ * unknown (installed is null) the current project app stays.
  */
-export function appForProject({projectApps, installed, current}) {
-  if (!projectApps.length) {
+export function appForProject({projectApps, platform, installed, current}) {
+  const ids = projectApps.filter((app) => !platform || !app.platform || app.platform === platform).map((app) => app.id);
+  if (!ids.length) {
     return null;
   }
-  const isProjectApp = !!current && projectApps.includes(current.id);
+  const isProjectApp = !!current && ids.includes(current.id);
   if (!installed) {
-    return isProjectApp ? current.id : projectApps[0];
+    return isProjectApp ? current.id : ids[0];
   }
   const has = (id) => installed.some((entry) => entry.id === id);
   if (isProjectApp && has(current.id)) {
     return current.id;
   }
-  return projectApps.find(has) ?? (isProjectApp ? current.id : projectApps[0]);
+  return ids.find(has) ?? (isProjectApp ? current.id : ids[0]);
 }
 
 /**
@@ -182,11 +186,15 @@ export function refreshApps() {
     dispatch({type: SET_WORKSTATION_APPS, apps: listed.apps, loading: false, error: listed.error});
 
     const {app, projectApps} = getState().workstation;
-    // what an unreadable list says about the app is nothing: keep it
+    const platform = devicePlatform(device);
+    // what an unreadable list says about the app is nothing, but a project app of the other platform goes
     const readable = !listed.error && listed.apps.length > 0;
     const installed = !!app && listed.apps.some((entry) => entry.id === app.id);
-    if (readable && !installed) {
-      const next = appForProject({projectApps, installed: listed.apps, current: app});
+    const otherPlatform = projectApps.some(
+      (entry) => entry.id === app?.id && entry.platform && entry.platform !== platform,
+    );
+    if ((readable && !installed) || otherPlatform) {
+      const next = appForProject({projectApps, platform, installed: readable ? listed.apps : null, current: app});
       if (next !== (app?.id ?? null)) {
         await dispatch(selectApp(next));
         return;
@@ -198,14 +206,15 @@ export function refreshApps() {
 
 /**
  * The apps of the project that is on, set in its profile: the station works
- * with the one the device has.
+ * with the one for the platform of the device.
  */
 export function setProjectApps(projectApps) {
   return async (dispatch, getState) => {
     dispatch({type: SET_WORKSTATION_PROJECT_APPS, projectApps});
     const {app, apps, appsError} = getState().workstation;
     const installed = apps.length > 0 && !appsError ? apps : null;
-    const next = appForProject({projectApps, installed, current: app});
+    const platform = devicePlatform(activeDevice(getState().workstation));
+    const next = appForProject({projectApps, platform, installed, current: app});
     if (next !== (app?.id ?? null)) {
       await dispatch(selectApp(next));
     }

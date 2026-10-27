@@ -14,6 +14,7 @@ import {
   addProfile,
   ensureProfiles,
   profileForApp,
+  projectApps,
   removeProfile,
   renameProfile,
   setProfileApps,
@@ -89,12 +90,36 @@ describe('project profiles', () => {
   it('finds the profile an app belongs to; an app belongs to one profile', () => {
     let {profiles} = ensureProfiles(null, projectA, 'A');
     const b = addProfile(profiles, 'B');
-    profiles = setProfileApps(b.profiles, profiles.activeId, ['ua.acme.bank', ' ']);
-    profiles = setProfileApps(profiles, b.profile.id, ['ua.acme.shop', 'ua.acme.bank']);
+    profiles = setProfileApps(b.profiles, profiles.activeId, [{id: 'ua.acme.bank', platform: 'android'}, ' ']);
+    profiles = setProfileApps(profiles, b.profile.id, [
+      {id: 'ua.acme.shop', platform: 'ios'},
+      {id: 'ua.acme.bank', platform: 'android'},
+    ]);
     expect(profiles.list[0].apps).toEqual([]);
     expect(profileForApp(profiles, 'ua.acme.bank')).toMatchObject({name: 'B'});
     expect(profileForApp(profiles, 'ua.other')).toBeNull();
     const onB = switchProfile(profiles, b.profile.id, projectA).profiles;
     expect(profileForApp(onB, 'ua.acme.shop')).toBeNull();
+  });
+
+  it('keeps one app for each platform and reads old ids as for either platform', () => {
+    expect(
+      projectApps([
+        'ua.acme.old',
+        {id: ' ua.acme.bank ', platform: 'android'},
+        {id: 'ua.acme.beta', platform: 'android'},
+        {id: 'ua.pb.acme', platform: 'ios'},
+        {id: 'ua.acme.bank', platform: 'ios'},
+        {id: '', platform: 'ios'},
+      ]),
+    ).toEqual([
+      {id: 'ua.acme.bank', platform: 'android'},
+      {id: 'ua.pb.acme', platform: 'ios'},
+      {id: 'ua.acme.old', platform: null},
+    ]);
+    // an old id typed into a platform field takes the platform
+    expect(projectApps(['ua.acme.bank', {id: 'ua.acme.bank', platform: 'android'}])).toEqual([
+      {id: 'ua.acme.bank', platform: 'android'},
+    ]);
   });
 });

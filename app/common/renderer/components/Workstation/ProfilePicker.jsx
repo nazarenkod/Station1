@@ -41,7 +41,9 @@ const ProfilePicker = () => {
           <span className={styles.menuItemText}>
             <span>{profile.name}</span>
             {profile.apps.length > 0 && (
-              <span className={`${styles.menuItemSub} ${styles.mono}`}>{profile.apps.join(', ')}</span>
+              <span className={`${styles.menuItemSub} ${styles.mono}`}>
+                {profile.apps.map((app) => app.id).join(' · ')}
+              </span>
             )}
           </span>
         </button>

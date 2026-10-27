@@ -7,6 +7,7 @@ import {
   addProfile,
   ensureProfiles,
   profileForApp,
+  projectApps,
   removeProfile,
   renameProfile,
   setProfileApps,
@@ -69,7 +70,7 @@ export function createStationSettings({
   // what the screens need: no settings inside, only names, apps and which one is on
   const outline = (profiles) => ({
     activeId: profiles.activeId,
-    list: profiles.list.map(({id, name, apps, updatedAt}) => ({id, name, apps: apps ?? [], updatedAt})),
+    list: profiles.list.map(({id, name, apps, updatedAt}) => ({id, name, apps: projectApps(apps), updatedAt})),
   });
 
   const save = async (profiles, patch = {}) => {

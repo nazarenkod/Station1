@@ -8,6 +8,45 @@ const newId = () => `p-${Date.now().toString(36)}${Math.random().toString(36).sl
 
 const now = () => new Date().toISOString();
 
+export const APP_PLATFORMS = ['android', 'ios'];
+
+/**
+ * A project app: its id (a package, a bundle id) and the platform it is for.
+ * An id saved before the platforms, a plain string, is for either.
+ */
+export function projectApp(app) {
+  if (typeof app === 'string') {
+    return {id: app.trim(), platform: null};
+  }
+  return {
+    id: String(app?.id ?? '').trim(),
+    platform: APP_PLATFORMS.includes(app?.platform) ? app.platform : null,
+  };
+}
+
+/**
+ * The apps of a project, cleaned up: no empty or repeated ids, one app for
+ * each platform (the first one given), apps of a platform before the old ones
+ * without one.
+ */
+export function projectApps(apps = []) {
+  const all = apps.map(projectApp).filter((app) => app.id);
+  const ids = new Set();
+  const platforms = new Set();
+  const result = [];
+  for (const app of [...all.filter((a) => a.platform), ...all.filter((a) => !a.platform)]) {
+    if (ids.has(app.id) || (app.platform && platforms.has(app.platform))) {
+      continue;
+    }
+    ids.add(app.id);
+    if (app.platform) {
+      platforms.add(app.platform);
+    }
+    result.push(app);
+  }
+  return result;
+}
+
 /**
  * The profiles, made the first time: what the station has now becomes the
  * first profile, so nothing is lost.
@@ -91,15 +130,19 @@ export function renameProfile(profiles, id, name) {
   };
 }
 
-/** Which apps (bundle ids, packages) a profile is for; an app belongs to one profile. */
+/**
+ * Which apps a profile is for: an Android package and an iOS bundle id. An
+ * app belongs to one profile.
+ */
 export function setProfileApps(profiles, id, apps) {
-  const wanted = [...new Set(apps.map((app) => app.trim()).filter(Boolean))];
+  const wanted = projectApps(apps);
+  const ids = new Set(wanted.map((app) => app.id));
   return {
     ...profiles,
     list: profiles.list.map((profile) =>
       profile.id === id
         ? {...profile, apps: wanted, updatedAt: now()}
-        : {...profile, apps: (profile.apps ?? []).filter((app) => !wanted.includes(app))},
+        : {...profile, apps: projectApps(profile.apps).filter((app) => !ids.has(app.id))},
     ),
   };
 }
@@ -126,6 +169,6 @@ export function profileForApp(profiles, appId) {
   if (!profiles || !appId) {
     return null;
   }
-  const owner = profiles.list.find((profile) => (profile.apps ?? []).includes(appId));
+  const owner = profiles.list.find((profile) => projectApps(profile.apps).some((app) => app.id === appId));
   return owner && owner.id !== profiles.activeId ? owner : null;
 }
