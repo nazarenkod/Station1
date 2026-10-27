@@ -51,6 +51,8 @@ export function createSavedView(settingKey) {
     timer = setTimeout(flush, SAVE_DELAY_MS);
   };
 
+  const getSnapshot = () => view;
+
   const subscribe = (listener) => {
     listeners.add(listener);
     load();
@@ -63,6 +65,7 @@ export function createSavedView(settingKey) {
     reload,
     flush,
     update,
-    use: () => useSyncExternalStore(subscribe, () => view),
+    // one call per component: the Logs tool crashed reading it once per filter
+    use: () => useSyncExternalStore(subscribe, getSnapshot),
   };
 }

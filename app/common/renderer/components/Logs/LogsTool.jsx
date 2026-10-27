@@ -56,28 +56,16 @@ function useRemembered(key) {
   return [value, remember];
 }
 
-/**
- * A filter of the log kept with the profile, across restarts.
- */
-function useSavedFilter(key) {
-  const value = logsView.use()[key];
-  const set = useCallback((next) => logsView.update({[key]: next}), [key]);
-  return [value, set];
-}
-
-// a set kept as a list in the settings; the setter takes a set or a function of the current set
-function useSavedSet(key) {
-  const list = logsView.use()[key];
-  const value = useMemo(() => new Set(list), [list]);
-  const set = useCallback(
-    (next) =>
-      logsView.update((current) => ({
-        [key]: [...(typeof next === 'function' ? next(new Set(current[key])) : next)],
-      })),
-    [key],
-  );
-  return [value, set];
-}
+// a setter of a set kept as a list: takes a set, or a function of the current set
+const setOfList = (key) => (next) =>
+  logsView.update((current) => ({
+    [key]: [...(typeof next === 'function' ? next(new Set(current[key])) : next)],
+  }));
+const setScope = (scope) => logsView.update({scope});
+const setMinLevel = (minLevel) => logsView.update({minLevel});
+const setQuery = (query) => logsView.update({query});
+const setTags = setOfList('tags');
+const setHiddenTags = setOfList('hiddenTags');
 
 const typingIn = (target) => ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName) || target?.isContentEditable;
 
@@ -392,11 +380,11 @@ const LogsTool = () => {
   const logs = useLogs();
   const searchRef = useRef(null);
 
-  const [scope, setScope] = useSavedFilter('scope');
-  const [minLevel, setMinLevel] = useSavedFilter('minLevel');
-  const [queryText, setQuery] = useSavedFilter('query');
-  const [tags, setTags] = useSavedSet('tags');
-  const [hiddenTags, setHiddenTags] = useSavedSet('hiddenTags');
+  // the filters stay with the profile, across restarts; one subscription for all of them
+  const saved = logsView.use();
+  const {scope, minLevel, query: queryText} = saved;
+  const tags = useMemo(() => new Set(saved.tags), [saved.tags]);
+  const hiddenTags = useMemo(() => new Set(saved.hiddenTags), [saved.hiddenTags]);
   const [ruleFilter, setRuleFilter] = useState(null);
   const [follow, setFollow] = useState(true);
   const [frozen, setFrozen] = useState(null);
