@@ -58,7 +58,7 @@ Station#1 (робоча назва) — робоча станція QA-інже�
 
 ## Git
 
-- Робоча гілка `vision-inspector`. Заливати **лише** в `station`: `git -c http.postBuffer=524288000 push station vision-inspector:main`. У `origin` (upstream appium) — ніколи.
+- Основна гілка `main`. Поки йде активна розробка, комітимо й заливаємо прямо в неї: `git -c http.postBuffer=524288000 push origin main`. `origin` — наш репозиторій `github.com/nazarenkod/Station1`; в upstream Appium Inspector не заливаємо нічого.
 - Комітити лише свої зміни: у цій теці можуть одночасно працювати інші сесії. Перед комітом дивитися `git status` і додавати файли поіменно.
 - Повідомлення коміту англійською, у стилі історії (`feat(область): …`, `fix(область): …`).
 

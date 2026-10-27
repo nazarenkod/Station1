@@ -40,5 +40,5 @@ description: Use when adding a feature to Station#1 or changing how an existing 
 
 - Статус `implemented`, таблиця розділу в `SPEC.md` оновлена, `tasks.md` видалено.
 - Додавай файли поіменно (у теці працюють інші сесії); спека, дизайн, код і тести — одним комітом.
-- Залити: `git -c http.postBuffer=524288000 push station vision-inspector:main`. Ніколи в `origin`.
+- Залити: `git -c http.postBuffer=524288000 push origin main` (правила — AGENTS.md, розділ «Git»).
 - Користувачу — що змінилося, як перевірено, що не перевірено, з посиланням на спеку.
