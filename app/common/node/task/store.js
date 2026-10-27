@@ -115,6 +115,15 @@ export function createTaskStore({dir, get, set, settingKey}) {
       return false;
     },
 
+    /** The notes of the memory that belong to a task; they go when the task is forgotten. */
+    async notes(profileId, key) {
+      return (await load(profileId, key))?.notes ?? [];
+    },
+
+    async setNotes(profileId, key, notes) {
+      return await update(profileId, key, (data) => ({...data, notes}));
+    },
+
     async check(profileId, key, itemId, checked) {
       return await update(profileId, key, (data) => ({...data, checks: {...data.checks, [itemId]: !!checked}}));
     },

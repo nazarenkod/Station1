@@ -79,6 +79,14 @@ window.electronIPC = {
     forget: async (profileId, key) => await ipcRenderer.invoke('task:forget', profileId, key),
     onChanged: subscribe('task:changed'),
   },
+  memory: {
+    list: async () => await ipcRenderer.invoke('memory:list'),
+    save: async (note, options) => await ipcRenderer.invoke('memory:save', note, options),
+    update: async (id, patch) => await ipcRenderer.invoke('memory:update', id, patch),
+    remove: async (id) => await ipcRenderer.invoke('memory:remove', id),
+    pinned: async () => await ipcRenderer.invoke('memory:pinned'),
+    prune: async (days) => await ipcRenderer.invoke('memory:prune', days),
+  },
   agent: {
     open: async (request) => await ipcRenderer.invoke('agent:open', request),
     newConversation: async (request) => await ipcRenderer.invoke('agent:new', request),
@@ -108,6 +116,8 @@ window.electronIPC = {
     onBudget: subscribe('agent:budget'),
     onExit: subscribe('agent:exit'),
     onAsk: subscribe('agent:ask'),
+    onMemoryUsed: subscribe('agent:memoryUsed'),
+    onMemoryProposal: subscribe('agent:memoryProposal'),
   },
   source: {
     pickFolder: async () => await ipcRenderer.invoke('source:pickFolder'),

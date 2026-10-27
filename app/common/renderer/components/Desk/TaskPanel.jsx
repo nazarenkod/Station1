@@ -16,7 +16,7 @@ import {useNavigate} from 'react-router';
 
 import {formatCredits} from '../../../shared/agent/credits.js';
 import {SECTIONS} from '../../../shared/task/impact.js';
-import {askOnTask} from '../../lib/agent/agent-store.js';
+import {addProposal, askOnTask} from '../../lib/agent/agent-store.js';
 import {
   chooseTask,
   forgetCurrentTask,
@@ -60,7 +60,7 @@ const Evidence = ({item}) => {
   );
 };
 
-const NoiseButton = ({item, current}) => {
+const NoiseButton = ({item, current, taskKey}) => {
   const {t} = useTranslation();
   const [reason, setReason] = useState('');
   const [open, setOpen] = useState(false);
@@ -79,6 +79,15 @@ const NoiseButton = ({item, current}) => {
             onClick={() => {
               giveFeedback(item.id, 'noise', reason);
               setOpen(false);
+              // the reason becomes a correction of the project, for the next analyses
+              addProposal({
+                note: {
+                  kind: 'correction',
+                  scope: 'project',
+                  text: t('memoryNoiseText', {item: item.text, reason}).slice(0, 300),
+                  tags: {task: taskKey},
+                },
+              });
             }}
           >
             {t('taskNoiseSave')}
@@ -146,7 +155,7 @@ const Checklist = ({data, language}) => {
                     aria-label={t('taskUseful')}
                   />
                 </Tooltip>
-                <NoiseButton item={item} current={data.feedback?.[item.id]?.kind} />
+                <NoiseButton item={item} current={data.feedback?.[item.id]?.kind} taskKey={data.key} />
               </div>
             ))}
           </div>
@@ -341,6 +350,9 @@ const TaskPanel = () => {
             onClick={() => askOnTask(t('taskImpactPrompt', {key: task.current}), {deep: true})}
           >
             {task.data?.impact ? t('taskImpactAgain') : t('taskImpactRun')}
+          </Button>
+          <Button size="small" onClick={() => askOnTask(t('memorySummarizePrompt', {key: task.current}))}>
+            {t('memorySummarize')}
           </Button>
           <span className={styles.spacer} />
           <Button size="small" type="text" danger icon={<IconTrash size={14} />} onClick={forgetCurrentTask}>

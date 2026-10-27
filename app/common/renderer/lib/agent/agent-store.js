@@ -27,9 +27,16 @@ let state = {
   pendingTurn: null,
   needs: null,
   draft: null,
+  // notes the agent proposed or the person started, waiting for «Save»
+  proposals: [],
+  // notes the agent read in the turn that runs, then by the turn's line
+  usedNow: [],
+  turnNotes: {},
 };
 const listeners = new Set();
 let started = false;
+// every conversation's chat by its session: Kiro replays one while it loads, before the window knows its id
+const chats = new Map();
 
 function publish(patch) {
   state = {...state, ...patch};
@@ -61,20 +68,29 @@ export function startAgent() {
   }
   started = true;
   backend.agent.onUpdate(({sessionId, update}) => {
+    const was = chats.get(sessionId) ?? emptyChat();
+    const chat = applyUpdate(was, update);
+    chats.set(sessionId, chat);
     if (sessionId !== state.sessionId) {
       return;
     }
-    const before = state.chat.items.length;
-    const chat = applyUpdate(state.chat, update);
+    const before = was.items.length;
     const added = chat.items.slice(before).find((item) => item.type === 'turn');
-    if (added && state.pendingTurn) {
-      publish({chat, turns: {...state.turns, [added.id]: state.pendingTurn}, pendingTurn: null});
+    if (added) {
+      publish({
+        chat,
+        turns: state.pendingTurn ? {...state.turns, [added.id]: state.pendingTurn} : state.turns,
+        turnNotes: state.usedNow.length ? {...state.turnNotes, [added.id]: state.usedNow} : state.turnNotes,
+        pendingTurn: null,
+        usedNow: [],
+      });
       refreshChanges();
     } else {
       publish({chat});
     }
   });
   backend.agent.onReset(({sessionId}) => {
+    chats.set(sessionId, emptyChat());
     if (sessionId === state.sessionId) {
       publish({chat: emptyChat(), turns: {}});
     }
@@ -89,6 +105,18 @@ export function startAgent() {
   backend.agent.onMcpStatus(({sessionId, servers}) => {
     if (sessionId === state.sessionId) {
       publish({mcp: servers});
+    }
+  });
+  backend.agent.onMemoryUsed(({sessionId, notes}) => {
+    if (sessionId === state.sessionId) {
+      publish({
+        usedNow: [...state.usedNow, ...notes.filter((note) => !state.usedNow.some((one) => one.id === note.id))],
+      });
+    }
+  });
+  backend.agent.onMemoryProposal(({sessionId, ...proposal}) => {
+    if (!sessionId || sessionId === state.sessionId) {
+      addProposal(proposal);
     }
   });
   backend.agent.onExit(() =>
@@ -111,12 +139,14 @@ export async function openConversation({taskKey = currentTaskKey()} = {}) {
     return;
   }
   publish({status: 'starting', error: null, key, chat: emptyChat(), sessionId: null, changes: [], turns: {}});
-  const result = await backend.agent.open({profileId, taskKey});
+  // the first time this window opens a conversation it has no chat of it: Kiro replays it
+  const replay = !chats.size;
+  const result = await backend.agent.open({profileId, taskKey, replay});
   if (!result.ok) {
     failed(result);
     return;
   }
-  publish({status: 'ready', sessionId: result.sessionId});
+  publish({status: 'ready', sessionId: result.sessionId, chat: chats.get(result.sessionId) ?? emptyChat()});
   refreshChanges();
 }
 
@@ -143,7 +173,7 @@ export async function newConversation() {
     failed(result);
     return;
   }
-  publish({status: 'ready', sessionId: result.sessionId});
+  publish({status: 'ready', sessionId: result.sessionId, chat: chats.get(result.sessionId) ?? emptyChat()});
 }
 
 export async function resumeConversation(sessionId) {
@@ -154,7 +184,7 @@ export async function resumeConversation(sessionId) {
     failed(result);
     return;
   }
-  publish({status: 'ready', sessionId: result.sessionId});
+  publish({status: 'ready', sessionId: result.sessionId, chat: chats.get(result.sessionId) ?? emptyChat()});
   refreshChanges();
 }
 
@@ -170,8 +200,10 @@ export async function sendMessage(message, chips, {deep = false, confirmCredits 
   }
   // the journal numbers the turns of this run; this message starts the next one
   const turn = ((await backend.agent.turn(state.sessionId)) ?? 0) + 1;
+  const sent = addUserMessage(state.chat, message, chips);
+  chats.set(state.sessionId, sent);
   publish({
-    chat: addUserMessage(state.chat, message, chips),
+    chat: sent,
     status: 'busy',
     needs: null,
     budget: null,
@@ -185,6 +217,7 @@ export async function sendMessage(message, chips, {deep = false, confirmCredits 
   }
   // nothing was sent: the message goes back to the field
   const items = state.chat.items.slice(0, -1);
+  chats.set(state.sessionId, {...state.chat, items, busy: false});
   if (result.error === 'consent' || result.error === 'creditLimit') {
     publish({
       chat: {...state.chat, items, busy: false},
@@ -268,4 +301,31 @@ export async function askOnTask(message, {deep = false, chips = []} = {}) {
   if (state.sessionId) {
     await sendMessage(message, chips, {deep});
   }
+}
+
+let proposalId = 0;
+
+/** A note card in the chat: from the agent, or started by the person, saved only with «Save». */
+export function addProposal({note, replaces = null, similar = null, hint = null}) {
+  publish({
+    open: true,
+    proposals: [...state.proposals, {id: `prop-${++proposalId}`, note, replaces, similar, hint, error: null}],
+  });
+}
+
+export const dismissProposal = (id) => publish({proposals: state.proposals.filter((one) => one.id !== id)});
+
+/** Saves a note card; a similar note asks to replace it or keep both. */
+export async function saveProposal(id, note, options = {}) {
+  const result = await backend.memory.save(note, options);
+  if (result.ok) {
+    dismissProposal(id);
+    return result;
+  }
+  publish({
+    proposals: state.proposals.map((one) =>
+      one.id === id ? {...one, note, error: result.reason, similar: result.similar ?? one.similar} : one,
+    ),
+  });
+  return result;
 }

@@ -559,3 +559,22 @@ button.cardHead:hover {
   gap: 2px;
   font-size: var(--vi-text-sm);
 }
+
+/* the agent's memory */
+.memoryHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.memoryHead :global(.ant-input-search) {
+  max-width: 260px;
+}
+
+.memoryRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 120px auto auto auto;
+  align-items: center;
+  gap: 6px;
+}

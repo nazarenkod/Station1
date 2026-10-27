@@ -57,6 +57,8 @@ export const AGENT_CONSENT = 'AGENT_CONSENT';
 export const AGENT_SESSIONS = 'AGENT_SESSIONS';
 // the task each profile works on now and the ones used lately; never exported
 export const TASKS = 'TASKS';
+// the agent's notes of this person, for every profile; never exported
+export const AGENT_MEMORY = 'AGENT_MEMORY';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -107,8 +109,9 @@ export const DEFAULT_SETTINGS = {
     deepBudget: 200000,
     dailyCreditLimit: 0,
   },
-  [AGENT_PROJECT]: {instructions: '', mcpServers: []},
+  [AGENT_PROJECT]: {instructions: '', mcpServers: [], notes: []},
   [AGENT_CONSENT]: {profiles: {}, confirmedDay: null},
   [AGENT_SESSIONS]: {},
   [TASKS]: {},
+  [AGENT_MEMORY]: {notes: []},
 };

@@ -47,6 +47,19 @@ describe('the chat from Kiro updates', () => {
     expect(chat.items).toEqual([]);
   });
 
+  it('skips Kiro loading tool descriptions when a conversation is replayed', () => {
+    const chat = apply([
+      {
+        sessionUpdate: 'tool_call',
+        toolCallId: 'load',
+        title: 'Tool Load',
+        rawInput: {tool_ids: ['station::station_state']},
+      },
+      {sessionUpdate: 'tool_call_update', toolCallId: 'load', status: 'completed'},
+    ]);
+    expect(chat.items).toEqual([]);
+  });
+
   it('closes a turn with its credits, time and the context its tools took', () => {
     const chat = apply([
       {sessionUpdate: 'tool_call', toolCallId: 't1', title: '@station/station_state', status: 'pending'},

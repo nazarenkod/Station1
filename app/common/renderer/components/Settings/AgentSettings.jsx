@@ -9,6 +9,7 @@ import {AGENT_CONFIG, AGENT_CONSENT, AGENT_PROJECT, DEFAULT_SETTINGS} from '../.
 import {refreshCredits, useAgent} from '../../lib/agent/agent-store.js';
 import {useProfiles} from '../../lib/settings/profiles-store.js';
 import {backend, getSetting, setSetting} from '../../polyfills.js';
+import MemorySettings from './MemorySettings.jsx';
 
 import styles from './SettingsPage.module.css';
 
@@ -379,6 +380,13 @@ const AgentSettings = () => {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className={`${styles.card} ${styles.cardOpen}`}>
+        <div className={styles.cardBody}>
+          <span className={styles.agentLabel}>{t('memoryTitle')}</span>
+          <MemorySettings />
         </div>
       </section>
 

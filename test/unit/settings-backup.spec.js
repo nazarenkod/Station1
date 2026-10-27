@@ -155,6 +155,34 @@ describe('the code of a profile', () => {
   });
 });
 
+describe('the project’s notes of the agent', () => {
+  it('come in beside the notes here on an import, never in their place', () => {
+    const here = {
+      ...station(),
+      AGENT_PROJECT: {
+        instructions: '',
+        mcpServers: [],
+        notes: [{id: 'n1', kind: 'lesson', text: 'Наша нотатка про шаблони переказів'}],
+      },
+    };
+    const theirs = {
+      ...station(),
+      AGENT_PROJECT: {
+        instructions: '',
+        mcpServers: [],
+        notes: [{id: 'n2', kind: 'lesson', text: 'Їхня нотатка про ліміти карток'}],
+      },
+    };
+    const file = parseSettingsFile(
+      JSON.stringify(buildExport({profiles: profilesOf(theirs), all: theirs, kind: 'profile', product: 'x'})),
+    ).file;
+    const {patch} = applyImport(file, profilesOf(here), here, {
+      profiles: [{index: 0, mode: 'replace', groups: ['agent']}],
+    });
+    expect(patch.AGENT_PROJECT.notes.map((note) => note.id)).toEqual(['n1', 'n2']);
+  });
+});
+
 describe('import', () => {
   const exportOf = (all, kind = 'all') =>
     JSON.stringify(buildExport({profiles: profilesOf(all), all, kind, product: 'x'}));

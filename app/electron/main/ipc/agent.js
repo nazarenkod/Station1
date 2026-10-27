@@ -10,6 +10,8 @@ import {createChangeJournal} from '../../../common/node/agent/changes.js';
 import {createCreditsStore} from '../../../common/node/agent/credits-store.js';
 import {KiroAgent} from '../../../common/node/agent/kiro.js';
 import {testMcpServer} from '../../../common/node/agent/mcp-test.js';
+import {createMemoryStore} from '../../../common/node/agent/memory-store.js';
+import {memoryTools} from '../../../common/node/agent/memory-tools.js';
 import {createAgentService} from '../../../common/node/agent/service.js';
 import {createStationMcp} from '../../../common/node/agent/station-mcp.js';
 import {taskTools} from '../../../common/node/agent/task-tools.js';
@@ -18,7 +20,7 @@ import {shellEnv} from '../../../common/node/doctor/exec.js';
 import {inspectRepo} from '../../../common/node/source/repo.js';
 import {DEFAULT_STATION_INSTRUCTIONS} from '../../../common/shared/agent/instructions.js';
 import {cleanServer, secretNames, toAcpServers} from '../../../common/shared/agent/mcp-servers.js';
-import {DEFAULT_MASK_PATTERNS} from '../../../common/shared/agent/privacy.js';
+import {compileMasks, DEFAULT_MASK_PATTERNS} from '../../../common/shared/agent/privacy.js';
 import {AGENT_CONFIG, AI_CONFIG, DEFAULT_SETTINGS, SOURCE_PATHS} from '../../../common/shared/setting-defs.js';
 import {agentWorkspace, branchToRemember} from '../../../common/shared/settings/source.js';
 import {encryptedSecret} from '../secrets.js';
@@ -105,6 +107,15 @@ export function setupAgentIPC({station, proxy, logs, tasks}) {
     return {profileId: profile.id, source: profile.source, paths: await station.sourcePaths(profile.id)};
   };
 
+  const maskPatterns = async () => (await get(AI_CONFIG))?.maskPatterns ?? DEFAULT_MASK_PATTERNS;
+  const memory = createMemoryStore({
+    get,
+    set,
+    tasks: tasks.store,
+    current: tasks.current,
+    masks: async () => compileMasks(await maskPatterns()),
+  });
+
   let service = null;
   const tools = [
     ...stationTools({
@@ -121,7 +132,20 @@ export function setupAgentIPC({station, proxy, logs, tasks}) {
           previousBranch: branchToRemember(known.previousBranch, previous, null),
         });
       },
-      maskPatterns: async () => (await get(AI_CONFIG))?.maskPatterns ?? DEFAULT_MASK_PATTERNS,
+      maskPatterns,
+    }),
+    ...memoryTools({
+      store: memory,
+      masks: async () => compileMasks(await maskPatterns()),
+      onUsed: async (conversation, notes) => {
+        await memory.markUsed(notes.map((note) => note.id));
+        broadcast('agent:memoryUsed', {
+          sessionId: service?.sessionOf(conversation),
+          notes: notes.map(({id, text, kind, scope}) => ({id, text, kind, scope})),
+        });
+      },
+      propose: ({conversation, ...proposal}) =>
+        broadcast('agent:memoryProposal', {sessionId: service?.sessionOf(conversation), ...proposal}),
     }),
     ...taskTools({
       current: tasks.current,
@@ -186,6 +210,14 @@ export function setupAgentIPC({station, proxy, logs, tasks}) {
     send: broadcast,
     ask: askPerson,
     secrets: readSecrets,
+    pinnedNotes: async () => (await memory.pinned()).notes.map((note) => note.text),
+    notesFor: async (chips) => {
+      const tags = {
+        screen: chips.find((one) => one.kind === 'screen')?.label,
+        endpoint: chips.find((one) => one.kind === 'request')?.label,
+      };
+      return tags.screen || tags.endpoint ? await memory.search('', tags) : [];
+    },
     // the analysis of a task learns what it cost when its turn is metered
     onTurn: async ({profileId, taskKey, conversation, turn, credits}) => {
       if (taskKey && (await tasks.store.creditImpact(profileId, taskKey, {conversation, turn}, credits))) {
@@ -251,6 +283,12 @@ export function setupAgentIPC({station, proxy, logs, tasks}) {
       return {ok: false, detail: error.message};
     }
   });
+  ipcMain.handle('memory:list', () => memory.all());
+  ipcMain.handle('memory:save', (_evt, note, options) => memory.save(note, options));
+  ipcMain.handle('memory:update', (_evt, id, patch) => memory.update(id, patch));
+  ipcMain.handle('memory:remove', (_evt, id) => memory.remove(id));
+  ipcMain.handle('memory:pinned', () => memory.pinned());
+  ipcMain.handle('memory:prune', (_evt, days) => memory.prune(days));
   ipcMain.handle('agent:config', async () => ({
     ...DEFAULT_SETTINGS[AGENT_CONFIG],
     ...((await get(AGENT_CONFIG)) ?? {}),

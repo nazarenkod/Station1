@@ -308,3 +308,15 @@
   color: var(--vi-text-2);
   cursor: pointer;
 }
+
+.turnRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 4px;
+}
+
+.usedNotes {
+  cursor: default;
+  text-decoration: underline dotted;
+}

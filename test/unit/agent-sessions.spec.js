@@ -127,6 +127,7 @@ describe('the agent service', () => {
       home,
       send: (channel, payload) => sent.push([channel, payload]),
       ask: async () => null,
+      notesFor: async (chips) => (chips.some((one) => one.kind === 'request') ? [{id: 'n-1'}, {id: 'n-2'}] : []),
     });
   });
 
@@ -165,6 +166,10 @@ describe('the agent service', () => {
     expect((await service.open({profileId: 'p1'})).sessionId).toBe(first.sessionId);
     expect(kiro.calls.filter(([kind]) => kind === 'new')).toHaveLength(1);
 
+    // a window opened anew asks for the conversation again to show it
+    await service.open({profileId: 'p1', replay: true});
+    expect(kiro.calls.at(-1)).toEqual(['load', expect.objectContaining({sessionId: first.sessionId})]);
+
     kiro.emit('exit');
     const again = await service.open({profileId: 'p1'});
     expect(again).toMatchObject({sessionId: first.sessionId, fresh: false});
@@ -199,6 +204,8 @@ describe('the agent service', () => {
     });
     const [, {prompt}] = kiro.calls.at(-1);
     expect(prompt[0].text).toContain('- request: POST /v2/transfers 422 (id: r1)');
+    // the notes about the request go by their ids only
+    expect(prompt[0].text).toContain('- notes: 2 notes (id: n-1,n-2)');
     expect(prompt[1]).toEqual({type: 'text', text: 'чому 422?'});
     expect(turns.at(-1)).toEqual([conversation, {deep: true, limits: {read: 40000, deep: 200000}}]);
   });

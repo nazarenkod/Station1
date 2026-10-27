@@ -1,3 +1,4 @@
+import {mergeNotes} from '../agent/memory.js';
 import {GROUPS, PROFILE_GROUPS, readGroups, STATION_GROUPS, withoutSecrets, writeGroups} from './groups.js';
 import {
   activeProfile,
@@ -228,6 +229,13 @@ export function applyImport(file, profiles, all, choice) {
     }
     const chosen = Object.fromEntries(groups.filter((id) => id in entry.groups).map((id) => [id, entry.groups[id]]));
     const existing = next.list.find((profile) => profile.name === entry.name);
+    // the notes of the project come in beside those here, not in their place
+    if (chosen.agent && mode === 'replace' && existing) {
+      chosen.agent = {
+        ...chosen.agent,
+        notes: mergeNotes(existing.groups?.agent?.notes ?? [], chosen.agent.notes ?? []),
+      };
+    }
     if (mode === 'replace' && existing) {
       next = {
         ...next,

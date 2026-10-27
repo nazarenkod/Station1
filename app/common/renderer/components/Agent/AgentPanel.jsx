@@ -1,6 +1,7 @@
 import {
   IconArrowBackUp,
   IconBrain,
+  IconBookmark,
   IconCheck,
   IconHistory,
   IconLoader2,
@@ -21,6 +22,7 @@ import {chip} from '../../../shared/agent/context.js';
 import {formatCredits} from '../../../shared/agent/credits.js';
 import {activeDevice} from '../../actions/Workstation.js';
 import {
+  addProposal,
   answerPermission,
   cancelTurn,
   confirmCredits,
@@ -43,6 +45,7 @@ import {useTask} from '../../lib/task/task-store.js';
 import {backend} from '../../polyfills.js';
 import {useScreenHistory} from '../A11yTool/screen-history.js';
 import AgentText from './AgentText.jsx';
+import MemoryCard from './MemoryCard.jsx';
 
 import styles from './Agent.module.css';
 
@@ -112,11 +115,24 @@ const ToolRow = ({item}) => {
   );
 };
 
-const TurnLine = ({item, turn, changes, language}) => {
+// the tags of a note started from a turn: what the person's message pointed at
+const tagsOf = (chips = []) => ({
+  screen: chips.find((one) => one.kind === 'screen')?.label,
+  endpoint: chips.find((one) => one.kind === 'request')?.label,
+  task: chips.find((one) => one.kind === 'task')?.id,
+});
+
+const TurnLine = ({item, turn, changes, language, notes, chips}) => {
   const {t} = useTranslation();
   const {modal} = App.useApp();
   const mine = changes.filter((change) => change.turn === turn);
-  const undo = async (run) => {
+  // a rollback asks why, to remember it as a correction
+  const askWhy = (summary) =>
+    addProposal({
+      note: {kind: 'correction', scope: 'project', text: '', tags: tagsOf(chips)},
+      hint: t('memoryWhyUndone', {change: summary}),
+    });
+  const undo = async (run, summary) => {
     const result = await run(false);
     if (result?.conflict) {
       modal.confirm({
@@ -125,16 +141,43 @@ const TurnLine = ({item, turn, changes, language}) => {
         okText: t('agentUndoAnyway'),
         okButtonProps: {danger: true},
         cancelText: t('Cancel'),
-        onOk: () => run(true),
+        onOk: async () => {
+          await run(true);
+          askWhy(summary);
+        },
       });
+    } else if (result?.ok) {
+      askWhy(summary);
     }
   };
   return (
     <div className={styles.turn}>
-      <span>
+      <span className={styles.turnRow}>
         {t('agentTurnCredits', {credits: formatCredits(item.credits, language)})}
         {item.ms ? ` · ${(item.ms / 1000).toFixed(1)} ${t('agentSeconds')}` : ''}
         {item.toolChars ? ` · ${t('agentTurnContext', {count: approxTokens(item.toolChars)})}` : ''}
+        {notes?.length > 0 && (
+          <Popover
+            content={
+              <ul className={styles.list}>
+                {notes.map((note) => (
+                  <li key={note.id}>{note.text}</li>
+                ))}
+              </ul>
+            }
+            title={t('memoryUsedTitle')}
+          >
+            <span className={styles.usedNotes}> · {t('memoryUsed', {count: notes.length})}</span>
+          </Popover>
+        )}
+        <Button
+          size="small"
+          type="link"
+          icon={<IconBookmark size={13} />}
+          onClick={() => addProposal({note: {kind: 'lesson', scope: 'project', text: '', tags: tagsOf(chips)}})}
+        >
+          {t('memoryRemember')}
+        </Button>
       </span>
       {mine.length > 0 && (
         <div className={styles.changes}>
@@ -142,7 +185,11 @@ const TurnLine = ({item, turn, changes, language}) => {
             <div key={change.id} className={`${styles.change} ${change.undone ? styles.changeUndone : ''}`}>
               <span>{change.summary}</span>
               {!change.undone && (
-                <Button size="small" type="link" onClick={() => undo((force) => undoChange(change.id, force))}>
+                <Button
+                  size="small"
+                  type="link"
+                  onClick={() => undo((force) => undoChange(change.id, force), change.summary)}
+                >
                   {t('agentUndo')}
                 </Button>
               )}
@@ -152,7 +199,7 @@ const TurnLine = ({item, turn, changes, language}) => {
             <Button
               size="small"
               icon={<IconArrowBackUp size={14} />}
-              onClick={() => undo((force) => undoTurn(turn, force))}
+              onClick={() => undo((force) => undoTurn(turn, force), mine.map((change) => change.summary).join('; '))}
             >
               {t('agentUndoTurn')}
             </Button>
@@ -405,6 +452,9 @@ const AgentPanel = () => {
             return <ToolRow key={item.id} item={item} />;
           }
           if (item.type === 'turn') {
+            const asked = agent.chat.items
+              .slice(0, agent.chat.items.indexOf(item))
+              .findLast((one) => one.type === 'user');
             return (
               <TurnLine
                 key={item.id}
@@ -412,6 +462,8 @@ const AgentPanel = () => {
                 turn={agent.turns[item.id]}
                 changes={agent.changes}
                 language={language}
+                notes={agent.turnNotes[item.id]}
+                chips={asked?.chips}
               />
             );
           }
@@ -440,6 +492,9 @@ const AgentPanel = () => {
               </div>
             </div>
           ))}
+        {agent.proposals.map((proposal) => (
+          <MemoryCard key={proposal.id} proposal={proposal} />
+        ))}
         {agent.permissions.map((request) => (
           <PermissionCard key={request.id} request={request} />
         ))}

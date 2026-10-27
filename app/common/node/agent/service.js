@@ -44,6 +44,7 @@ import {kiroProblem} from './kiro.js';
  * @param {(request: object) => Promise<{optionId: string} | null>} deps.ask the person, for a permission
  * @param {(sessionId: string) => string[]} [deps.pinnedNotes] notes of the memory every conversation starts with
  * @param {(turn: object) => Promise<void>} [deps.onTurn] a turn ended, with its credits
+ * @param {(chips: object[]) => Promise<object[]>} [deps.notesFor] the notes of the memory about what the chips name
  */
 export function createAgentService(deps) {
   const setting = async (key) => ({...DEFAULT_SETTINGS[key], ...((await deps.get(key)) ?? {})});
@@ -162,12 +163,13 @@ export function createAgentService(deps) {
   const service = {
     /**
      * The conversation of a profile and a task: the current one, loaded when
-     * this run of Kiro has not seen it, or a new one.
+     * this run of Kiro has not seen it (or the window asks to replay it), or a new one.
      */
-    async open({profileId, taskKey = null}) {
+    async open({profileId, taskKey = null, replay = false}) {
       try {
         const sessionId = currentSession(await deps.get(AGENT_SESSIONS), profileId, taskKey);
-        if (sessionId && open.has(sessionId)) {
+        // a window opened anew has no chat yet: the conversation is loaded again to replay it
+        if (sessionId && open.has(sessionId) && !replay) {
           return {ok: true, sessionId, conversation: open.get(sessionId).conversation, fresh: false};
         }
         if (sessionId) {
@@ -235,7 +237,12 @@ export function createAgentService(deps) {
       deps.mcp.startTurn(known.conversation, {deep, limits: {read: config.readBudget, deep: config.deepBudget}});
       await deps.set(AGENT_SESSIONS, touchConversation(await deps.get(AGENT_SESSIONS), known.profileId, sessionId));
       try {
-        const result = await deps.kiro.prompt(sessionId, promptBlocks(message, chips));
+        // notes about the screen or request go along by their ids only; the agent reads them if it needs
+        const notes = deps.notesFor ? await deps.notesFor(chips).catch(() => []) : [];
+        const withNotes = notes.length
+          ? [...chips, {kind: 'notes', id: notes.map((note) => note.id).join(','), label: `${notes.length} notes`}]
+          : chips;
+        const result = await deps.kiro.prompt(sessionId, promptBlocks(message, withNotes));
         return {ok: true, stopReason: result?.stopReason ?? 'end_turn', turn: turns.get(sessionId)};
       } catch (error) {
         if (!deps.kiro.running) {

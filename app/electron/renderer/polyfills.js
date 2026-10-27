@@ -63,6 +63,9 @@ const backend = {
   get task() {
     return window.electronIPC.task;
   },
+  get memory() {
+    return window.electronIPC.memory;
+  },
   get journal() {
     return window.electronIPC.journal;
   },
