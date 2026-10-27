@@ -133,6 +133,15 @@ export class JiraClient {
     return this.request<JiraUser>('/rest/api/2/myself');
   }
 
+  /** A GET on the site with the token: the task context reads Jira and Confluence through it. */
+  async get<T>(path: string): Promise<T> {
+    return this.request<T>(path);
+  }
+
+  get site(): string {
+    return this.base;
+  }
+
   browseUrl(key: string): string {
     return `${this.base}/browse/${key}`;
   }

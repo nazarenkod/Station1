@@ -3,6 +3,7 @@ import {useSyncExternalStore} from 'react';
 import {addUserMessage, applyUpdate, emptyChat} from '../../../shared/agent/acp-events.js';
 import {backend} from '../../polyfills.js';
 import {profilesState} from '../settings/profiles-store.js';
+import {currentTaskKey} from '../task/task-store.js';
 
 // The agent's chat as the window sees it: whether the panel is open, the
 // conversation of the profile (and task) that is on, its messages and tool
@@ -100,7 +101,7 @@ const failed = (result) =>
   publish({status: 'error', error: result.error ?? 'other', errorDetail: result.detail ?? null});
 
 /** Opens the conversation of the profile that is on (and of its task). */
-export async function openConversation({taskKey = null} = {}) {
+export async function openConversation({taskKey = currentTaskKey()} = {}) {
   const profileId = activeProfileId();
   if (!profileId || !backend?.agent) {
     return;
@@ -137,7 +138,7 @@ export function askAbout(pick) {
 export async function newConversation() {
   const profileId = activeProfileId();
   publish({status: 'starting', chat: emptyChat(), sessionId: null, changes: [], turns: {}, error: null});
-  const result = await backend.agent.newConversation({profileId, taskKey: null});
+  const result = await backend.agent.newConversation({profileId, taskKey: currentTaskKey()});
   if (!result.ok) {
     failed(result);
     return;
@@ -249,12 +250,22 @@ export async function refreshCredits() {
   publish({credits: await backend.agent.credits()});
 }
 
-/** Another profile: its own conversation, opened when the panel is. */
+/** Another profile or task: its own conversation, opened when the panel is. */
 export function followProfile() {
-  if (state.sessionId) {
+  const key = `${activeProfileId()}/${currentTaskKey() ?? ''}`;
+  if (state.sessionId && state.key !== key) {
     publish({sessionId: null, key: null, chat: emptyChat(), changes: [], turns: {}, permissions: []});
     if (state.open) {
       openConversation();
     }
+  }
+}
+
+/** Opens the chat on the task's conversation and sends a message there, for the task card's buttons. */
+export async function askOnTask(message, {deep = false, chips = []} = {}) {
+  publish({open: true});
+  await openConversation();
+  if (state.sessionId) {
+    await sendMessage(message, chips, {deep});
   }
 }

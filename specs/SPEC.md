@@ -333,7 +333,7 @@
 | Інструменти станції для агента (MCP): дані сесії в межах бюджету, правила, підміни, фільтри, налаштування, відкат | [agent.station-mcp](agent.station-mcp/spec.md) | implemented |
 | Памʼять агента: уроки й поправки користувача | [agent.memory](agent.memory/spec.md) | approved |
 | Код застосунку в проєкті: локальний репозиторій, сабмодулі, гілки `develop` і `main` | [project.source](project.source/spec.md) | implemented |
-| Задача: Jira, повʼязані задачі, Confluence, MR із коментарів → контекст задачі й імпакт-аналіз | [task.context](task.context/spec.md) | approved |
+| Задача: Jira, повʼязані задачі, Confluence, MR із коментарів → контекст задачі й імпакт-аналіз | [task.context](task.context/spec.md) | implemented |
 | Цілі сесії: перевірки з задачі й коду, які станція рахує наживо | [agent.goals](agent.goals/spec.md) | approved |
 
 Порядок робіт: project.source → agent.core з інструментами читання → task.context → agent.memory → інструменти змін → agent.goals. Кожен крок корисний сам.

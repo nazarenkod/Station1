@@ -55,6 +55,8 @@ export const AGENT_PROJECT = 'AGENT_PROJECT';
 export const AGENT_CONSENT = 'AGENT_CONSENT';
 // which Kiro session holds which conversation, by profile; never exported
 export const AGENT_SESSIONS = 'AGENT_SESSIONS';
+// the task each profile works on now and the ones used lately; never exported
+export const TASKS = 'TASKS';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -108,4 +110,5 @@ export const DEFAULT_SETTINGS = {
   [AGENT_PROJECT]: {instructions: '', mcpServers: []},
   [AGENT_CONSENT]: {profiles: {}, confirmedDay: null},
   [AGENT_SESSIONS]: {},
+  [TASKS]: {},
 };

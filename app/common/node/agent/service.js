@@ -43,6 +43,7 @@ import {kiroProblem} from './kiro.js';
  * @param {(channel: string, payload: object) => void} deps.send to the window
  * @param {(request: object) => Promise<{optionId: string} | null>} deps.ask the person, for a permission
  * @param {(sessionId: string) => string[]} [deps.pinnedNotes] notes of the memory every conversation starts with
+ * @param {(turn: object) => Promise<void>} [deps.onTurn] a turn ended, with its credits
  */
 export function createAgentService(deps) {
   const setting = async (key) => ({...DEFAULT_SETTINGS[key], ...((await deps.get(key)) ?? {})});
@@ -62,12 +63,20 @@ export function createAgentService(deps) {
     const kiro = update?._meta?.kiro;
     if (update?.sessionUpdate === 'session_info_update' && kiro?.kind === 'turn_completion' && !kiro.replay) {
       const known = open.get(sessionId) ?? findConversation(await deps.get(AGENT_SESSIONS), sessionId);
+      const credits = turnCredits(kiro.promptTurnSummaries);
       await deps.credits.add({
         profileId: known?.profileId,
         taskKey: known?.taskKey ?? null,
         sessionId,
-        credits: turnCredits(kiro.promptTurnSummaries),
+        credits,
         ms: kiro.elapsedTime ?? null,
+      });
+      await deps.onTurn?.({
+        profileId: known?.profileId,
+        taskKey: known?.taskKey ?? null,
+        conversation: known?.conversation ?? null,
+        turn: turns.get(sessionId) ?? 0,
+        credits,
       });
       deps.send('agent:credits', await deps.credits.summary());
     }

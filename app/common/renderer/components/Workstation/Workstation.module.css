@@ -664,3 +664,24 @@
   background: var(--vi-hover);
   color: var(--vi-text-2);
 }
+
+/* the task the person works on, before the profile */
+.taskChip {
+  border: 0;
+  background: var(--vi-accent-bg);
+  color: var(--vi-accent-fg);
+  font-weight: 600;
+  font-size: var(--vi-text-sm);
+  padding: 4px 10px;
+  border-radius: var(--vi-radius-pill);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: none;
+}
+
+/* a narrow window keeps its room for the pickers and the buttons; the task is on the desk */
+@media (max-width: 960px) {
+  .taskChip {
+    display: none;
+  }
+}

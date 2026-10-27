@@ -67,6 +67,18 @@ window.electronIPC = {
     restore: async (file) => await ipcRenderer.invoke('settings:restore', file),
     onChanged: subscribe('settings:changed'),
   },
+  task: {
+    list: async (profileId) => await ipcRenderer.invoke('task:list', profileId),
+    setCurrent: async (profileId, input) => await ipcRenderer.invoke('task:setCurrent', profileId, input),
+    load: async (profileId, key) => await ipcRenderer.invoke('task:load', profileId, key),
+    refresh: async (profileId, key) => await ipcRenderer.invoke('task:refresh', profileId, key),
+    check: async (profileId, key, itemId, checked) =>
+      await ipcRenderer.invoke('task:check', profileId, key, itemId, checked),
+    feedback: async (profileId, key, itemId, kind, reason) =>
+      await ipcRenderer.invoke('task:feedback', profileId, key, itemId, kind, reason),
+    forget: async (profileId, key) => await ipcRenderer.invoke('task:forget', profileId, key),
+    onChanged: subscribe('task:changed'),
+  },
   agent: {
     open: async (request) => await ipcRenderer.invoke('agent:open', request),
     newConversation: async (request) => await ipcRenderer.invoke('agent:new', request),

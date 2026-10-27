@@ -6,6 +6,7 @@ import {useLocation, useNavigate} from 'react-router';
 import {PRODUCT_NAME} from '../../../shared/product.js';
 import logo from '../../assets/images/vision-logo.svg';
 import {toggleAgent, useAgent} from '../../lib/agent/agent-store.js';
+import {useTask} from '../../lib/task/task-store.js';
 import DevicePicker from './DevicePicker.jsx';
 import ProfilePicker from './ProfilePicker.jsx';
 import SessionChip from './SessionChip.jsx';
@@ -23,6 +24,7 @@ const WorkstationHeader = () => {
   const navigate = useNavigate();
   const {pathname} = useLocation();
   const agent = useAgent();
+  const task = useTask();
 
   return (
     <header className={styles.header}>
@@ -32,6 +34,13 @@ const WorkstationHeader = () => {
       </div>
       <ToolTabs />
       <div className={styles.spacer} />
+      {task.current && (
+        <Tooltip title={t('taskTitle')}>
+          <button className={styles.taskChip} onClick={() => navigate('/')}>
+            {task.current}
+          </button>
+        </Tooltip>
+      )}
       <div className={styles.context}>
         <ProfilePicker />
         <span className={styles.contextDivider} />

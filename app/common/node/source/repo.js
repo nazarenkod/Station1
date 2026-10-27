@@ -226,3 +226,24 @@ export async function pullRepo(root) {
   const updated = await git(root, ['submodule', 'update', '--init', '--recursive'], NETWORK_MS);
   return updated.ok ? {ok: true} : failure('submodules', updated);
 }
+
+/**
+ * The commits of a branch whose message names a task, newest first: the
+ * branch from origin when it is there, the local one otherwise.
+ * @returns {Promise<{sha: string, subject: string}[]>}
+ */
+export async function commitsWithKey(root, branch, key, limit = 30) {
+  for (const ref of [`origin/${branch}`, branch]) {
+    const result = await git(root, ['log', ref, `--grep=${key}`, '-i', `-n${limit}`, '--format=%H%x1f%s']);
+    if (result.ok) {
+      return String(result.stdout)
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => {
+          const [sha, subject] = line.split('\x1f');
+          return {sha, subject};
+        });
+    }
+  }
+  return [];
+}

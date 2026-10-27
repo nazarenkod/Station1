@@ -10,6 +10,7 @@ import {followProfile, startAgent, toggleAgent} from '../../lib/agent/agent-stor
 import {startAgentBridge} from '../../lib/agent/bridge.js';
 import {setPick} from '../../lib/agent/selection.js';
 import {profileForApp, startProfiles, switchProfile, useProfiles} from '../../lib/settings/profiles-store.js';
+import {followTaskProfile, startTasks, useTask} from '../../lib/task/task-store.js';
 import {loadSessionFileIfOpened} from '../../polyfills.js';
 import AgentPanel from '../Agent/AgentPanel.jsx';
 import {PageTransition} from '../AppShell/motion.jsx';
@@ -119,9 +120,14 @@ const AgentFollower = () => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  const task = useTask();
+  useEffect(() => {
+    followTaskProfile();
+  }, [profiles.activeId]);
+  // the conversation follows the profile and its task
   useEffect(() => {
     followProfile();
-  }, [profiles.activeId]);
+  }, [profiles.activeId, task.current]);
   return null;
 };
 
@@ -145,6 +151,7 @@ const Workstation = () => {
     // the agent's chat, and the window's answers to what the agent asks the station
     startAgent();
     startAgentBridge(store);
+    startTasks();
     // a session file or a shared session link opens straight in the Inspector
     (async () => {
       const hasSessionLink = new URL(window.location.href).searchParams.has('state');

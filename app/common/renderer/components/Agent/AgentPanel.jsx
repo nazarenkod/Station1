@@ -39,6 +39,7 @@ import {
 } from '../../lib/agent/agent-store.js';
 import {usePicks} from '../../lib/agent/selection.js';
 import {useProfiles} from '../../lib/settings/profiles-store.js';
+import {useTask} from '../../lib/task/task-store.js';
 import {backend} from '../../polyfills.js';
 import {useScreenHistory} from '../A11yTool/screen-history.js';
 import AgentText from './AgentText.jsx';
@@ -67,6 +68,7 @@ function useChips() {
   const picks = usePicks();
   const profiles = useProfiles();
   const flow = useScreenHistory();
+  const {current: taskKey, data: taskData} = useTask();
   const device = useSelector((state) => activeDevice(state.workstation));
   const app = useSelector((state) => state.workstation.app);
   const element = useSelector((state) => state.inspector?.selectedElement);
@@ -77,6 +79,7 @@ function useChips() {
     return [
       picks.tab && chip('tab', picks.tab.id, t(`wsTool_${picks.tab.id}`, {defaultValue: picks.tab.id})),
       profile && chip('profile', profile.id, profile.name),
+      taskKey && chip('task', taskKey, `${taskKey} ${taskData?.context?.task.summary ?? ''}`),
       device && chip('device', device.udid ?? device.id, device.name),
       app && chip('app', app.id, app.id),
       screen && chip('screen', screen.key, screen.title ?? screen.key),
@@ -90,7 +93,7 @@ function useChips() {
       picks.log && chip('log', picks.log.id, picks.log.label),
       picks.finding && chip('finding', picks.finding.id, picks.finding.label),
     ].filter(Boolean);
-  }, [picks, profiles, flow.screens, flow.currentKey, device, app, element, t]);
+  }, [picks, profiles, taskKey, taskData, flow.screens, flow.currentKey, device, app, element, t]);
 }
 
 const ToolRow = ({item}) => {

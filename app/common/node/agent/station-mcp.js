@@ -99,7 +99,8 @@ export function createStationMcp({tools, onEvent = () => {}}) {
     get port() {
       return port;
     },
-    readTools: new Set(tools.filter((tool) => tool.readOnly).map((tool) => tool.name)),
+    // what runs without asking: tools that read, and those that only keep what the agent found
+    readTools: new Set(tools.filter((tool) => tool.readOnly || tool.autoAllow).map((tool) => tool.name)),
 
     async start() {
       if (server) {

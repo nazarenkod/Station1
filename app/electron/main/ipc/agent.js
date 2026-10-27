@@ -12,6 +12,7 @@ import {KiroAgent} from '../../../common/node/agent/kiro.js';
 import {testMcpServer} from '../../../common/node/agent/mcp-test.js';
 import {createAgentService} from '../../../common/node/agent/service.js';
 import {createStationMcp} from '../../../common/node/agent/station-mcp.js';
+import {taskTools} from '../../../common/node/agent/task-tools.js';
 import {stationTools} from '../../../common/node/agent/tools.js';
 import {shellEnv} from '../../../common/node/doctor/exec.js';
 import {inspectRepo} from '../../../common/node/source/repo.js';
@@ -61,7 +62,7 @@ async function kiroBinary() {
  * The station's agent: Kiro over ACP, the station's MCP server with its
  * tools, the journal of the agent's changes and the credits ledger.
  */
-export function setupAgentIPC({station, proxy, logs}) {
+export function setupAgentIPC({station, proxy, logs, tasks}) {
   const home = path.join(app.getPath('userData'), 'agent', 'workspace');
   const get = (key) => settings.get(key);
   const set = (key, value) => settings.set(key, value);
@@ -105,22 +106,30 @@ export function setupAgentIPC({station, proxy, logs}) {
   };
 
   let service = null;
-  const tools = stationTools({
-    proxy: () => proxy.snapshot(),
-    logs: () => logs.snapshot(),
-    ask: askWindow,
-    get,
-    journal,
-    turnOf: (conversation) => service?.turnOf(conversation) ?? 0,
-    project,
-    rememberBranch: async (profileId, repoId, previous) => {
-      const known = (await station.sourcePaths(profileId))[repoId] ?? {};
-      await station.setSourcePath(profileId, repoId, {
-        previousBranch: branchToRemember(known.previousBranch, previous, null),
-      });
-    },
-    maskPatterns: async () => (await get(AI_CONFIG))?.maskPatterns ?? DEFAULT_MASK_PATTERNS,
-  });
+  const tools = [
+    ...stationTools({
+      proxy: () => proxy.snapshot(),
+      logs: () => logs.snapshot(),
+      ask: askWindow,
+      get,
+      journal,
+      turnOf: (conversation) => service?.turnOf(conversation) ?? 0,
+      project,
+      rememberBranch: async (profileId, repoId, previous) => {
+        const known = (await station.sourcePaths(profileId))[repoId] ?? {};
+        await station.setSourcePath(profileId, repoId, {
+          previousBranch: branchToRemember(known.previousBranch, previous, null),
+        });
+      },
+      maskPatterns: async () => (await get(AI_CONFIG))?.maskPatterns ?? DEFAULT_MASK_PATTERNS,
+    }),
+    ...taskTools({
+      current: tasks.current,
+      store: tasks.store,
+      turnOf: (conversation) => service?.turnOf(conversation) ?? 0,
+      onChanged: tasks.changed,
+    }),
+  ];
 
   const mcp = createStationMcp({
     tools,
@@ -177,6 +186,12 @@ export function setupAgentIPC({station, proxy, logs}) {
     send: broadcast,
     ask: askPerson,
     secrets: readSecrets,
+    // the analysis of a task learns what it cost when its turn is metered
+    onTurn: async ({profileId, taskKey, conversation, turn, credits}) => {
+      if (taskKey && (await tasks.store.creditImpact(profileId, taskKey, {conversation, turn}, credits))) {
+        tasks.changed({profileId, key: taskKey});
+      }
+    },
     workspace: async (profileId) => {
       const profile = (await station.profiles()).list.find((one) => one.id === profileId);
       const paths = ((await get(SOURCE_PATHS)) ?? {})[profileId] ?? {};

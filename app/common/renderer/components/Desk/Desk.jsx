@@ -22,6 +22,7 @@ import {useProxy} from '../Proxy/proxy-store.js';
 import DevicesPanel from './DevicesPanel.jsx';
 import DoctorPanel from './DoctorPanel.jsx';
 import NewTestDialog from './NewTestDialog.jsx';
+import TaskPanel from './TaskPanel.jsx';
 
 import styles from './Desk.module.css';
 
@@ -272,6 +273,11 @@ const Desk = () => {
   return (
     <div className={styles.desk}>
       <Stagger className={`${styles.inner} ${expanded ? styles.innerExpanded : ''}`}>
+        {!expanded && (
+          <StaggerItem>
+            <TaskPanel />
+          </StaggerItem>
+        )}
         {!expanded && (
           <StaggerItem className={styles.top}>
             <DoctorPanel />

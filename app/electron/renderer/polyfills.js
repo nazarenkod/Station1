@@ -60,6 +60,9 @@ const backend = {
   get agent() {
     return window.electronIPC.agent;
   },
+  get task() {
+    return window.electronIPC.task;
+  },
   get journal() {
     return window.electronIPC.journal;
   },

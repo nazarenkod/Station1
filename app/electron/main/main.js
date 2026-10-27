@@ -16,6 +16,7 @@ import {setupLogsIPC} from './ipc/logs.js';
 import {setupProxyIPC} from './ipc/proxy.js';
 import {setupSettingsIPC} from './ipc/settings.js';
 import {setupSourceIPC} from './ipc/source.js';
+import {setupTaskIPC} from './ipc/task.js';
 import {setupJournal} from './journal.js';
 import {setupMainWindow} from './windows.js';
 
@@ -59,6 +60,7 @@ app.on('ready', async () => {
   const proxy = setupProxyIPC();
   const station = setupSettingsIPC();
   setupSourceIPC(station);
-  setupAgentIPC({station, proxy, logs});
+  const tasks = setupTaskIPC({station});
+  setupAgentIPC({station, proxy, logs, tasks});
   await setupMainWindow();
 });
