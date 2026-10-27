@@ -21,6 +21,7 @@ import GoalForm from '../Goals/GoalForm.jsx';
 import {logsState, startLogs} from '../Logs/logs-store.js';
 import SessionExpiryModal from '../SessionInspector/SessionExpiryModal.jsx';
 import {useInspectorActions} from '../SessionInspector/use-inspector.js';
+import ToolRail from './ToolRail.jsx';
 import {toolOf} from './tools.js';
 import WorkstationHeader from './WorkstationHeader.jsx';
 
@@ -199,14 +200,19 @@ const Workstation = () => {
   return (
     <div className={styles.workstation}>
       <WorkstationHeader />
-      <GoalsStrip />
-      <div className={styles.body}>
-        <div className={styles.toolArea}>
-          <AnimatePresence mode="wait">
-            <PageTransition key={location.pathname}>{outlet}</PageTransition>
-          </AnimatePresence>
+      <div className={styles.main}>
+        <ToolRail />
+        <div className={styles.mainColumn}>
+          <GoalsStrip />
+          <div className={styles.body}>
+            <div className={styles.toolArea}>
+              <AnimatePresence mode="wait">
+                <PageTransition key={location.pathname}>{outlet}</PageTransition>
+              </AnimatePresence>
+            </div>
+            <AgentPanel />
+          </div>
         </div>
-        <AgentPanel />
       </div>
       <AgentFollower />
       <GoalForm />

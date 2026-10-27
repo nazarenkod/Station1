@@ -2011,5 +2011,9 @@
   "agentConsentNever_tokens": "The station’s tokens and keys",
   "agentConsentNever_personal": "Card numbers, phones, emails — masked",
   "agentConsentAllowOnly": "Allow",
-  "agentConsentOnce": "Asked once for this profile. Revoke it in Settings → Agent."
+  "agentConsentOnce": "Asked once for this profile. Revoke it in Settings → Agent.",
+  "wsSettingsShort": "Settings",
+  "deskFixWithAgent": "Fix with the agent",
+  "deskFixWithAgentPrompt": "The station found a problem: {{name}} — {{text}} (check {{id}}). Look at what causes it on this Mac and fix it if the station knows how.",
+  "agentPermissionCommand": "Runs on this Mac:"
 }

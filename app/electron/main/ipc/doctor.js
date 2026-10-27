@@ -28,9 +28,25 @@ export function setupDoctorIPC() {
       detail: state.error ?? undefined,
     });
   };
+  // the lines of an install the agent ran, so it sees why one failed
+  let capture = null;
+  const captured = async (task) => {
+    capture = [];
+    try {
+      const ok = await task();
+      return {ok, stdout: capture.join('\n')};
+    } catch (error) {
+      return {ok: false, stdout: [...capture, error.message].join('\n')};
+    } finally {
+      capture = null;
+    }
+  };
   const appium = new ManagedAppium({
     dataDir: app.getPath('userData'),
-    onLog: (entry) => broadcast('doctor:server:log', entry),
+    onLog: (entry) => {
+      capture?.push(...entry.lines);
+      broadcast('doctor:server:log', entry);
+    },
     onState: (state) => {
       noteState(state);
       broadcast('doctor:server:state', state);
@@ -41,7 +57,7 @@ export function setupDoctorIPC() {
   ipcMain.handle('doctor:deleteSession', async (_evt, server, sessionId) => await deleteSession(server, sessionId));
   ipcMain.handle('doctor:devices', async () => await listDevices());
   ipcMain.handle('doctor:bootDevice', async (_evt, device) => await bootDevice(device));
-  ipcMain.handle('doctor:environment', async () => await checkEnvironment());
+  ipcMain.handle('doctor:environment', async () => await checkEnvironment({appium}));
   ipcMain.handle('doctor:driverDoctor', async (_evt, driver) => await runDriverDoctor(driver));
 
   ipcMain.handle('doctor:stress:apply', async (_evt, device, mode) => await applyStress(device, mode));
@@ -58,4 +74,13 @@ export function setupDoctorIPC() {
 
   // the server is ours: it goes away with the app
   app.on('before-quit', () => appium.stop());
+
+  // the agent fixes the environment through these
+  return {
+    check: () => checkEnvironment({appium}),
+    installDriver: (driver) => captured(() => appium.installDriver(driver)),
+    installAppium: () =>
+      captured(() => appium.install(['uiautomator2', ...(process.platform === 'darwin' ? ['xcuitest'] : [])])),
+    changed: () => broadcast('doctor:changed', {}),
+  };
 }

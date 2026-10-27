@@ -1,4 +1,4 @@
-import {IconChevronDown, IconCopy, IconPlayerPlay, IconRefresh, IconSettings} from '@tabler/icons-react';
+import {IconChevronDown, IconCopy, IconPlayerPlay, IconRefresh, IconSettings, IconSparkles} from '@tabler/icons-react';
 import {App, Button, Popover, Skeleton} from 'antd';
 import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -6,6 +6,7 @@ import {useDispatch, useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
 import {ensureAppium} from '../../actions/Workstation.js';
+import {askOnTask} from '../../lib/agent/agent-store.js';
 import {backend} from '../../polyfills.js';
 import {useLogs} from '../Logs/logs-store.js';
 import {useProxy} from '../Proxy/proxy-store.js';
@@ -59,7 +60,7 @@ export const Command = ({command}) => {
  * What a row of a status list says when pointed at: what is wrong and how to
  * fix it, with the command to run or a button that does it.
  */
-export const StatusCard = ({name, value, status, text, fixText, command, action}) => {
+export const StatusCard = ({name, value, status, text, fixText, command, action, agent}) => {
   const {t} = useTranslation();
   return (
     <div className={styles.statusCard}>
@@ -85,6 +86,13 @@ export const StatusCard = ({name, value, status, text, fixText, command, action}
           {fixText && <span>{fixText}</span>}
           {command && <Command command={command} />}
           {action}
+        </div>
+      )}
+      {agent && (
+        <div className={styles.statusCardAgent}>
+          <Button size="small" icon={<IconSparkles size={14} />} onClick={agent}>
+            {t('deskFixWithAgent')}
+          </Button>
         </div>
       )}
     </div>
@@ -117,7 +125,7 @@ export const RowCard = ({card: {key: _key, ...card}, placement, children}) =>
 
 export const StatusRow = ({row}) => (
   <li>
-    <RowCard card={row} placement="rightTop">
+    <RowCard card={row} placement="bottomLeft">
       <button
         className={`${styles.statusRow} ${styles[`statusRow_${row.status}`]}`}
         title={needsFix(row.status) ? undefined : row.text}
@@ -243,6 +251,19 @@ const DoctorPanel = () => {
         fixText: fix ? t(`deskFix_${fix.key}`, {defaultValue: ''}) : '',
         command: fix?.command,
         action: actionFor(fix),
+        // the agent looks closer and runs the fix with the person's yes
+        agent:
+          needsFix(check.status) && check.id !== 'doctorFailed'
+            ? () =>
+                askOnTask(
+                  t('deskFixWithAgentPrompt', {
+                    name: t(`deskCheck_${CHECK_NAME[check.id] ?? check.id}`, check.params),
+                    text: t(`doctorCheck_${check.id}_${check.status}`, check.params),
+                    id: check.id,
+                    interpolation: {escapeValue: false},
+                  }),
+                )
+            : null,
       };
     }),
     {
@@ -312,7 +333,9 @@ const DoctorPanel = () => {
         </h2>
         {report &&
           (problems.length ? (
-            <span className={styles.headWarn}>{t('deskEnvIssues', {count: problems.length})}</span>
+            <span className={problems.some((row) => row.status === 'error') ? styles.headError : styles.headWarn}>
+              {t('deskEnvIssues', {count: problems.length})}
+            </span>
           ) : (
             <span className={styles.headOk}>{t('deskDoctorOk')}</span>
           ))}

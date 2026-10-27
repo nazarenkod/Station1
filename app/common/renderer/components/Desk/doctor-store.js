@@ -47,6 +47,9 @@ export async function loadDoctor({again = false} = {}) {
   }
 }
 
+// the agent fixed something: the badge and the tab show the new state
+backend?.doctor?.onChanged?.(() => loadDoctor({again: true}));
+
 /** How the Appium server stands, as a row of the doctor: running or starting is fine. */
 export const serverStatusOf = (appium) =>
   appium?.status === 'running' || appium?.status === 'starting' ? 'ok' : appium?.status === 'failed' ? 'error' : 'warn';
@@ -55,3 +58,9 @@ export const serverStatusOf = (appium) =>
 export const doctorProblems = (report, appium) =>
   (report?.checks ?? []).filter((check) => check.status === 'warn' || check.status === 'error').length +
   (serverStatusOf(appium) === 'ok' ? 0 : 1);
+
+/** The worst of what the doctor found: an error, or only warnings. */
+export const doctorSeverity = (report, appium) =>
+  (report?.checks ?? []).some((check) => check.status === 'error') || serverStatusOf(appium) === 'error'
+    ? 'error'
+    : 'warn';

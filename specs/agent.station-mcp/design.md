@@ -6,6 +6,7 @@
 
 - `app/common/node/agent/station-mcp.js` — `createStationMcp({tools, onEvent})`: HTTP-сервер на `127.0.0.1:0`, токен на запуск (порівняння `timingSafeEqual`), адреса `/mcp/<розмова>`. На кожен запит — новий `McpServer` зі `StreamableHTTPServerTransport` без сесій. Інструмент читання віддає дані, а що піде назад, вирішує бюджет розмови. Інструмент змін віддає свій текст. Помилка інструмента стає відповіддю з `isError`, а не обривом.
 - `app/common/node/agent/tools.js` — `stationTools(deps)`, усі інструменти. Нові інструменти (задача, памʼять, цілі) додаються сюди ж своїми фічами.
+- `app/common/node/agent/env-tools.js` — `envTools(deps)`: `env_check` і `env_run_fix` над доктором ([station.shell](../station.shell/design.md)); залежності (`checkEnvironment`, Appium, login shell, `doctor:changed`) дає `ipc/agent.js` з того, що повертає `setupDoctorIPC`.
 - `app/common/node/agent/changes.js` — `createChangeJournal`: зміна налаштування з `before` і `after`; `note` для змін поза налаштуваннями (перемикання гілки) з власним `revert`; `undo` і `undoTurn` з перевіркою ручних змін.
 - `app/common/shared/agent/station-tools.js` — чисті функції над даними: `trafficStats`, `trafficSearch`, `trafficGet` (з `fields`), `logsStats`, `logsSearch`, `findingsList`, `changeMock`, `changeTrafficRules`, `changeLogRules`, `changeView`.
 - `app/common/shared/agent/budget.js` — `capText`, `createReadBudget` (хід, глибокий хід, «без змін з ходу N», `extend`).
@@ -25,6 +26,8 @@
 | `settings_get` | читає | `proxy`, `logs`, `proxyView`, `logsView` без секретів |
 | `proxy_mock_set`, `proxy_rule_set`, `log_rule_set`, `view_set` | змінює | `PROXY_CONFIG`, `LOG_RULES_CONFIG`, `PROXY_VIEW`, `LOGS_VIEW` через журнал |
 | `repo_fetch`, `repo_checkout`, `repo_pull` | змінює | git з [project.source](../project.source/design.md); `repo_checkout` має `preview` — що буде скинуто |
+| `env_check` | читає | `checkEnvironment` доктора з командами з `shared/doctor/fix-commands.js` |
+| `env_run_fix` | змінює | відоме виправлення перевірки: `installDriver` / `install` Appium зі `setupDoctorIPC`, інакше команда в login shell (тайм-аут 15 хв); `preview` — команда для картки дозволу; потім `doctor:changed` |
 
 ## Що зберігає
 
@@ -42,3 +45,4 @@
 
 - `test/unit/station-mcp.spec.js` — трафік, лог, знахідки, екран, бюджет, маски, зміни; сервер: 401 без токена, інструменти через SDK-клієнт, зміна через журнал, помилка інструмента.
 - `test/unit/agent-changes.spec.js` — журнал і відкат.
+- `test/unit/env-tools.spec.js` — `env_check` і `env_run_fix`: команда в `preview`, драйвер через Appium станції, нічого для перевірок «лише в терміналі».

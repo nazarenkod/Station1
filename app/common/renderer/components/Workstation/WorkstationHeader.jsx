@@ -1,7 +1,7 @@
-import {IconBrain, IconSettings} from '@tabler/icons-react';
+import {IconBrain} from '@tabler/icons-react';
 import {Tooltip} from 'antd';
 import {useTranslation} from 'react-i18next';
-import {useLocation, useNavigate} from 'react-router';
+import {useNavigate} from 'react-router';
 
 import {PRODUCT_NAME} from '../../../shared/product.js';
 import logo from '../../assets/images/vision-logo.svg';
@@ -10,7 +10,6 @@ import {useTask} from '../../lib/task/task-store.js';
 import DevicePicker from './DevicePicker.jsx';
 import ProfilePicker from './ProfilePicker.jsx';
 import SessionChip from './SessionChip.jsx';
-import ToolTabs from './ToolTabs.jsx';
 
 import styles from './Workstation.module.css';
 
@@ -22,7 +21,6 @@ import styles from './Workstation.module.css';
 const WorkstationHeader = () => {
   const {t} = useTranslation();
   const navigate = useNavigate();
-  const {pathname} = useLocation();
   const agent = useAgent();
   const task = useTask();
 
@@ -32,7 +30,6 @@ const WorkstationHeader = () => {
         <img src={logo} alt="" className={styles.brandMark} />
         <span className={styles.wordmark}>{PRODUCT_NAME}</span>
       </div>
-      <ToolTabs />
       <div className={styles.spacer} />
       {task.current && (
         <Tooltip title={t('taskTitle')}>
@@ -58,16 +55,6 @@ const WorkstationHeader = () => {
           {(agent.status === 'busy' || agent.permissions.length > 0) && (
             <span className={`${styles.agentDot} ${agent.permissions.length ? styles.agentDotAsk : ''}`} />
           )}
-        </button>
-      </Tooltip>
-      <Tooltip title={t('wsSettings')}>
-        <button
-          aria-label={t('wsSettings')}
-          aria-current={pathname === '/settings' ? 'page' : undefined}
-          className={`${styles.iconButton} ${pathname === '/settings' ? styles.iconButtonOn : ''}`}
-          onClick={() => navigate('/settings')}
-        >
-          <IconSettings size={18} stroke={1.7} />
         </button>
       </Tooltip>
     </header>

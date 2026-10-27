@@ -2017,5 +2017,9 @@
   "agentConsentNever_tokens": "Токени й ключі станції",
   "agentConsentNever_personal": "Номери карток, телефони, email — приховано",
   "agentConsentAllowOnly": "Дозволити",
-  "agentConsentOnce": "Питаємо один раз для цього профілю. Відкликати — в Налаштуваннях → Агент."
+  "agentConsentOnce": "Питаємо один раз для цього профілю. Відкликати — в Налаштуваннях → Агент.",
+  "wsSettingsShort": "Налаштування",
+  "deskFixWithAgent": "Виправити з агентом",
+  "deskFixWithAgentPrompt": "Станція знайшла проблему: {{name}} — {{text}} (перевірка {{id}}). Подивись, у чому причина на цьому Mac, і виправ, якщо станція знає як.",
+  "agentPermissionCommand": "Виконає на цьому Mac:"
 }

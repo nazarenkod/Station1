@@ -95,6 +95,11 @@
   color: var(--vi-warn-fg);
 }
 
+.headError {
+  font-size: var(--vi-text-sm);
+  color: var(--vi-danger-fg);
+}
+
 .headOk {
   font-size: var(--vi-text-sm);
   color: var(--vi-ok-fg);
@@ -659,4 +664,11 @@
   font-size: var(--vi-text-xl);
   font-weight: 600;
   letter-spacing: var(--vi-tracking-tight);
+}
+
+/* the agent looks closer than the doctor: its button sits apart from the fix */
+.statusCardAgent {
+  display: flex;
+  padding-top: 8px;
+  border-top: 1px solid var(--vi-hairline);
 }

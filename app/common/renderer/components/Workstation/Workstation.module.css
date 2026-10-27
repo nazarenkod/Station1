@@ -234,109 +234,142 @@
   color: var(--vi-accent-fg);
 }
 
-/* the tools, one pill each, in a segmented track */
-.tabs {
+/* the tools, down the left edge: an icon and a name each, the badge on the icon */
+.rail {
+  flex: none;
+  width: 96px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 2px;
-  min-width: 0;
-  padding: 3px;
-  border-radius: 12px;
-  background: var(--vi-hover);
-  border: 1px solid var(--vi-hairline);
-  overflow-x: auto;
-  flex-shrink: 0;
-  max-width: 60vw;
+  padding: 10px 6px;
+  border-right: 1px solid var(--vi-hairline);
+  background: var(--vi-surface-glass);
+  overflow-y: auto;
   scrollbar-width: none;
 }
 
-.tab {
+.railItem {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 9px;
+  gap: 4px;
+  padding: 8px 0 6px;
+  border: 0;
+  border-radius: var(--vi-radius-md);
+  background: none;
   color: var(--vi-text-3);
+  font-size: 11px;
   font-weight: 500;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: color var(--vi-mid) var(--vi-ease);
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    color var(--vi-mid) var(--vi-ease),
+    background var(--vi-mid) var(--vi-ease);
 }
 
-.tab:hover {
+.railItem:hover {
   color: var(--vi-text);
+  background: var(--vi-hover);
 }
 
-.tab:focus-visible {
+.railItem:focus-visible {
   outline-offset: -2px;
 }
 
-.tabActive,
-.tabActive:hover {
+.railActive,
+.railActive:hover {
   color: var(--vi-text);
-}
-
-/* the raised pill under the active tab slides between tabs */
-.tabPill {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: 9px;
   background: var(--ant-color-bg-container);
   box-shadow:
     0 0 0 1px var(--vi-border),
-    0 2px 8px rgba(0, 0, 0, 0.08);
+    0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.tabLabel,
-.tabDot,
-.tabBadge {
-  position: relative;
-  z-index: 1;
-}
-
-.tabDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 4px;
-  flex-shrink: 0;
+/* the tool's colour: a bar on the active one, the icon tinted */
+.railItem::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
   background: var(--tool-color);
-  opacity: 0.75;
-  transition:
-    opacity var(--vi-mid) var(--vi-ease),
-    box-shadow var(--vi-mid) var(--vi-ease);
+  opacity: 0;
+  transition: opacity var(--vi-mid) var(--vi-ease);
 }
 
-.tab:hover .tabDot {
+.railActive::before {
   opacity: 1;
 }
 
-.tabActive .tabDot {
-  opacity: 1;
-  box-shadow: 0 0 10px var(--tool-color);
+.railIcon {
+  position: relative;
+  display: inline-flex;
+  color: var(--tool-color);
 }
 
-.tabBadge {
-  min-width: 18px;
-  padding: 0 5px;
-  border-radius: 6px;
-  font-size: var(--vi-text-xs);
-  font-weight: 600;
-  line-height: 18px;
+/* the whole name, on two lines if it has two words */
+.railLabel {
+  max-width: 100%;
   text-align: center;
+  line-height: 1.2;
+}
+
+.railBadge {
+  position: absolute;
+  top: -6px;
+  right: -12px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
   font-variant-numeric: tabular-nums;
   background: var(--vi-off-bg);
   color: var(--vi-text-2);
+  box-shadow: 0 0 0 2px var(--ant-color-bg-layout);
 }
 
-.tabSoon {
-  font-size: 10px;
+/* what the badge counts says how bad it is */
+.railBadge_error {
+  background: var(--vi-danger);
+  color: #fff;
+}
+
+.railBadge_warn {
+  background: var(--vi-warn);
+  color: #fff;
+}
+
+.railSoon {
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--vi-text-4);
+}
+
+.railSpacer {
+  flex: 1;
+}
+
+/* the header's row below: the tools on the left, the work on the right */
+.main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.mainColumn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .tool_home {
@@ -395,31 +428,14 @@
   }
 }
 
-/* narrow windows: the logo alone, tighter tabs so the device keeps its name */
+/* narrow windows: the logo alone, so the device keeps its name */
 @media (max-width: 1099px) {
   .wordmark {
     display: none;
   }
 
-  .tab {
-    gap: 6px;
-    padding: 0 9px;
-  }
-
   .context {
     min-width: 150px;
-  }
-}
-
-/* very narrow windows: the other tools by their dot, still read out by name */
-@media (max-width: 879px) {
-  .tab:not(.tabActive) .tabLabel {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 }
 

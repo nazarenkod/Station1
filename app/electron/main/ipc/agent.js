@@ -8,6 +8,7 @@ import settings from 'electron-settings';
 
 import {createChangeJournal} from '../../../common/node/agent/changes.js';
 import {createCreditsStore} from '../../../common/node/agent/credits-store.js';
+import {envTools} from '../../../common/node/agent/env-tools.js';
 import {KiroAgent} from '../../../common/node/agent/kiro.js';
 import {testMcpServer} from '../../../common/node/agent/mcp-test.js';
 import {createMemoryStore} from '../../../common/node/agent/memory-store.js';
@@ -16,7 +17,7 @@ import {createAgentService} from '../../../common/node/agent/service.js';
 import {createStationMcp} from '../../../common/node/agent/station-mcp.js';
 import {taskTools} from '../../../common/node/agent/task-tools.js';
 import {stationTools} from '../../../common/node/agent/tools.js';
-import {shellEnv} from '../../../common/node/doctor/exec.js';
+import {run, shellEnv} from '../../../common/node/doctor/exec.js';
 import {inspectRepo} from '../../../common/node/source/repo.js';
 import {DEFAULT_STATION_INSTRUCTIONS} from '../../../common/shared/agent/instructions.js';
 import {cleanServer, secretNames, toAcpServers} from '../../../common/shared/agent/mcp-servers.js';
@@ -64,7 +65,7 @@ async function kiroBinary() {
  * The station's agent: Kiro over ACP, the station's MCP server with its
  * tools, the journal of the agent's changes and the credits ledger.
  */
-export function setupAgentIPC({station, proxy, logs, tasks}) {
+export function setupAgentIPC({station, proxy, logs, tasks, doctor}) {
   const home = path.join(app.getPath('userData'), 'agent', 'workspace');
   const get = (key) => settings.get(key);
   const set = (key, value) => settings.set(key, value);
@@ -146,6 +147,15 @@ export function setupAgentIPC({station, proxy, logs, tasks}) {
       },
       propose: ({conversation, ...proposal}) =>
         broadcast('agent:memoryProposal', {sessionId: service?.sessionOf(conversation), ...proposal}),
+    }),
+    ...envTools({
+      check: doctor.check,
+      installDriver: doctor.installDriver,
+      installAppium: doctor.installAppium,
+      runShell: async (command, options) =>
+        // interactive, as a terminal: nvm and the PATH of ~/.zshrc are there
+        await run(process.env.SHELL || '/bin/zsh', ['-ilc', command], {...options, env: await shellEnv()}),
+      onFixed: doctor.changed,
     }),
     ...taskTools({
       current: tasks.current,

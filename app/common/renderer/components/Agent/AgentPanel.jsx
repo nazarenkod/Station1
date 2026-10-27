@@ -234,6 +234,11 @@ const PermissionCard = ({request}) => {
             <span className={styles.muted}>{t('settingsSourceSwitchClean')}</span>
           )}
         </>
+      ) : preview?.command ? (
+        <>
+          <span>{t('agentPermissionCommand')}</span>
+          <pre className={styles.code}>{preview.command}</pre>
+        </>
       ) : (
         request.input && <pre className={styles.code}>{JSON.stringify(request.input, null, 1).slice(0, 1500)}</pre>
       )}

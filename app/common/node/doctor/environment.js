@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import {checkKiro} from '../agent/kiro-doctor.js';
-import {runTool, shellEnv, shellEnvFailure} from './exec.js';
+import {run, runTool, shellEnv, shellEnvFailure} from './exec.js';
 
 export const CHECK_STATUS = {OK: 'ok', WARN: 'warn', ERROR: 'error'};
 const {OK, WARN, ERROR} = CHECK_STATUS;
@@ -115,21 +115,38 @@ async function checkNode() {
   };
 }
 
-async function checkAppium() {
-  const result = await runTool('appium', ['-v'], {timeout: 20000});
+/**
+ * The Appium the station would start: its own install if there is one (run
+ * on the app's Node.js), else the one on PATH. The doctor checks that one, so
+ * a fix that installs the station's own Appium shows as fixed.
+ */
+async function appiumRunner(own) {
+  const resolved = await own?.resolveBinary?.();
+  if (resolved?.local) {
+    const env = await own.env(true);
+    return {
+      own: true,
+      run: (args, options) => run(resolved.binary, [...resolved.prefixArgs, ...args], {...options, env}),
+    };
+  }
+  return {own: false, run: (args, options) => runTool('appium', args, options)};
+}
+
+async function checkAppium(appium) {
+  const result = await appium.run(['-v'], {timeout: 20000});
   const version = result.ok ? parseVersion(result.stdout) : null;
   if (!version) {
     return {check: {id: 'appiumMissing', status: WARN}, version: null};
   }
   const status = version.major < 2 ? ERROR : version.pre ? WARN : OK;
-  return {check: {id: 'appium', status, params: {version: version.raw}}, version};
+  return {check: {id: 'appium', status, params: {version: version.raw, own: appium.own}}, version};
 }
 
-async function checkDrivers(appiumVersion) {
+async function checkDrivers(appiumVersion, appium) {
   if (!appiumVersion || appiumVersion.major < 2) {
     return {checks: [], drivers: {}};
   }
-  const result = await runTool('appium', ['driver', 'list', '--installed', '--json'], {timeout: 30000});
+  const result = await appium.run(['driver', 'list', '--installed', '--json'], {timeout: 30000});
   const drivers = parseInstalledDrivers(result.stdout);
   const wanted = ['uiautomator2', ...(process.platform === 'darwin' ? ['xcuitest'] : [])];
   const checks = wanted.map((name) =>
@@ -195,17 +212,18 @@ async function checkXcode() {
  * Android SDK, adb and Java, and Xcode on macOS. Each check has an id and a
  * status; the UI turns them into text.
  */
-export async function checkEnvironment() {
+export async function checkEnvironment({appium: own} = {}) {
   const env = await shellEnv();
+  const runner = await appiumRunner(own);
   const [node, appium, android, xcode, kiro] = await Promise.all([
     checkNode(),
-    checkAppium(),
+    checkAppium(runner),
     checkAndroid(env),
     process.platform === 'darwin' ? checkXcode() : [],
     // the station's agent runs on Kiro CLI
     checkKiro(),
   ]);
-  const drivers = await checkDrivers(appium.version);
+  const drivers = await checkDrivers(appium.version, runner);
   const shell = await shellEnvFailure();
   return {
     checks: [

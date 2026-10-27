@@ -38,6 +38,7 @@ window.electronIPC = {
       await ipcRenderer.invoke('doctor:stress:restore', device, mode, previous),
     onServerLog: subscribe('doctor:server:log'),
     onServerState: subscribe('doctor:server:state'),
+    onChanged: subscribe('doctor:changed'),
   },
   jira: {
     hasToken: async () => await ipcRenderer.invoke('jira:hasToken'),

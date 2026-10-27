@@ -50,7 +50,7 @@ app.on('ready', async () => {
   }
 
   setupIPCListeners(() => openFilePath);
-  setupDoctorIPC();
+  const doctor = setupDoctorIPC();
   setupJiraIPC();
   setupAiIPC();
   setupGitLabIPC();
@@ -61,6 +61,6 @@ app.on('ready', async () => {
   const station = setupSettingsIPC();
   setupSourceIPC(station);
   const tasks = setupTaskIPC({station});
-  setupAgentIPC({station, proxy, logs, tasks});
+  setupAgentIPC({station, proxy, logs, tasks, doctor});
   await setupMainWindow();
 });
