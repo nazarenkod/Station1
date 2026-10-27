@@ -4,6 +4,7 @@ import {
   AGENT_CONFIG,
   AGENT_PROJECT,
   AI_CONFIG,
+  APP_DATA_PINS,
   BUILD_JOBS,
   DEFAULT_SETTINGS,
   GITLAB_CONFIG,
@@ -39,6 +40,7 @@ export const GROUP_KEYS = [
   AGENT_CONFIG,
   AGENT_PROJECT,
   AI_CONFIG,
+  APP_DATA_PINS,
   BUILD_JOBS,
   GITLAB_CONFIG,
   IMPORTANT_SOURCE_ATTRIBUTES,
@@ -84,9 +86,23 @@ const omit = (value, names) =>
 const pick = (value, names) => Object.fromEntries(Object.entries(value ?? {}).filter(([name]) => names.includes(name)));
 
 const get = (all, key) => all[key] ?? DEFAULT_SETTINGS[key];
+
+/** Pinned keys by app, with anything that is not a file and a key left out. */
+export function cleanPins(value) {
+  const pins = {};
+  for (const [appId, list] of Object.entries(isObject(value) ? value : {})) {
+    const clean = (Array.isArray(list) ? list : [])
+      .filter((pin) => isObject(pin) && typeof pin.file === 'string' && pin.file)
+      .map((pin) => (typeof pin.key === 'string' ? {file: pin.file, key: pin.key} : {file: pin.file}));
+    if (clean.length) {
+      pins[appId] = clean;
+    }
+  }
+  return pins;
+}
 const copy = (value) => (value === undefined ? undefined : structuredClone(value));
 
-export const PROFILE_GROUPS = ['proxy', 'logs', 'filters', 'a11y', 'builds', 'jira', 'agent'];
+export const PROFILE_GROUPS = ['proxy', 'logs', 'filters', 'a11y', 'builds', 'jira', 'agent', 'appData'];
 export const STATION_GROUPS = ['general', 'integrations', 'devices', 'inspector', 'agentStation'];
 
 /**
@@ -171,6 +187,13 @@ export const GROUPS = {
     read: (all) => withoutSecrets(get(all, AGENT_PROJECT)),
     write: (value) => ({[AGENT_PROJECT]: {...DEFAULT_SETTINGS[AGENT_PROJECT], ...withoutSecrets(copy(value) ?? {})}}),
     valid: (value) => isObject(value) && isText(value.instructions) && isList(value.mcpServers),
+  },
+  appData: {
+    scope: 'profile',
+    // the keys a project pins in the data tab, like its onboarding flag; never a value
+    read: (all) => get(all, APP_DATA_PINS),
+    write: (value) => ({[APP_DATA_PINS]: cleanPins(value)}),
+    valid: (value) => isObject(value) && Object.values(value).every(Array.isArray),
   },
   general: {
     scope: 'station',

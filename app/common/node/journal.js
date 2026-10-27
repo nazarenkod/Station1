@@ -8,8 +8,9 @@ const CURRENT = 'current.jsonl';
 const PREVIOUS = 'previous.jsonl';
 const FILE_LIMIT = 20 * 1024 * 1024;
 
-// IPC channels that are asked all the time and tell nothing
-const QUIET_CHANNELS = new Set(['settings:get', 'settings:has']);
+// IPC channels that are asked all the time and tell nothing: a setting read,
+// the screen the data tab notes for its changes
+const QUIET_CHANNELS = new Set(['settings:get', 'settings:has', 'appData:screen']);
 
 /** The journal of this process: the station, or the CLI (in memory only). */
 export const journal = createJournal();

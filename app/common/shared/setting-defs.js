@@ -63,6 +63,8 @@ export const AGENT_SESSIONS = 'AGENT_SESSIONS';
 export const TASKS = 'TASKS';
 // the agent's notes of this person, for every profile; never exported
 export const AGENT_MEMORY = 'AGENT_MEMORY';
+// the keys and files pinned at the top of the data tab, by app: [{file, key}]; goes with the profile
+export const APP_DATA_PINS = 'APP_DATA_PINS';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -121,4 +123,5 @@ export const DEFAULT_SETTINGS = {
   [AGENT_SESSIONS]: {},
   [TASKS]: {},
   [AGENT_MEMORY]: {notes: []},
+  [APP_DATA_PINS]: {},
 };

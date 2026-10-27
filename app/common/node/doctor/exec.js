@@ -92,8 +92,14 @@ async function readShellEnv() {
  * background job it started may hold the output open.
  *
  * `quiet` keeps a command polled every second out of the journal, unless it fails.
+ * `input` is written to stdin instead of closing it; `maxOutput` lets a file
+ * pulled from a device be larger; the raw bytes are in `stdoutBuffer`.
  */
-export function run(command, args = [], {timeout = 15000, env, cwd, quiet = false} = {}) {
+export function run(
+  command,
+  args = [],
+  {timeout = 15000, env, cwd, quiet = false, input = null, maxOutput = MAX_OUTPUT} = {},
+) {
   return new Promise((resolve) => {
     const out = [];
     const err = [];
@@ -118,12 +124,15 @@ export function run(command, args = [], {timeout = 15000, env, cwd, quiet = fals
       }
       done = true;
       clearTimeout(timer);
+      const stdoutBuffer = Buffer.concat(out);
       const full = {
         timedOut,
-        stdout: Buffer.concat(out).toString(),
+        stdout: stdoutBuffer.toString(),
         stderr: Buffer.concat(err).toString(),
         ...result,
       };
+      // the bytes for a pulled file; hidden, so results spread or sent over IPC stay small
+      Object.defineProperty(full, 'stdoutBuffer', {value: stdoutBuffer, enumerable: false});
       if (!quiet || !full.ok) {
         journal.end(record ?? begin(), commandOutcome(full));
       }
@@ -132,7 +141,12 @@ export function run(command, args = [], {timeout = 15000, env, cwd, quiet = fals
 
     let child;
     try {
-      child = spawn(command, args, {env, cwd, stdio: ['ignore', 'pipe', 'pipe'], detached: group});
+      child = spawn(command, args, {
+        env,
+        cwd,
+        stdio: [input === null ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+        detached: group,
+      });
     } catch (error) {
       finish({ok: false, missing: error?.code === 'ENOENT', code: null});
       return;
@@ -152,12 +166,17 @@ export function run(command, args = [], {timeout = 15000, env, cwd, quiet = fals
 
     const collect = (chunks) => (chunk) => {
       size += chunk.length;
-      if (size > MAX_OUTPUT) {
+      if (size > maxOutput) {
         kill();
         return;
       }
       chunks.push(chunk);
     };
+    if (input !== null) {
+      // a command that exits before reading all of it must not crash the station
+      child.stdin.on('error', () => {});
+      child.stdin.end(input);
+    }
     child.stdout.on('data', collect(out));
     child.stderr.on('data', collect(err));
 

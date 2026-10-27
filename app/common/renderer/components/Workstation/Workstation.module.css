@@ -413,6 +413,10 @@
   --tool-color: var(--vi-tool-perf);
 }
 
+.tool_data {
+  --tool-color: var(--vi-tool-data);
+}
+
 /* narrower windows: drop the secondary words first, the tools never */
 @media (max-width: 1599px) {
   .pickerSub {

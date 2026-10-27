@@ -6,6 +6,7 @@ import path from 'node:path';
 import {app, BrowserWindow, ipcMain, shell} from 'electron';
 import settings from 'electron-settings';
 
+import {appDataTools} from '../../../common/node/agent/app-data-tools.js';
 import {createChangeJournal} from '../../../common/node/agent/changes.js';
 import {createCreditsStore} from '../../../common/node/agent/credits-store.js';
 import {envTools} from '../../../common/node/agent/env-tools.js';
@@ -65,7 +66,7 @@ async function kiroBinary() {
  * The station's agent: Kiro over ACP, the station's MCP server with its
  * tools, the journal of the agent's changes and the credits ledger.
  */
-export function setupAgentIPC({station, proxy, logs, tasks, doctor}) {
+export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
   const home = path.join(app.getPath('userData'), 'agent', 'workspace');
   const get = (key) => settings.get(key);
   const set = (key, value) => settings.set(key, value);
@@ -157,6 +158,7 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor}) {
         await run(process.env.SHELL || '/bin/zsh', ['-ilc', command], {...options, env: await shellEnv()}),
       onFixed: doctor.changed,
     }),
+    ...appDataTools({service: appData, masks: async () => compileMasks(await maskPatterns())}),
     ...taskTools({
       current: tasks.current,
       store: tasks.store,

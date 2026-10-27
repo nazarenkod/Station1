@@ -51,6 +51,9 @@ const backend = {
   get perf() {
     return window.electronIPC.perf;
   },
+  get appData() {
+    return window.electronIPC.appData;
+  },
   get proxy() {
     return window.electronIPC.proxy;
   },

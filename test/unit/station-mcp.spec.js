@@ -3,11 +3,12 @@ import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/st
 import {afterEach, describe, expect, it} from 'vitest';
 import {z} from 'zod';
 
+import {appDataTools} from '../../app/common/node/agent/app-data-tools.js';
 import {createChangeJournal} from '../../app/common/node/agent/changes.js';
 import {createStationMcp} from '../../app/common/node/agent/station-mcp.js';
 import {stationTools} from '../../app/common/node/agent/tools.js';
 import {capText, createReadBudget} from '../../app/common/shared/agent/budget.js';
-import {maskHeaders, maskText} from '../../app/common/shared/agent/privacy.js';
+import {compileMasks, maskHeaders, maskText} from '../../app/common/shared/agent/privacy.js';
 import {compactFlow, compactTree} from '../../app/common/shared/agent/screen.js';
 import {
   changeLogRules,
@@ -353,5 +354,114 @@ describe('the station’s MCP server', () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('window closed');
     await client.close();
+  });
+});
+
+describe('the app’s data for the agent', () => {
+  const b64url = (object) => Buffer.from(JSON.stringify(object)).toString('base64url');
+  const jwt = `${b64url({alg: 'HS256'})}.${b64url({sub: '42', exp: NOW / 1000 + 600})}.c2ln`;
+  const snapshot = {
+    target: {appId: 'ua.app', access: 'run-as'},
+    readAt: NOW,
+    error: null,
+    prefs: [
+      {
+        file: 'shared_prefs/app.xml',
+        entries: [
+          {key: 'auth_token', type: 'string', value: 'abc123'},
+          {key: 'jwt_cache', type: 'string', value: jwt},
+          {key: 'onboarding_done', type: 'boolean', value: true},
+          {key: 'email', type: 'string', value: 'qa@bank.ua'},
+        ],
+      },
+      {file: 'shared_prefs/secure.xml', encrypted: true, entries: [{key: 'x', type: 'string', value: 'y'}]},
+    ],
+    dbs: [{file: 'databases/app.db', tables: [{name: 'users', rows: 1}]}],
+    files: [{path: 'files/session.json', size: 40, kind: 'json'}],
+    totals: {files: 1, bytes: 40},
+  };
+  const service = {
+    state: () => ({
+      snapshot,
+      watching: true,
+      changes: [
+        {
+          at: NOW,
+          screen: 'Login',
+          kind: 'changed',
+          section: 'prefs',
+          file: 'shared_prefs/app.xml',
+          key: 'auth_token',
+          before: 'old',
+          after: 'new',
+        },
+        {
+          at: NOW,
+          kind: 'added',
+          section: 'db',
+          file: 'databases/app.db',
+          table: 'users',
+          key: '[1]',
+          after: {id: 1, password: 'p'},
+        },
+      ],
+    }),
+    refresh: async () => ({snapshot}),
+    search: async () => ({
+      prefs: [{file: 'shared_prefs/app.xml', key: 'auth_token', value: {text: 'abc123'}}],
+      rows: [{file: 'databases/app.db', table: 'users', column: 'email', key: '[1]', value: {text: 'qa@bank.ua'}}],
+      files: [],
+      texts: [{path: 'files/session.json', line: 1, text: '{"access_token":"zzz"}'}],
+    }),
+    table: async () => ({total: 1, rows: [{id: 1, session_id: 's-1', name: 'QA'}]}),
+    fileContent: async () => ({kind: 'json', text: '{"refresh_token":"r","user":"QA"}'}),
+  };
+  const tools = Object.fromEntries(
+    appDataTools({service, masks: async () => compileMasks(), now: () => NOW}).map((tool) => [tool.name, tool]),
+  );
+
+  it('only reads', () => {
+    expect(Object.values(tools).every((tool) => tool.readOnly)).toBe(true);
+    expect(Object.keys(tools)).toEqual(['app_data_stats', 'app_data_search', 'app_data_get', 'app_data_changes']);
+  });
+
+  it('gives the shape first, without a single value', async () => {
+    const stats = await tools.app_data_stats.run({});
+    expect(stats.prefs[0].keys).toContain('auth_token: string');
+    expect(JSON.stringify(stats)).not.toContain('abc123');
+    expect(stats.dbs[0].tables).toEqual(['users (1)']);
+  });
+
+  it('hides tokens, secrets and personal data, and says only when a JWT expires', async () => {
+    const got = await tools.app_data_get.run({file: 'shared_prefs/app.xml'});
+    const byKey = Object.fromEntries(got.entries.map((entry) => [entry.key, entry.value]));
+    expect(byKey.auth_token).toBe('•••');
+    expect(byKey.jwt_cache).toBe(`••• (JWT, expires ${new Date(NOW + 600000).toISOString()})`);
+    expect(byKey.onboarding_done).toBe('true');
+    expect(byKey.email).toBe('•••');
+    expect(await tools.app_data_get.run({file: 'shared_prefs/secure.xml'})).toEqual({
+      file: 'shared_prefs/secure.xml',
+      encrypted: true,
+      keys: 1,
+    });
+    const rows = await tools.app_data_get.run({file: 'databases/app.db', table: 'users'});
+    expect(rows.rows).toEqual([{id: '1', session_id: '•••', name: 'QA'}]);
+    expect((await tools.app_data_get.run({file: 'files/session.json'})).text).toBe(
+      '{"refresh_token":"•••","user":"QA"}',
+    );
+  });
+
+  it('searches with the values hidden', async () => {
+    const found = await tools.app_data_search.run({query: 'x'});
+    expect(found.prefs[0].value).toBe('•••');
+    expect(found.rows[0].value).toBe('•••');
+    expect(found.texts[0].text).toBe('{"access_token":"•••"}');
+  });
+
+  it('tells what changed, on which screen, with secrets hidden', async () => {
+    const {changes, watching} = await tools.app_data_changes.run({});
+    expect(watching).toBe(true);
+    expect(changes[0]).toMatchObject({screen: 'Login', key: 'auth_token', before: '•••', after: '•••'});
+    expect(changes[1].after).toEqual({id: '1', password: '•••'});
   });
 });

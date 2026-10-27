@@ -18,6 +18,7 @@ import {useScreenFollower} from '../A11yTool/screen-follower.js';
 import {useScreenHistory} from '../A11yTool/screen-history.js';
 import {useScreenRecorder} from '../A11yTool/screen-recorder.js';
 import AgentPanel from '../Agent/AgentPanel.jsx';
+import {attachAppData, selectTarget} from '../AppData/app-data-store.js';
 import {PageTransition} from '../AppShell/motion.jsx';
 import {startPipelineWatches} from '../Builds/pipeline-watch.js';
 import {loadDoctor} from '../Desk/doctor-store.js';
@@ -103,6 +104,27 @@ const PerfFollower = () => {
   }, [deviceId, appId]);
   const inspectorOpen = location.pathname === '/inspector';
   return perf.running && hasSession && !inspectorOpen ? <PerfScreenWatch /> : null;
+};
+
+/**
+ * The data tab and the agent's data tools work with the device and app in
+ * the title bar; choosing them reads nothing.
+ */
+const AppDataFollower = () => {
+  const workstation = useSelector((state) => state.workstation);
+  const device = activeDevice(workstation);
+  const appId = workstation.app?.id ?? null;
+  const running = isDeviceRunning(device);
+  useEffect(() => {
+    attachAppData();
+  }, []);
+  // the device list is read again every few seconds: only another device or app counts
+  const deviceId = running ? (device?.id ?? null) : null;
+  useEffect(() => {
+    selectTarget(deviceId ? device : null, appId);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceId, appId]);
+  return null;
 };
 
 /**
@@ -279,6 +301,7 @@ const Workstation = () => {
       <GoalForm />
       <SessionKeepAlive />
       <LogsFollower />
+      <AppDataFollower />
       <SessionBootstrap />
       <PerfFollower />
       <ProfileFollower />

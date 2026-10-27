@@ -81,6 +81,7 @@ describe('export', () => {
       'builds',
       'jira',
       'agent',
+      'appData',
     ]);
   });
 

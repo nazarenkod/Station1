@@ -7,6 +7,7 @@ import {Provider} from 'react-redux';
 import {MemoryRouter, Route, Routes} from 'react-router';
 
 import OpenA11y from './components/A11yTool/OpenA11y.jsx';
+import AppDataTool from './components/AppData/AppDataTool.jsx';
 import BuildsTool from './components/Builds/BuildsTool.jsx';
 import Desk from './components/Desk/Desk.jsx';
 import StationPage from './components/Desk/StationPage.jsx';
@@ -52,6 +53,7 @@ createRoot(container).render(
                 <Route path="/proxy" element={<ProxyTool />} />
                 <Route path="/logs" element={<LogsTool />} />
                 <Route path="/perf" element={<PerfTool />} />
+                <Route path="/data" element={<AppDataTool />} />
                 <Route path="/builds" element={<BuildsTool />} />
                 <Route path="/station" element={<StationPage />} />
                 <Route path="/settings" element={<SettingsPage />} />

@@ -28,6 +28,8 @@ export default defineConfig(({command}) => {
     test: {
       mockReset: true,
       root: join(import.meta.dirname, 'test'),
+      // node:sqlite, which the station has in Electron's Node 24, needs this flag on Node 22.5–23
+      execArgv: ['--experimental-sqlite'],
     },
   };
   // workaround to prevent webdriver from bundling various Node.js imports
