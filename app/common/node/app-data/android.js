@@ -1,7 +1,3 @@
-import {mkdtemp, rm, writeFile} from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-
 import {ACCESS, androidAccess} from '../../shared/app-data/access.js';
 import {DEVICE_KIND} from '../doctor/devices.js';
 import {runTool} from '../doctor/exec.js';
@@ -49,24 +45,6 @@ export function sandboxCommand(appId, mode, script) {
 
 const dirOf = (file) => (file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '.');
 
-/**
- * The script that puts a file pushed to /data/local/tmp into the sandbox.
- * New files get the app's usual rights (660, folders 770); root gives the
- * file and its folders back to the app, or it could not read them.
- */
-export function writeScript(mode, file, staged) {
-  const dir = dirOf(file);
-  const folders = dir === '.' ? [] : dir.split('/').map((_part, index, parts) => parts.slice(0, index + 1).join('/'));
-  const steps = ['umask 007'];
-  const copy = `cat ${shellQuote(staged)} > ${shellQuote(file)}`;
-  steps.push(folders.length ? `mkdir -p ${shellQuote(dir)} && ${copy}` : copy);
-  if (mode === ACCESS.ROOT) {
-    const owned = [...folders, file].map(shellQuote).join(' ');
-    steps.push(`chown $(stat -c %u:%g .) ${owned} && (restorecon ${owned} 2>/dev/null; true)`);
-  }
-  return steps.join(' && ');
-}
-
 export async function openAndroid(device, appId) {
   const adb = (args, options = {}) => runTool('adb', ['-s', device.id, ...args], {timeout: 20000, ...options});
 
@@ -89,6 +67,11 @@ export async function openAndroid(device, appId) {
       throw new Error(`${what}: ${(result.stderr || result.stdout).trim() || `exit ${result.code}`}`);
     }
   };
+  // root writes files as root; the app gets them back, with their SELinux label
+  const owned = (file) =>
+    mode === ACCESS.ROOT
+      ? ` && chown $(stat -c %u:%g .) ${shellQuote(file)} && (restorecon ${shellQuote(file)} 2>/dev/null; true)`
+      : '';
 
   return {
     transport: {
@@ -104,22 +87,16 @@ export async function openAndroid(device, appId) {
         fail(result, `Reading ${file}`);
         return result.stdoutBuffer;
       },
-      // pushed first, then copied: adb exec-in ends the command as soon as its input does,
-      // so a write through stdin may be cut and nothing after it runs
       async write(file, bytes) {
-        const staged = `/data/local/tmp/station-data-${process.pid}-${Date.now()}`;
-        const local = await mkdtemp(path.join(os.tmpdir(), 'vision-push-'));
-        try {
-          await writeFile(path.join(local, 'file'), bytes);
-          fail(await adb(['push', path.join(local, 'file'), staged], {timeout: 60000}), `Sending ${file}`);
-          fail(await adb(['shell', sandboxCommand(appId, mode, writeScript(mode, file, staged))]), `Writing ${file}`);
-        } finally {
-          await adb(['shell', 'rm', '-f', staged], {quiet: true});
-          await rm(local, {recursive: true, force: true});
-        }
+        const script = `mkdir -p ${shellQuote(dirOf(file))} && cat > ${shellQuote(file)}${owned(file)}`;
+        const result = await adb(['exec-in', sandboxCommand(appId, mode, script)], {
+          input: Buffer.from(bytes),
+          timeout: 60000,
+        });
+        fail(result, `Writing ${file}`);
       },
       async remove(file) {
-        fail(await adb(['shell', sandboxCommand(appId, mode, `rm -f ${shellQuote(file)}`)]), `Deleting ${file}`);
+        fail(await inSandbox(`rm -f ${shellQuote(file)}`), `Deleting ${file}`);
       },
       async stop() {
         await adb(['shell', 'am', 'force-stop', appId]);
