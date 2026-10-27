@@ -58,6 +58,7 @@ const StartButton = () => {
   const [tools, setTools] = useState(DEFAULT_SETTINGS[TEST_START]);
   const [resetOpen, setResetOpen] = useState(false);
   const [problemsOpen, setProblemsOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   useEffect(() => {
     getSetting(TEST_START).then((saved) => setTools({...DEFAULT_SETTINGS[TEST_START], ...(saved ?? {})}));
@@ -132,7 +133,12 @@ const StartButton = () => {
 
   const blocked = !canStart(problems);
   const warned = problems.length > 0;
-  const tone = blocked ? styles.startBlocked : warned ? styles.startWarned : undefined;
+  // a start that waits for something is outlined in amber or red, not filled: the filled violet stays for «ready»
+  const tone = blocked
+    ? {color: 'danger', variant: 'outlined'}
+    : warned
+      ? {color: 'orange', variant: 'outlined'}
+      : {type: 'primary'};
   const go = (path) => {
     setProblemsOpen(false);
     navigate(path);
@@ -149,10 +155,9 @@ const StartButton = () => {
         content={<ProblemList problems={problems} onGo={go} />}
       >
         <Button
-          type="primary"
+          {...tone}
           icon={warned ? <IconAlertTriangle size={15} /> : <IconPlayerPlay size={15} />}
           loading={!!stage}
-          className={tone}
           onClick={start}
         >
           {stage ? t(STAGE_TEXT[stage]) : t('startSession')}
@@ -160,6 +165,9 @@ const StartButton = () => {
       </Popover>
       <Dropdown
         trigger={['click']}
+        open={toolsOpen}
+        // a pick in the menu keeps it open: several are often switched at once
+        onOpenChange={(open, info) => (open || info?.source !== 'menu') && setToolsOpen(open)}
         menu={{
           items: TOOLS.map((key) => ({
             key,
@@ -175,13 +183,7 @@ const StartButton = () => {
           },
         }}
       >
-        <Button
-          type="primary"
-          icon={<IconChevronDown size={15} />}
-          aria-label={t('wsStartTools')}
-          className={tone}
-          disabled={!!stage}
-        />
+        <Button {...tone} icon={<IconChevronDown size={15} />} aria-label={t('wsStartTools')} disabled={!!stage} />
       </Dropdown>
     </Space.Compact>
   );

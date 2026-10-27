@@ -228,12 +228,20 @@ describe('permissions the station answers itself', () => {
     expect(decidePermission(mcp('jira', 'getIssue'), {readTools}).action).toBe('ask');
   });
 
-  it('lets git and shell commands that only read through, refuses the rest', () => {
+  it('lets commands that only read through, refuses what destroys or changes the repositories, asks about the rest', () => {
     expect(decidePermission(shell('git log --oneline develop..feature/PAY-1'), {readTools}).action).toBe('allow');
     expect(decidePermission(shell('git diff develop...HEAD -- src | head -200'), {readTools}).action).toBe('allow');
     expect(decidePermission(shell('git checkout feature/PAY-1'), {readTools}).action).toBe('reject');
     expect(decidePermission(shell('rm -rf build'), {readTools}).action).toBe('reject');
     expect(decidePermission(shell('cat a > b'), {readTools}).action).toBe('reject');
+    expect(decidePermission(shell('sudo xcode-select -s /Applications/Xcode.app'), {readTools}).action).toBe('reject');
+    expect(decidePermission(shell('git push origin main'), {readTools}).action).toBe('reject');
+    // measuring the shell's start changes nothing but is not a reading command: the person decides
+    expect(
+      decidePermission(shell("perl -e 'alarm 30; exec @ARGV' /bin/zsh -ilc exit < /dev/null"), {readTools}).action,
+    ).toBe('ask');
+    expect(decidePermission(shell('time /bin/zsh -ilc exit 2>&1 > /dev/null'), {readTools}).action).toBe('ask');
+    expect(decidePermission(shell('adb devices'), {readTools}).action).toBe('ask');
     expect(readOnlyCommand('find . -name "*.kt" -exec rm {} \\;')).toBe(false);
     expect(readOnlyCommand('rg "purpose" app/src')).toBe(true);
   });

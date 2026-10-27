@@ -49,3 +49,38 @@ export function splitNextSteps(text) {
   const after = end < 0 ? '' : source.slice(end + CLOSE.length);
   return {text: `${source.slice(0, start)}${after}`.trimEnd(), steps};
 }
+
+// a list item that starts with a choice in bold: "- **Allow the run.** It only reads…"
+const CHOICE = /^\s*(?:[-*]|\d+[.)])\s+\*\*(.+?)\*\*/;
+
+/**
+ * The choices of an answer that ends with a question and lists them in bold,
+ * when the operator forgot the block: each becomes a step that sends its
+ * name. Two to four of them, or none.
+ */
+export function choiceSteps(text) {
+  const lines = String(text ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
+  if (!lines.at(-1)?.trim().endsWith('?')) {
+    return [];
+  }
+  const steps = cleanSteps(
+    lines
+      .map((line) =>
+        CHOICE.exec(line)?.[1]
+          .replace(/[.:,;!]+$/, '')
+          .trim(),
+      )
+      .filter(Boolean)
+      .map((label) => ({label, message: label})),
+  );
+  return steps.length >= 2 ? steps : [];
+}
+
+/** The steps an answer offers: its block, else the choices it asks between. */
+export function stepsOf(text) {
+  const {steps} = splitNextSteps(text);
+  return steps.length ? steps : choiceSteps(text);
+}

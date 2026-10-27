@@ -10,6 +10,19 @@
   background: var(--ant-color-bg-container);
 }
 
+/* a window too narrow for the tool and the chat side by side: the chat lies over the tool's right side */
+@container (max-width: 1180px) {
+  .panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    max-width: 90%;
+    box-shadow: var(--vi-shadow-raised);
+  }
+}
+
 .resize {
   position: absolute;
   top: 0;

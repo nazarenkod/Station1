@@ -454,9 +454,12 @@
 
 /* the open tool, with the agent's chat beside it when it is open */
 .body {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
+  /* the operator's panel lies over the tool when beside it the tool would get too narrow */
+  container-type: inline-size;
 }
 
 .toolArea {
@@ -717,19 +720,6 @@
   .taskChip {
     display: none;
   }
-}
-
-/* «Start session» when something is not set up: amber lets it go, red stops it */
-.startWarned:global(.ant-btn.ant-btn-variant-solid),
-.startWarned:global(.ant-btn.ant-btn-variant-solid):hover {
-  background: var(--vi-warn);
-  /* the window's own background reads on amber in both themes */
-  color: var(--ant-color-bg-container);
-}
-
-.startBlocked:global(.ant-btn.ant-btn-variant-solid),
-.startBlocked:global(.ant-btn.ant-btn-variant-solid):hover {
-  background: var(--vi-danger);
 }
 
 .startProblems {

@@ -2,6 +2,8 @@
   height: 100%;
   overflow-y: auto;
   background: var(--vi-glow-ground), var(--vi-bg);
+  /* the lists fold by the room the page has, not the window: the operator's panel takes some */
+  container-type: inline-size;
 }
 
 /* the environment and the devices on top, the analytics below filling the rest */
@@ -37,7 +39,7 @@
   flex-direction: column;
 }
 
-@media (max-width: 900px) {
+@container (max-width: 860px) {
   .top {
     grid-template-columns: minmax(0, 1fr);
   }

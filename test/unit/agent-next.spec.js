@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {cleanSteps, splitNextSteps} from '../../app/common/shared/agent/next-steps.js';
+import {choiceSteps, cleanSteps, splitNextSteps, stepsOf} from '../../app/common/shared/agent/next-steps.js';
 
 describe('next steps the operator offers', () => {
   it('takes the block off the answer and turns its lines into steps', () => {
@@ -39,5 +39,31 @@ describe('next steps the operator offers', () => {
     expect(splitNextSteps('<next-steps>\nOpen the log\n</next-steps>').steps).toEqual([
       {label: 'Open the log', message: 'Open the log'},
     ]);
+  });
+});
+
+describe('choices asked in the text', () => {
+  const answer = [
+    'Є три шляхи:',
+    '',
+    '- **Дозволити запуск.** Це команда з лімітом 30 с, яка нічого не пише.',
+    '- **Запустити самому в терміналі** і надіслати мені вивід.',
+    '- **Виправити без вимірів**, на підставі підозр.',
+    '',
+    'Який варіант обираєте?',
+  ].join('\n');
+
+  it('turns bold choices of a closing question into steps', () => {
+    expect(choiceSteps(answer)).toEqual([
+      {label: 'Дозволити запуск', message: 'Дозволити запуск'},
+      {label: 'Запустити самому в терміналі', message: 'Запустити самому в терміналі'},
+      {label: 'Виправити без вимірів', message: 'Виправити без вимірів'},
+    ]);
+  });
+
+  it('leaves an answer that does not ask, or has one choice, without steps; a block wins', () => {
+    expect(choiceSteps(answer.replace('Який варіант обираєте?', 'Готово.'))).toEqual([]);
+    expect(choiceSteps('- **Одне.** текст\nТак?')).toEqual([]);
+    expect(stepsOf(`${answer}\n<next-steps>\nA :: a\n</next-steps>`)).toEqual([{label: 'A', message: 'a'}]);
   });
 });

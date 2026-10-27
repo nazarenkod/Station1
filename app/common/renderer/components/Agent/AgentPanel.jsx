@@ -20,7 +20,7 @@ import {useSelector} from 'react-redux';
 import {chatCredits} from '../../../shared/agent/acp-events.js';
 import {chip} from '../../../shared/agent/context.js';
 import {formatCredits} from '../../../shared/agent/credits.js';
-import {splitNextSteps} from '../../../shared/agent/next-steps.js';
+import {splitNextSteps, stepsOf} from '../../../shared/agent/next-steps.js';
 import {activeDevice} from '../../actions/Workstation.js';
 import {
   addProposal,
@@ -396,7 +396,7 @@ const AgentPanel = () => {
   const credits = chatCredits(agent.chat);
   // the steps the last answer offers, until the next message
   const lastAnswer = agent.chat.items.findLast((item) => item.type === 'agent' || item.type === 'user');
-  const nextSteps = lastAnswer?.type === 'agent' ? splitNextSteps(lastAnswer.text).steps : [];
+  const nextSteps = lastAnswer?.type === 'agent' ? stepsOf(lastAnswer.text) : [];
   const busy = agent.status === 'busy';
 
   return (
