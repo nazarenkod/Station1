@@ -189,7 +189,9 @@ describe('the agent service', () => {
     const {sessionId} = await service.open({profileId: 'p1'});
     expect(await service.prompt({sessionId, message: 'привіт'})).toEqual({ok: false, error: 'consent'});
     expect(kiro.calls.some(([kind]) => kind === 'prompt')).toBe(false);
+    expect(await service.consented('p1')).toBe(false);
     await service.consent('p1');
+    expect(await service.consented('p1')).toBe(true);
     expect(await service.prompt({sessionId, message: 'привіт'})).toMatchObject({ok: true, turn: 1});
   });
 

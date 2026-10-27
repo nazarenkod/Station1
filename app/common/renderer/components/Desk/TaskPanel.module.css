@@ -75,7 +75,8 @@
 .headLine {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
 }
 
 .headLine :global(.ant-tag) {
@@ -124,6 +125,7 @@
 .actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

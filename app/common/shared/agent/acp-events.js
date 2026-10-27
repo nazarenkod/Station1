@@ -3,6 +3,9 @@
 // with how much each one put into the context, the credits of each turn,
 // and how full the context is. Unknown updates are ignored.
 
+// steps Kiro shows of its own work, not calls of the agent: loading tools, reading its cloud config
+const KIRO_HOUSEKEEPING = /^(Tool Load|Fetching your cloud config.*)$/i;
+
 export const emptyChat = () => ({items: [], context: null, title: null, busy: false});
 
 const text = (content) => (content?.type === 'text' ? (content.text ?? '') : '');
@@ -61,7 +64,7 @@ export function applyUpdate(chat, update) {
       return {...chat, items: appendText(chat.items, 'agent', text(update.content))};
     case 'tool_call': {
       // Kiro loading the descriptions of tools is its own bookkeeping, not a call
-      if (update.title === 'Tool Load' || Array.isArray(update.rawInput?.tool_ids)) {
+      if (KIRO_HOUSEKEEPING.test(update.title ?? '') || Array.isArray(update.rawInput?.tool_ids)) {
         return chat;
       }
       const {server, tool} = toolIdentity(update);

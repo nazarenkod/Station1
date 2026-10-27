@@ -2,7 +2,6 @@ import {
   IconArrowBackUp,
   IconBrain,
   IconBookmark,
-  IconCheck,
   IconHistory,
   IconLoader2,
   IconPlayerStop,
@@ -46,6 +45,7 @@ import {backend} from '../../polyfills.js';
 import {useScreenHistory} from '../A11yTool/screen-history.js';
 import GoalCard from '../Goals/GoalCard.jsx';
 import AgentText from './AgentText.jsx';
+import ConsentCard from './ConsentCard.jsx';
 import MemoryCard from './MemoryCard.jsx';
 
 import styles from './Agent.module.css';
@@ -301,6 +301,8 @@ const AgentPanel = () => {
   const {t, i18n} = useTranslation();
   const agent = useAgent();
   const chips = useChips();
+  // a task's conversation is named after the task
+  const {current: taskKey, data: taskData} = useTask();
   const [removed, setRemoved] = useState(new Set());
   const [text, setText] = useState('');
   const [deep, setDeep] = useState(false);
@@ -367,7 +369,10 @@ const AgentPanel = () => {
       <header className={styles.head}>
         <IconBrain size={18} className={styles.headIcon} />
         <div className={styles.headTitle}>
-          <span className={styles.title}>{agent.chat.title ?? t('agentGeneral')}</span>
+          <span className={styles.title}>
+            {agent.chat.title ??
+              (taskKey ? `${taskKey} · ${taskData?.context?.task.summary ?? ''}` : t('agentGeneral'))}
+          </span>
           <span className={styles.muted}>
             {t('agentHeadCredits', {
               conversation: formatCredits(credits, language),
@@ -421,9 +426,11 @@ const AgentPanel = () => {
             </div>
           </div>
         )}
-        {agent.status !== 'starting' && !agent.chat.items.length && agent.status !== 'error' && (
-          <div className={styles.empty}>{t('agentEmpty')}</div>
-        )}
+        {agent.status !== 'starting' &&
+          !agent.chat.items.length &&
+          agent.status !== 'error' &&
+          agent.consent !== false &&
+          !agent.needs && <div className={styles.empty}>{t('agentEmpty')}</div>}
         {agent.chat.items.map((item) => {
           if (item.type === 'user') {
             return (
@@ -521,25 +528,12 @@ const AgentPanel = () => {
             </div>
           </div>
         )}
-        {agent.needs?.kind === 'consent' && (
-          <div className={styles.card}>
-            <b>{t('agentConsentTitle')}</b>
-            <span>{t('agentConsentText')}</span>
-            <ul className={styles.list}>
-              {['task', 'code', 'traffic', 'logs', 'screens', 'memory'].map((part) => (
-                <li key={part}>{t(`agentConsent_${part}`)}</li>
-              ))}
-            </ul>
-            <span className={styles.muted}>{t('agentConsentNever')}</span>
-            <div className={styles.cardActions}>
-              <Button size="small" type="primary" icon={<IconCheck size={14} />} onClick={giveConsent}>
-                {t('agentConsentAllow')}
-              </Button>
-              <Button size="small" onClick={dismissNeeds}>
-                {t('Cancel')}
-              </Button>
-            </div>
-          </div>
+        {(agent.needs?.kind === 'consent' || (agent.consent === false && agent.status !== 'error')) && (
+          <ConsentCard
+            pending={agent.needs?.kind === 'consent'}
+            onAllow={giveConsent}
+            onCancel={agent.needs?.kind === 'consent' ? dismissNeeds : null}
+          />
         )}
         {agent.needs?.kind === 'creditLimit' && (
           <div className={styles.card}>

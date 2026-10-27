@@ -26,6 +26,8 @@ let state = {
   turns: {},
   pendingTurn: null,
   needs: null,
+  // whether this profile let its data go to the agent; null until known
+  consent: null,
   draft: null,
   // notes the agent proposed or the person started, waiting for «Save»
   proposals: [],
@@ -145,6 +147,7 @@ export async function openConversation({taskKey = currentTaskKey()} = {}) {
   if (state.key === key && state.sessionId) {
     return;
   }
+  backend.agent.consented(profileId).then((consent) => publish({consent}));
   publish({status: 'starting', error: null, key, chat: emptyChat(), sessionId: null, changes: [], turns: {}});
   // the first time this window opens a conversation it has no chat of it: Kiro replays it
   const replay = !chats.size;
@@ -225,6 +228,9 @@ export async function sendMessage(message, chips, {deep = false, confirmCredits 
   // nothing was sent: the message goes back to the field
   const items = state.chat.items.slice(0, -1);
   chats.set(state.sessionId, {...state.chat, items, busy: false});
+  if (result.error === 'consent') {
+    publish({consent: false});
+  }
   if (result.error === 'consent' || result.error === 'creditLimit') {
     publish({
       chat: {...state.chat, items, busy: false},
@@ -240,7 +246,7 @@ export async function sendMessage(message, chips, {deep = false, confirmCredits 
 export async function giveConsent() {
   const pending = state.needs;
   await backend.agent.consent(activeProfileId(), true);
-  publish({needs: null});
+  publish({needs: null, consent: true});
   if (pending) {
     await sendMessage(pending.message, pending.chips, {deep: pending.deep});
   }

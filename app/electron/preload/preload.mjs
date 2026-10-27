@@ -98,6 +98,7 @@ window.electronIPC = {
     prompt: async (request) => await ipcRenderer.invoke('agent:prompt', request),
     cancel: async (sessionId) => await ipcRenderer.invoke('agent:cancel', sessionId),
     consent: async (profileId, given) => await ipcRenderer.invoke('agent:consent', profileId, given),
+    consented: async (profileId) => await ipcRenderer.invoke('agent:consented', profileId),
     answerPermission: async (id, optionId) => await ipcRenderer.invoke('agent:permissionAnswer', id, optionId),
     extend: async (sessionId) => await ipcRenderer.invoke('agent:extend', sessionId),
     turn: async (sessionId) => await ipcRenderer.invoke('agent:turn', sessionId),

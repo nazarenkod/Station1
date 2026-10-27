@@ -47,6 +47,13 @@ describe('the chat from Kiro updates', () => {
     expect(chat.items).toEqual([]);
   });
 
+  it('skips Kiro’s own steps, like reading its cloud config', () => {
+    const chat = apply([
+      {sessionUpdate: 'tool_call', toolCallId: 'cfg', title: 'Fetching your cloud config', status: 'completed'},
+    ]);
+    expect(chat.items).toEqual([]);
+  });
+
   it('skips Kiro loading tool descriptions when a conversation is replayed', () => {
     const chat = apply([
       {

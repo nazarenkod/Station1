@@ -40,6 +40,12 @@
   flex-direction: column;
 }
 
+.headTitle .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .title {
   font-weight: 600;
   overflow: hidden;
@@ -319,4 +325,100 @@
 .usedNotes {
   cursor: default;
   text-decoration: underline dotted;
+}
+
+/* asked once for a profile: what goes to the agent and what never does */
+.consent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 18px 16px;
+  border: 1px solid var(--vi-border);
+  border-radius: var(--vi-radius-lg);
+  background: var(--ant-color-bg-elevated);
+  text-align: center;
+}
+
+.consentIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--vi-accent-bg);
+  color: var(--vi-accent-fg);
+}
+
+.consentTitle {
+  margin: 0;
+  font-size: var(--vi-text-md);
+  font-weight: 600;
+}
+
+.consentText {
+  margin: 0;
+  color: var(--vi-text-2);
+  font-size: var(--vi-text-sm);
+  line-height: 1.5;
+}
+
+.consentColumns {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  text-align: left;
+}
+
+.consentColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--vi-radius-md);
+  background: var(--vi-hover);
+  font-size: var(--vi-text-sm);
+}
+
+.consentNever {
+  background: var(--vi-ok-bg);
+}
+
+.consentLabel {
+  font-size: var(--vi-text-xs);
+  font-weight: 600;
+  color: var(--vi-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.consentNever .consentLabel,
+.consentNever .consentItem {
+  color: var(--vi-ok-fg);
+}
+
+.consentItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--vi-text-2);
+  line-height: 1.35;
+}
+
+.consentItem svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.consentActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.consentFoot {
+  color: var(--vi-text-3);
+  font-size: var(--vi-text-xs);
 }

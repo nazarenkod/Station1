@@ -246,6 +246,7 @@ export function setupAgentIPC({station, proxy, logs, tasks}) {
   ipcMain.handle('agent:prompt', (_evt, request) => service.prompt(request));
   ipcMain.handle('agent:cancel', (_evt, sessionId) => service.cancel(sessionId));
   ipcMain.handle('agent:consent', (_evt, profileId, given) => service.consent(profileId, given));
+  ipcMain.handle('agent:consented', (_evt, profileId) => service.consented(profileId));
   ipcMain.handle('agent:turn', (_evt, sessionId) => service.turnOf(service.conversationOf(sessionId)));
   ipcMain.handle('agent:extend', (_evt, sessionId) => {
     const conversation = service.conversationOf(sessionId);

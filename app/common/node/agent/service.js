@@ -277,6 +277,10 @@ export function createAgentService(deps) {
 
     conversationOf: (sessionId) => open.get(sessionId)?.conversation ?? null,
 
+    async consented(profileId) {
+      return !!(await setting(AGENT_CONSENT)).profiles?.[profileId];
+    },
+
     async consent(profileId, given = true) {
       const consent = await setting(AGENT_CONSENT);
       await deps.set(AGENT_CONSENT, {...consent, profiles: {...consent.profiles, [profileId]: given}});
