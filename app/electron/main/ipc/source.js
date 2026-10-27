@@ -9,7 +9,7 @@ import {
   repoRoot,
   switchBranch,
 } from '../../../common/node/source/repo.js';
-import {branchToRemember} from '../../../common/shared/settings/source.js';
+import {branchToRemember, sourceOfRepo} from '../../../common/shared/settings/source.js';
 
 /**
  * The repositories of the project profiles on this Mac: their folders, what
@@ -73,7 +73,8 @@ export function setupSourceIPC(station) {
           path: known.path ?? null,
           previousBranch: known.previousBranch ?? null,
           modules: known.modules ?? {},
-          state: known.path ? await inspectRepo(known.path, source) : null,
+          // each repository against the branches of its platform
+          state: known.path ? await inspectRepo(known.path, sourceOfRepo(source, repo)) : null,
         };
       }),
     );

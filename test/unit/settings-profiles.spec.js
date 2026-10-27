@@ -38,10 +38,10 @@ describe('project profiles', () => {
     const {profiles, created} = ensureProfiles(null, projectA, 'Мій проєкт');
     expect(created).toBe(true);
     expect(profiles.list).toHaveLength(1);
-    expect(activeProfile(profiles)).toMatchObject({name: 'Мій проєкт', apps: []});
+    expect(activeProfile(profiles)).toMatchObject({name: 'Мій проєкт', apps: [], platforms: ['android']});
     expect(activeProfile(profiles).groups.proxy.trafficRules).toEqual({slow: {defaultMs: 900}});
     expect(activeProfile(profiles).groups.proxy.port).toBeUndefined();
-    expect(ensureProfiles(profiles, projectA, 'x')).toEqual({profiles, created: false});
+    expect(ensureProfiles(profiles, projectA, 'x')).toEqual({profiles, created: false, migrated: false});
   });
 
   it('switches: keeps the current settings in their profile and brings the next one, the station stays', () => {

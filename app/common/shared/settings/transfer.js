@@ -1,5 +1,6 @@
 import {mergeNotes} from '../agent/memory.js';
 import {GROUPS, PROFILE_GROUPS, readGroups, STATION_GROUPS, withoutSecrets, writeGroups} from './groups.js';
+import {cleanPlatforms, migrateProfile} from './platforms.js';
 import {
   activeProfile,
   addProfile,
@@ -7,6 +8,7 @@ import {
   profilePatch,
   projectApps,
   setProfileApps,
+  setProfilePlatforms,
   setProfileSource,
 } from './profiles.js';
 import {projectSource} from './source.js';
@@ -44,9 +46,10 @@ export function buildExport({profiles, all, kind, profileId, groups, product, no
   const wanted = (ids) => ids.filter((id) => !groups || groups.includes(id));
   const profileEntry = (profile) => ({
     name: profile.name,
+    platforms: cleanPlatforms(profile.platforms),
     apps: projectApps(profile.apps),
-    // the repositories by name and role and the branches; the folders are this Mac's
-    source: projectSource(profile.source),
+    // the repositories by name and platform and the branches; the folders are this Mac's
+    source: projectSource(profile.source, cleanPlatforms(profile.platforms)),
     groups: Object.fromEntries(
       wanted(PROFILE_GROUPS)
         .filter((id) => profile.groups?.[id] !== undefined)
@@ -148,11 +151,21 @@ export function parseSettingsFile(text) {
     if (!read.ok) {
       return read;
     }
+    // a file of the time before the platforms is moved to them as a saved profile is
+    const known = entry.source !== undefined || Array.isArray(entry.platforms);
+    const moved = known
+      ? migrateProfile({
+          apps: projectApps(entry.apps),
+          ...(Array.isArray(entry.platforms) ? {platforms: entry.platforms} : {}),
+          source: entry.source ?? null,
+        })
+      : null;
     profiles.push({
       name: entry.name.trim(),
-      apps: projectApps(entry.apps),
+      apps: moved ? projectApps(moved.apps) : projectApps(entry.apps),
       // a file made before the code had none; the profile here keeps its own then
-      source: entry.source === undefined ? null : projectSource(entry.source),
+      platforms: moved?.platforms ?? null,
+      source: entry.source === undefined ? null : moved.source,
       groups: read.groups,
     });
   }
@@ -245,6 +258,9 @@ export function applyImport(file, profiles, all, choice) {
             : profile,
         ),
       };
+      if (entry.platforms) {
+        next = setProfilePlatforms(next, existing.id, entry.platforms);
+      }
       // the file's app of a platform takes the place of the one here
       next = setProfileApps(next, existing.id, [...entry.apps, ...(existing.apps ?? [])]);
       if (entry.source) {
@@ -254,7 +270,7 @@ export function applyImport(file, profiles, all, choice) {
         write(chosen);
       }
     } else {
-      const added = addProfile(next, entry.name, {groups: chosen, code: entry.source});
+      const added = addProfile(next, entry.name, {groups: chosen, code: entry.source, platforms: entry.platforms});
       next = setProfileApps(added.profiles, added.profile.id, entry.apps);
     }
   }

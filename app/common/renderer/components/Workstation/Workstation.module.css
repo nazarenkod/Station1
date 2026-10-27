@@ -695,6 +695,23 @@
   margin-top: 8px;
 }
 
+.menuItemPlatforms {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.menuItemPlatforms svg {
+  color: var(--vi-text-3, var(--ant-color-text-tertiary));
+}
+
+.menuHintActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .menuHint {
   margin: 6px 4px;
   padding: 10px 12px;

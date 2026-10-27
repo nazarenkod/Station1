@@ -48,6 +48,9 @@ export function setupSettingsIPC() {
   );
   ipcMain.handle('settings:renameProfile', async (_evt, id, name) => changed(await station.renameProfile(id, name)));
   ipcMain.handle('settings:setProfileApps', async (_evt, id, apps) => changed(await station.setProfileApps(id, apps)));
+  ipcMain.handle('settings:setProfilePlatforms', async (_evt, id, change) =>
+    changed(await station.setProfilePlatforms(id, change)),
+  );
   ipcMain.handle('settings:setProfileSource', async (_evt, id, source) =>
     changed(await station.setProfileSource(id, source)),
   );

@@ -105,9 +105,9 @@ export async function switchProfile(id) {
   await backend.settings.switchProfile(id);
 }
 
-export async function addProfile(name, {copy = false, open = true} = {}) {
+export async function addProfile(name, {copy = false, open = true, platforms = null} = {}) {
   await flushViews();
-  const result = await backend.settings.addProfile(name, {copy});
+  const result = await backend.settings.addProfile(name, {copy, platforms});
   if (open && result?.id) {
     await backend.settings.switchProfile(result.id);
   }
@@ -117,6 +117,7 @@ export async function addProfile(name, {copy = false, open = true} = {}) {
 export const renameProfile = (id, name) => backend.settings.renameProfile(id, name);
 export const setProfileApps = (id, apps) => backend.settings.setProfileApps(id, apps);
 export const setProfileSource = (id, source) => backend.settings.setProfileSource(id, source);
+export const setProfilePlatforms = (id, change) => backend.settings.setProfilePlatforms(id, change);
 
 export async function removeProfile(id) {
   await flushViews();

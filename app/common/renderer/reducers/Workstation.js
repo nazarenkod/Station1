@@ -27,6 +27,8 @@ const INITIAL_STATE = {
   app: null,
   // the apps of the project that is on, the app is one of them
   projectApps: [],
+  // the platforms of the project that is on (project.platforms); null until the profiles are read
+  projectPlatforms: null,
   appium: {status: 'stopped'},
   myBugs: {status: 'idle', issues: []},
 };
@@ -61,7 +63,7 @@ export default function workstation(state = INITIAL_STATE, action) {
     case SET_WORKSTATION_APP:
       return {...state, app: action.app};
     case SET_WORKSTATION_PROJECT_APPS:
-      return {...state, projectApps: action.projectApps};
+      return {...state, projectApps: action.projectApps, projectPlatforms: action.platforms ?? null};
     case SET_WORKSTATION_APPIUM:
       return {...state, appium: action.appium ?? {status: 'stopped'}};
     case SET_WORKSTATION_MY_BUGS:

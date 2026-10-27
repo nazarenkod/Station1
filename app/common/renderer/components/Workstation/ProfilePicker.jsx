@@ -2,12 +2,18 @@ import {IconChevronDown, IconFolders, IconPlus, IconSettings} from '@tabler/icon
 import {Button, Popover} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import {useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
+import {platformOfDevice} from '../../../shared/settings/platforms.js';
+import {activeDevice} from '../../actions/Workstation.js';
 import {problemFor, useStartProblems} from '../../lib/session/test-run.js';
 import {addProfile, switchProfile, useProfiles} from '../../lib/settings/profiles-store.js';
+import {adviceText, useProjectAdvice} from '../../lib/settings/project-advice.js';
 import {backend} from '../../polyfills.js';
 import {NameDialog} from '../Settings/ProfilesSettings.jsx';
+import {PLATFORM_ICONS} from '../Settings/ProjectPlatforms.jsx';
+import {AdviceActions} from './ProjectAdvice.jsx';
 
 import styles from './Workstation.module.css';
 
@@ -24,6 +30,8 @@ const ProfilePicker = () => {
     : '';
   const navigate = useNavigate();
   const profiles = useProfiles();
+  const advice = useProjectAdvice();
+  const device = useSelector((state) => activeDevice(state.workstation));
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -45,7 +53,13 @@ const ProfilePicker = () => {
           }}
         >
           <span className={styles.menuItemText}>
-            <span>{profile.name}</span>
+            <span className={styles.menuItemPlatforms}>
+              {profile.name}
+              {(profile.platforms ?? []).map((platform) => {
+                const Icon = PLATFORM_ICONS[platform];
+                return Icon ? <Icon key={platform} size={13} aria-label={t(`settingsPlatform_${platform}`)} /> : null;
+              })}
+            </span>
             {profile.apps.length > 0 && (
               <span className={`${styles.menuItemSub} ${styles.mono}`}>
                 {profile.apps.map((app) => app.id).join(' · ')}
@@ -54,7 +68,14 @@ const ProfilePicker = () => {
           </span>
         </button>
       ))}
-      {active && active.apps.length === 0 && <div className={styles.menuHint}>{t('wsProjectNoApps')}</div>}
+      {advice && (
+        <div className={styles.menuHint}>
+          {adviceText(t, advice)}
+          <div className={styles.menuHintActions} onClick={() => setOpen(false)}>
+            <AdviceActions advice={advice} size="small" />
+          </div>
+        </div>
+      )}
       <div className={styles.menuFooter}>
         <Button
           size="small"
@@ -103,7 +124,7 @@ const ProfilePicker = () => {
         onCancel={() => setCreating(false)}
         onOk={async (name) => {
           setCreating(false);
-          await addProfile(name);
+          await addProfile(name, {platforms: [platformOfDevice(device) ?? 'android']});
         }}
       />
     </>

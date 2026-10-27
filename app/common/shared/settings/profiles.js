@@ -1,4 +1,5 @@
 import {PROFILE_GROUPS, readGroups, writeGroups} from './groups.js';
+import {makeMulti, migrateProfile, setPlatforms, splitMulti} from './platforms.js';
 import {projectSource} from './source.js';
 
 // The settings of the profile that is on live in the setting keys, where the
@@ -54,14 +55,27 @@ export function projectApps(apps = []) {
  * @returns {{profiles: object, created: boolean}}
  */
 export function ensureProfiles(profiles, all, firstName) {
-  if (profiles?.list?.length && profiles.list.some((profile) => profile.id === profiles.activeId)) {
-    return {profiles, created: false};
-  }
   if (profiles?.list?.length) {
-    return {profiles: {...profiles, activeId: profiles.list[0].id}, created: false};
+    // profiles saved before the platforms are moved to them once (project.platforms)
+    const migrated = profiles.list.some((profile) => !Array.isArray(profile.platforms));
+    const list = migrated ? profiles.list.map((profile) => migrateProfile(profile)) : profiles.list;
+    const activeId = list.some((profile) => profile.id === profiles.activeId) ? profiles.activeId : list[0].id;
+    return {
+      profiles: {...profiles, activeId, list},
+      created: false,
+      migrated: migrated || activeId !== profiles.activeId,
+    };
   }
-  const first = {id: newId(), name: firstName, apps: [], updatedAt: now(), groups: readGroups(all, PROFILE_GROUPS)};
-  return {profiles: {activeId: first.id, list: [first]}, created: true};
+  const first = migrateProfile({
+    id: newId(),
+    name: firstName,
+    apps: [],
+    platforms: ['android'],
+    source: null,
+    updatedAt: now(),
+    groups: readGroups(all, PROFILE_GROUPS),
+  });
+  return {profiles: {activeId: first.id, list: [first]}, created: true, migrated: false};
 }
 
 export const activeProfile = (profiles) => profiles?.list.find((profile) => profile.id === profiles.activeId) ?? null;
@@ -99,17 +113,24 @@ export function profilePatch(profile, all) {
 /**
  * A new profile, empty or a copy of the one that is on. It is not turned on.
  */
-export function addProfile(profiles, name, {copyFrom = null, all = {}, groups = null, apps = [], code = null} = {}) {
+export function addProfile(
+  profiles,
+  name,
+  {copyFrom = null, all = {}, groups = null, apps = [], code = null, platforms = null} = {},
+) {
   const source = copyFrom ? keepActive(profiles, all).list.find((profile) => profile.id === copyFrom) : null;
-  const profile = {
+  // a file of the time before the platforms has none; it is moved to them as a saved profile is
+  const given = platforms ?? source?.platforms ?? (code ? null : ['android']);
+  const profile = migrateProfile({
     id: newId(),
     name: uniqueName(profiles, name),
     apps: source ? [] : apps,
+    ...(given ? {platforms: given} : {}),
     // a copy works on the same code, so its repositories and branches come along
-    source: projectSource(code ?? source?.source),
+    source: code ?? source?.source ?? null,
     updatedAt: now(),
     groups: structuredClone(groups ?? source?.groups ?? {}),
-  };
+  });
   return {profiles: {...profiles, list: [...profiles.list, profile]}, profile};
 }
 
@@ -155,8 +176,30 @@ export function setProfileSource(profiles, id, source) {
   return {
     ...profiles,
     list: profiles.list.map((profile) =>
-      profile.id === id ? {...profile, source: projectSource(source), updatedAt: now()} : profile,
+      profile.id === id ? {...profile, source: projectSource(source, profile.platforms), updatedAt: now()} : profile,
     ),
+  };
+}
+
+/**
+ * The platforms of a profile: a new list of them, or «multi» and «split» to
+ * turn Android and iOS into one code and back.
+ */
+export function setProfilePlatforms(profiles, id, change) {
+  return {
+    ...profiles,
+    list: profiles.list.map((profile) => {
+      if (profile.id !== id) {
+        return profile;
+      }
+      const next =
+        change === 'multi'
+          ? makeMulti(profile)
+          : change === 'split'
+            ? splitMulti(profile)
+            : setPlatforms(profile, change);
+      return {...next, updatedAt: now()};
+    }),
   };
 }
 

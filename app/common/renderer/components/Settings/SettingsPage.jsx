@@ -18,7 +18,6 @@ import {JiraSettingsFields, useJiraSettings} from '../Jira/JiraSettingsModal.jsx
 import ChangeLanguage from '../SessionBuilder/AppSettings/ChangeLanguage.jsx';
 import ToggleTheme from '../SessionBuilder/AppSettings/ToggleTheme.jsx';
 import AgentSettings from './AgentSettings.jsx';
-import BuildSourcesSettings from './BuildSourcesSettings.jsx';
 import {GitLabSettingsFields, useGitLabSettings} from './GitLabSettings.jsx';
 import IosSigningSettings from './IosSigningSettings.jsx';
 import ProfilesSettings from './ProfilesSettings.jsx';
@@ -26,7 +25,8 @@ import StationTransfer from './StationTransfer.jsx';
 
 import styles from './SettingsPage.module.css';
 
-const SECTIONS = ['integrations', 'agent', 'profiles', 'builds', 'devices', 'general'];
+// the build sources live in the platforms of each project now (project.platforms)
+const SECTIONS = ['integrations', 'agent', 'profiles', 'devices', 'general'];
 
 /**
  * One outside service as a single line: what it is, what it is connected to
@@ -231,7 +231,7 @@ const General = () => {
   );
 };
 
-const Profiles = () => {
+const Profiles = ({focus}) => {
   const {t} = useTranslation();
   return (
     <Stagger className={styles.section}>
@@ -240,22 +240,7 @@ const Profiles = () => {
         <p className={styles.sectionText}>{t('settingsProfilesText')}</p>
       </StaggerItem>
       <StaggerItem className={styles.section}>
-        <ProfilesSettings />
-      </StaggerItem>
-    </Stagger>
-  );
-};
-
-const Builds = ({openProject}) => {
-  const {t} = useTranslation();
-  return (
-    <Stagger className={styles.section}>
-      <StaggerItem>
-        <h2 className={styles.sectionTitle}>{t('settingsBuilds')}</h2>
-        <p className={styles.sectionText}>{t('settingsBuildsText')}</p>
-      </StaggerItem>
-      <StaggerItem>
-        <BuildSourcesSettings openProject={openProject} />
+        <ProfilesSettings focus={focus} />
       </StaggerItem>
     </Stagger>
   );
@@ -280,7 +265,6 @@ const PAGES = {
   integrations: Integrations,
   agent: Agent,
   profiles: Profiles,
-  builds: Builds,
   devices: Devices,
   general: General,
 };
@@ -293,7 +277,9 @@ const SettingsPage = () => {
   const {t} = useTranslation();
   // another screen can open a section of its own: the session start opens the devices
   const {state} = useLocation();
-  const [section, setSection] = useState(SECTIONS.includes(state?.section) ? state.section : 'integrations');
+  // the old «builds» section is now the builds of a project's platform
+  const asked = state?.section === 'builds' ? 'profiles' : state?.section;
+  const [section, setSection] = useState(SECTIONS.includes(asked) ? asked : 'integrations');
   const Page = PAGES[section];
 
   return (
@@ -313,7 +299,11 @@ const SettingsPage = () => {
           ))}
         </nav>
         <div className={styles.content}>
-          <Page openProject={state?.project ?? null} />
+          <Page
+            focus={
+              state?.section === 'builds' ? {field: 'builds', project: state?.project ?? null} : (state?.focus ?? null)
+            }
+          />
         </div>
       </div>
     </div>

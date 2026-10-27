@@ -30,6 +30,7 @@ import {askAbout} from '../../lib/agent/agent-store.js';
 import {logPick} from '../../lib/agent/picks.js';
 import {clearFocus, setPick, useFocus} from '../../lib/agent/selection.js';
 import {openGoalForm} from '../../lib/goals/goal-form.js';
+import {adviceText, useProjectAdvice} from '../../lib/settings/project-advice.js';
 import {logsView} from '../../lib/settings/views.js';
 import {backend} from '../../polyfills.js';
 import {SeverityTag} from '../Findings/FindingsList.jsx';
@@ -379,6 +380,7 @@ const CustomRules = ({rules, draft, setDraft}) => {
  */
 const LogsTool = () => {
   const {t} = useTranslation();
+  const advice = useProjectAdvice();
   const navigate = useNavigate();
   const workstation = useSelector((state) => state.workstation);
   const device = activeDevice(workstation);
@@ -586,7 +588,15 @@ const LogsTool = () => {
               value: 'app',
               disabled: !logs.appId,
               label: (
-                <Tooltip title={logs.appId ? t('logsScopeAppHint', {app: logs.appId}) : t('logsScopeNoAppHint')}>
+                <Tooltip
+                  title={
+                    logs.appId
+                      ? t('logsScopeAppHint', {app: logs.appId})
+                      : advice
+                        ? adviceText(t, advice)
+                        : t('logsScopeNoAppHint')
+                  }
+                >
                   <span className={styles.scopeOption}>{logs.appId ? shortApp : t('logsScopeNoApp')}</span>
                 </Tooltip>
               ),

@@ -86,6 +86,7 @@
 | Профілі проєктів, збереження, експорт та імпорт налаштувань без секретів | [settings.backup](settings.backup/spec.md) | implemented |
 | Встановлення на Mac і поширення | [dist.mac](dist.mac/spec.md) | implemented |
 | Журнал станції: команди, IPC, помилки — для дебагу | [station.debug-log](station.debug-log/spec.md) | implemented |
+| Проєкт по платформах: застосунок, репозиторії, гілки й сабмодулі окремо для Android та iOS або разом для мультиплатформи | [project.platforms](project.platforms/spec.md) | implemented |
 
 Заплановано: остаточна назва продукту.
 

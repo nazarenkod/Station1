@@ -4,8 +4,10 @@ import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 
+import {platformKey, platformOfDevice} from '../../../shared/settings/platforms.js';
 import {activeDevice, isDeviceRunning, refreshDevices, selectDevice} from '../../actions/Workstation.js';
 import {problemFor, useStartProblems} from '../../lib/session/test-run.js';
+import {useProfiles} from '../../lib/settings/profiles-store.js';
 import {backend} from '../../polyfills.js';
 
 import styles from './Workstation.module.css';
@@ -43,12 +45,17 @@ const DevicePicker = () => {
   const device = activeDevice(workstation);
   const [open, setOpen] = useState(false);
   const [booting, setBooting] = useState(null);
+  const profiles = useProfiles();
 
   if (!backend.doctor) {
     return null;
   }
 
-  const running = devices.filter(isDeviceRunning);
+  // a running device of a platform the project has not stands apart (project.platforms)
+  const profile = profiles.list?.find((one) => one.id === profiles.activeId);
+  const fits = (candidate) => !profile || !!platformKey(profile, platformOfDevice(candidate));
+  const running = devices.filter((candidate) => isDeviceRunning(candidate) && fits(candidate));
+  const foreign = devices.filter((candidate) => isDeviceRunning(candidate) && !fits(candidate));
   const others = devices.filter((candidate) => !isDeviceRunning(candidate));
 
   const boot = async (candidate) => {
@@ -61,26 +68,33 @@ const DevicePicker = () => {
     }
   };
 
+  const renderRunning = (candidate, other = false) => (
+    <button
+      key={candidate.id}
+      className={`${styles.menuItem} ${candidate.id === device?.id ? styles.menuItemActive : ''}`}
+      onClick={async () => {
+        setOpen(false);
+        await dispatch(selectDevice(candidate.id));
+      }}
+    >
+      <IconDeviceMobile size={18} stroke={1.6} />
+      <span className={styles.menuItemText}>
+        <span>{candidate.name}</span>
+        <span className={styles.menuItemSub}>
+          {deviceSubtitle(candidate, t)}
+          {other ? ` · ${t('wsDeviceNotForProject')}` : ''}
+        </span>
+      </span>
+      <span className={`${styles.dot} ${styles.dotOn}`} />
+    </button>
+  );
+
   const content = (
     <div className={styles.menu}>
       {running.length > 0 && <div className={styles.menuLabel}>{t('wsDevicesConnected')}</div>}
-      {running.map((candidate) => (
-        <button
-          key={candidate.id}
-          className={`${styles.menuItem} ${candidate.id === device?.id ? styles.menuItemActive : ''}`}
-          onClick={async () => {
-            setOpen(false);
-            await dispatch(selectDevice(candidate.id));
-          }}
-        >
-          <IconDeviceMobile size={18} stroke={1.6} />
-          <span className={styles.menuItemText}>
-            <span>{candidate.name}</span>
-            <span className={styles.menuItemSub}>{deviceSubtitle(candidate, t)}</span>
-          </span>
-          <span className={`${styles.dot} ${styles.dotOn}`} />
-        </button>
-      ))}
+      {running.map((candidate) => renderRunning(candidate))}
+      {foreign.length > 0 && <div className={styles.menuLabel}>{t('wsDevicesForeign')}</div>}
+      {foreign.map((candidate) => renderRunning(candidate, true))}
       {others.length > 0 && <div className={styles.menuLabel}>{t('wsDevicesOther')}</div>}
       {others.map((candidate) => (
         <div key={candidate.id} className={styles.menuItem} style={{cursor: 'default'}}>

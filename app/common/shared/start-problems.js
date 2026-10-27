@@ -18,9 +18,20 @@ const driverFor = (device) => (isIos(device) ? 'xcuitest' : 'uiautomator2');
  * @param {object | null} [input.appsError] why the apps of the device could not be read
  * @param {object | null} [input.report] the doctor's report
  * @param {boolean} [input.serverRunning] an Appium server already runs: its own drivers count, not the doctor's
+ * @param {object | null} [input.advice] what is wrong with the project for this device (project.platforms)
+ * @param {object | null} [input.fix] where the settings open to fix the advice
  * @returns {{key: string, severity: 'error' | 'warn', target: 'device' | 'app' | 'station', params?: object}[]}
  */
-export function startProblems({device, running, app, appsError = null, report = null, serverRunning = false}) {
+export function startProblems({
+  device,
+  running,
+  app,
+  appsError = null,
+  report = null,
+  serverRunning = false,
+  advice = null,
+  fix = null,
+}) {
   if (!device) {
     return [{key: 'noDevice', severity: 'error', target: 'device'}];
   }
@@ -31,7 +42,12 @@ export function startProblems({device, running, app, appsError = null, report = 
   if (appsError) {
     problems.push({key: 'appsError', severity: 'warn', target: 'device'});
   }
-  if (!app) {
+  // the same advice as every tool gives, with the way straight to its field
+  if (advice?.kind === 'noPlatform') {
+    problems.push({key: 'noPlatform', severity: 'warn', target: 'app', params: advice, fix});
+  } else if (advice?.kind === 'noApp') {
+    problems.push({key: 'noAppFor', severity: 'warn', target: 'app', params: advice, fix});
+  } else if (!app) {
     problems.push({key: 'noApp', severity: 'warn', target: 'app'});
   } else if (app.installed === false) {
     problems.push({key: 'appMissing', severity: 'error', target: 'app', params: {app: app.id}});

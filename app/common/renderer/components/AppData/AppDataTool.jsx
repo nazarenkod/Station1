@@ -15,9 +15,11 @@ import {useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
+import {adviceText, useProjectAdvice} from '../../lib/settings/project-advice.js';
 import {appDataPins} from '../../lib/settings/views.js';
 import {backend} from '../../polyfills.js';
 import EmptyState from '../Workstation/EmptyState.jsx';
+import {AdviceActions} from '../Workstation/ProjectAdvice.jsx';
 import {
   attachAppData,
   clearBackups,
@@ -63,6 +65,7 @@ const AppDataTool = () => {
   const device = activeDevice(workstation);
   const appId = workstation.app?.id ?? null;
   const data = useAppData();
+  const advice = useProjectAdvice();
   const pinsByApp = appDataPins.use();
   const [query, setQuery] = useState('');
   const [place, setPlace] = useState(null);
@@ -164,7 +167,15 @@ const AppDataTool = () => {
     );
   }
   if (!appId) {
-    return <EmptyState tool="data" icon={IconDatabase} title={t('dataNoAppTitle')} text={t('dataNoApp')} />;
+    return (
+      <EmptyState
+        tool="data"
+        icon={IconDatabase}
+        title={t('dataNoAppTitle')}
+        text={advice ? adviceText(t, advice) : t('dataNoApp')}
+        actions={<AdviceActions advice={advice} />}
+      />
+    );
   }
 
   const error = snapshot?.error;

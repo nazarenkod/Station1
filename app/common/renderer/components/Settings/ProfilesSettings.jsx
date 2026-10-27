@@ -4,6 +4,7 @@ import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
 
+import {platformOfDevice} from '../../../shared/settings/platforms.js';
 import {activeDevice, devicePlatform} from '../../actions/Workstation.js';
 import {
   addProfile,
@@ -13,7 +14,7 @@ import {
   switchProfile,
   useProfiles,
 } from '../../lib/settings/profiles-store.js';
-import SourceSettings from './SourceSettings.jsx';
+import ProjectPlatforms from './ProjectPlatforms.jsx';
 import {ExportDialog} from './StationTransfer.jsx';
 
 import styles from './SettingsPage.module.css';
@@ -113,7 +114,7 @@ const ProjectAppField = ({profile, platform}) => {
   );
 };
 
-const ProfileCard = ({profile, active, onlyOne}) => {
+const ProfileCard = ({profile, active, onlyOne, focus}) => {
   const {t} = useTranslation();
   const {message} = App.useApp();
   const [renaming, setRenaming] = useState(false);
@@ -145,18 +146,13 @@ const ProfileCard = ({profile, active, onlyOne}) => {
         )}
       </div>
       <div className={styles.cardBody}>
-        <div className={styles.profileApps}>
-          <span>{t('settingsProfileApps')}</span>
-          <ProjectAppField profile={profile} platform="android" />
-          <ProjectAppField profile={profile} platform="ios" />
-          {unplaced.length > 0 && (
-            <span className={styles.profileHint}>
-              {t('settingsProfileAppsUnplaced', {ids: unplaced.map((app) => app.id).join(', ')})}
-            </span>
-          )}
-          <span className={styles.profileHint}>{t('settingsProfileAppsHint')}</span>
-        </div>
-        <SourceSettings profile={profile} />
+        <ProjectPlatforms profile={profile} active={active} focus={focus} AppField={ProjectAppField} />
+        {unplaced.length > 0 && (
+          <span className={styles.profileHint}>
+            {t('settingsProfileAppsUnplaced', {ids: unplaced.map((app) => app.id).join(', ')})}
+          </span>
+        )}
+        <span className={styles.profileHint}>{t('settingsProfileAppsHint')}</span>
       </div>
       <div className={styles.cardFoot}>
         <Button icon={<IconPencil size={16} />} onClick={() => setRenaming(true)}>
@@ -203,10 +199,12 @@ const ProfileCard = ({profile, active, onlyOne}) => {
  * The project profiles: each holds the rules, filters and choices of one
  * project; the one that is on is what the tools use.
  */
-const ProfilesSettings = () => {
+const ProfilesSettings = ({focus = null}) => {
   const {t} = useTranslation();
   const profiles = useProfiles();
   const [creating, setCreating] = useState(null);
+  // a new project starts with the platform of the device on the title bar
+  const device = useSelector((state) => activeDevice(state.workstation));
 
   if (!profiles.loaded) {
     return null;
@@ -229,6 +227,7 @@ const ProfilesSettings = () => {
           profile={profile}
           active={profile.id === profiles.activeId}
           onlyOne={profiles.list.length < 2}
+          focus={profile.id === (focus?.profileId ?? profiles.activeId) ? focus : null}
         />
       ))}
       <NameDialog
@@ -239,7 +238,7 @@ const ProfilesSettings = () => {
         onOk={async (name) => {
           const copy = creating === 'copy';
           setCreating(null);
-          await addProfile(name, {copy});
+          await addProfile(name, {copy, platforms: copy ? null : [platformOfDevice(device) ?? 'android']});
         }}
       />
     </>

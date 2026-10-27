@@ -11,6 +11,7 @@ import {
   removeProfile,
   renameProfile,
   setProfileApps,
+  setProfilePlatforms,
   setProfileSource,
   switchProfile,
 } from '../../shared/settings/profiles.js';
@@ -62,8 +63,8 @@ export function createStationSettings({
   const load = async () => {
     const all = await readAll();
     const name = typeof firstProfileName === 'function' ? firstProfileName() : firstProfileName;
-    const {profiles, created} = ensureProfiles(await store.get(PROFILES), all, name);
-    if (created) {
+    const {profiles, created, migrated} = ensureProfiles(await store.get(PROFILES), all, name);
+    if (created || migrated) {
       await store.set(PROFILES, profiles);
     }
     return {profiles, all};
@@ -72,11 +73,12 @@ export function createStationSettings({
   // what the screens need: no settings inside, only names, apps and which one is on
   const outline = (profiles) => ({
     activeId: profiles.activeId,
-    list: profiles.list.map(({id, name, apps, source, updatedAt}) => ({
+    list: profiles.list.map(({id, name, apps, platforms, source, updatedAt}) => ({
       id,
       name,
+      platforms,
       apps: projectApps(apps),
-      source: projectSource(source),
+      source: projectSource(source, platforms),
       updatedAt,
     })),
   });
@@ -85,6 +87,15 @@ export function createStationSettings({
     await writePatch(patch);
     await store.set(PROFILES, profiles);
     return {profiles: outline(profiles), changedKeys: Object.keys(patch)};
+  };
+
+  // a repository taken out of the profile (or with its platform) leaves its folder behind
+  const keepFolders = async (id, next) => {
+    const kept = new Set(next.list.find((profile) => profile.id === id)?.source.repos.map((repo) => repo.id) ?? []);
+    await writePaths((paths) => {
+      paths[id] = Object.fromEntries(Object.entries(paths[id] ?? {}).filter(([repoId]) => kept.has(repoId)));
+    });
+    return await save(next);
   };
 
   // the folders of the repositories, this Mac's only: by profile, then by repository
@@ -160,9 +171,13 @@ export function createStationSettings({
       return await save(result.profiles, result.patch);
     },
 
-    async addProfile(name, {copy = false} = {}) {
+    async addProfile(name, {copy = false, platforms = null} = {}) {
       const {profiles, all} = await load();
-      const {profiles: next, profile} = addProfile(profiles, name, {copyFrom: copy ? profiles.activeId : null, all});
+      const {profiles: next, profile} = addProfile(profiles, name, {
+        copyFrom: copy ? profiles.activeId : null,
+        all,
+        platforms,
+      });
       if (copy) {
         // the copy works on the same folders
         await writePaths((paths) => {
@@ -182,15 +197,14 @@ export function createStationSettings({
       return await save(setProfileApps(profiles, id, apps));
     },
 
+    async setProfilePlatforms(id, change) {
+      const {profiles} = await load();
+      return await keepFolders(id, setProfilePlatforms(profiles, id, change));
+    },
+
     async setProfileSource(id, source) {
       const {profiles} = await load();
-      const next = setProfileSource(profiles, id, source);
-      const kept = new Set(next.list.find((profile) => profile.id === id)?.source.repos.map((repo) => repo.id) ?? []);
-      // a repository taken out of the profile leaves its folder behind
-      await writePaths((paths) => {
-        paths[id] = Object.fromEntries(Object.entries(paths[id] ?? {}).filter(([repoId]) => kept.has(repoId)));
-      });
-      return await save(next);
+      return await keepFolders(id, setProfileSource(profiles, id, source));
     },
 
     async sourcePaths(profileId) {

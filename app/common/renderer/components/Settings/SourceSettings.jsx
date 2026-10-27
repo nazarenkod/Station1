@@ -12,15 +12,14 @@ import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {
-  MODULE_PLATFORMS,
-  modulePlatform,
+  changeRepo,
   moduleTree,
   newRepo,
-  REPO_ROLES,
   repoWarnings,
-  setModulePlatform,
+  setBranches,
+  sourceOfRepo,
 } from '../../../shared/settings/source.js';
-import {setProfileSource} from '../../lib/settings/profiles-store.js';
+import {setProfilePlatforms, setProfileSource} from '../../lib/settings/profiles-store.js';
 import {backend} from '../../polyfills.js';
 
 import styles from './SettingsPage.module.css';
@@ -134,10 +133,10 @@ const SwitchDialog = ({open, profileId, repo, source, onClose, onDone}) => {
 
 /**
  * The submodules of a repository as a tree: a submodule of a submodule sits
- * under it. Each says which platform it is for (taken from above when not
- * set) and may come from a folder of its own instead of the copy inside.
+ * under it. Each is of the platform of its repository and may come from a
+ * folder of its own instead of the copy inside.
  */
-const ModuleTree = ({profileId, repo, info, source, onRefresh}) => {
+const ModuleTree = ({profileId, repo, info, onRefresh}) => {
   const {t} = useTranslation();
   const tree = moduleTree(info.state.submodules);
   const own = info.modules ?? {};
@@ -153,15 +152,11 @@ const ModuleTree = ({profileId, repo, info, source, onRefresh}) => {
     await backend.source.setModulePath(profileId, repo.id, modulePath, null);
     onRefresh();
   };
-  const setPlatform = (modulePath, platform) =>
-    setProfileSource(profileId, setModulePlatform(source, repo.id, modulePath, platform));
 
   return (
     <div className={styles.sourceModules}>
       <span>{t('settingsSourceSubmodules')}</span>
       {tree.map((module) => {
-        const set = source.modules?.[repo.id]?.[module.path]?.platform;
-        const inherited = module.parent ? modulePlatform(source, repo.id, module.parent, tree) : 'all';
         const name = module.parent ? module.path.slice(module.parent.length + 1) : module.path;
         return (
           <div
@@ -176,19 +171,6 @@ const ModuleTree = ({profileId, repo, info, source, onRefresh}) => {
               <Tag className={styles.sourceModuleOff}>{t('settingsSourceSubmoduleOff')}</Tag>
             )}
             <span className={styles.spacer} />
-            <Select
-              size="small"
-              value={set ?? null}
-              placeholder={t(`settingsSourcePlatform_${inherited}`)}
-              allowClear
-              onChange={(platform) => setPlatform(module.path, platform ?? 'all')}
-              options={MODULE_PLATFORMS.map((platform) => ({
-                value: platform,
-                label: t(`settingsSourcePlatform_${platform}`),
-              }))}
-              className={styles.sourceModulePlatform}
-              aria-label={t('settingsSourceModulePlatform', {name})}
-            />
             {own[module.path] ? (
               <Tag
                 closable
@@ -251,13 +233,13 @@ const RepoState = ({profileId, repo, info, source, onRefresh}) => {
         </span>
       ))}
       {state.submodules.length > 0 && (
-        <ModuleTree profileId={profileId} repo={repo} info={info} source={source} onRefresh={onRefresh} />
+        <ModuleTree profileId={profileId} repo={repo} info={info} onRefresh={onRefresh} />
       )}
     </>
   );
 };
 
-const RepoRow = ({profileId, repo, main, info, source, onChange, onRefresh}) => {
+const RepoRow = ({profileId, repo, main, info, source, onChange, onMove, onRefresh}) => {
   const {t} = useTranslation();
   const {message} = App.useApp();
   const gitError = useGitError();
@@ -293,16 +275,9 @@ const RepoRow = ({profileId, repo, main, info, source, onChange, onRefresh}) => 
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onBlur={() => name.trim() && name.trim() !== repo.name && onChange({...repo, name: name.trim()})}
+          onBlur={() => name.trim() && name.trim() !== repo.name && onChange({name: name.trim()})}
           className={styles.sourceName}
           aria-label={t('settingsSourceName')}
-        />
-        <Select
-          value={repo.role}
-          onChange={(role) => onChange({...repo, role})}
-          options={REPO_ROLES.map((role) => ({value: role, label: t(`settingsSourceRole_${role}`)}))}
-          className={styles.sourceRole}
-          aria-label={t('settingsSourceRole')}
         />
         {main && <Tag>{t('settingsSourceMain')}</Tag>}
         <Popconfirm
@@ -315,6 +290,19 @@ const RepoRow = ({profileId, repo, main, info, source, onChange, onRefresh}) => 
           <Button type="text" danger icon={<IconTrash size={16} />} aria-label={t('settingsSourceRemove')} />
         </Popconfirm>
       </div>
+      {repo.guessed && (
+        <div className={styles.sourceGuessed}>
+          <span>{t('settingsSourceGuessed', {platform: t(`settingsPlatform_${repo.platform}`)})}</span>
+          <Button size="small" onClick={() => onChange({confirm: true})}>
+            {t('settingsSourceGuessedKeep')}
+          </Button>
+          {onMove.map((move) => (
+            <Button key={move.key} size="small" onClick={() => move.run()}>
+              {move.label}
+            </Button>
+          ))}
+        </div>
+      )}
       <div className={styles.sourceFolder}>
         <span className={styles.mono}>{info?.path ?? ''}</span>
         <Button size="small" icon={<IconFolderOpen size={14} />} onClick={pickFolder}>
@@ -388,17 +376,10 @@ const BranchField = ({label, value, onSave}) => {
   );
 };
 
-/**
- * The code of a project: the repositories on this Mac the agent reads, their
- * submodules, and the branches the team develops and releases from.
- */
-const SourceSettings = ({profile}) => {
-  const {t} = useTranslation();
-  const source = profile.source;
+/** The state of the profile's repositories on this Mac, read again when its code changes. */
+export function useSourceInfos(profile) {
   const [infos, setInfos] = useState([]);
-  // the state is read again when the repositories or the branches change
-  const key = JSON.stringify(source);
-
+  const key = JSON.stringify(profile.source);
   const refresh = useCallback(async () => {
     if (backend?.source) {
       setInfos(await backend.source.inspect(profile.id));
@@ -407,65 +388,96 @@ const SourceSettings = ({profile}) => {
   useEffect(() => {
     refresh();
   }, [refresh, key]);
+  return {infos, refresh};
+}
 
+/** The branches the team of a platform develops and releases from. */
+export const BranchFields = ({profile, platform}) => {
+  const {t} = useTranslation();
+  const own = profile.source.branches?.[platform] ?? {};
+  const save = (branches) => setProfileSource(profile.id, setBranches(profile.source, platform, branches));
+  return (
+    <div className={styles.sourceBranches}>
+      <BranchField label={t('settingsSourceDevBranch')} value={own.dev ?? ''} onSave={(dev) => save({dev})} />
+      <BranchField
+        label={t('settingsSourceReleaseBranch')}
+        value={own.release ?? ''}
+        onSave={(release) => save({release})}
+      />
+    </div>
+  );
+};
+
+/**
+ * The repositories of one platform of a project (or of its shared code) on
+ * this Mac, which the agent reads: the first is the main one.
+ */
+export const RepoList = ({profile, platform, infos, onRefresh}) => {
+  const {t} = useTranslation();
   if (!backend?.source) {
     return null;
   }
-  const save = (next) => setProfileSource(profile.id, {...source, ...next});
-  const changeRepo = (index) => (repo) =>
-    save({
-      repos: repo
-        ? source.repos.map((one, at) => (at === index ? repo : one))
-        : source.repos.filter((_, at) => at !== index),
-    });
+  const source = profile.source;
+  const repos = source.repos.filter((repo) => repo.platform === platform);
+  const save = (next) => setProfileSource(profile.id, next);
 
   const addRepo = async () => {
     const folder = await backend.source.pickFolder();
     if (!folder) {
       return;
     }
-    const repo = newRepo(source, folder);
-    await save({repos: [...source.repos, repo]});
+    const repo = newRepo(folder, platform);
+    await save({...source, repos: [...source.repos, repo]});
     await backend.source.setPath(profile.id, repo.id, folder);
-    refresh();
+    onRefresh();
+  };
+
+  // where a repository the station placed itself can go instead: the other platform, or one code for both
+  const movesFor = (repo) => {
+    if (!repo.guessed || profile.platforms.includes('multi')) {
+      return [];
+    }
+    const other = repo.platform === 'android' ? 'ios' : 'android';
+    return [
+      {
+        key: other,
+        label: t('settingsSourceMoveTo', {platform: t(`settingsPlatform_${other}`)}),
+        run: async () => {
+          if (!profile.platforms.includes(other)) {
+            await setProfilePlatforms(profile.id, [...profile.platforms, other]);
+          }
+          await save(changeRepo(source, repo.id, {platform: other}));
+        },
+      },
+      {key: 'multi', label: t('settingsPlatformMakeMulti'), run: () => setProfilePlatforms(profile.id, 'multi')},
+    ];
   };
 
   return (
-    <div className={`${styles.profileApps} ${styles.source}`}>
-      <span>{t('settingsSourceTitle')}</span>
-      <div className={styles.sourceBranches}>
-        <BranchField
-          label={t('settingsSourceDevBranch')}
-          value={source.devBranch}
-          onSave={(devBranch) => save({devBranch})}
-        />
-        <BranchField
-          label={t('settingsSourceReleaseBranch')}
-          value={source.releaseBranch}
-          onSave={(releaseBranch) => save({releaseBranch})}
-        />
-      </div>
-      {source.repos.map((repo, index) => (
+    <div className={styles.profileApps}>
+      {repos.map((repo, index) => (
         <RepoRow
           key={repo.id}
           profileId={profile.id}
           repo={repo}
-          main={index === 0}
+          main={platform !== 'shared' && index === 0}
           info={infos.find((info) => info.repoId === repo.id)}
-          source={source}
-          onChange={changeRepo(index)}
-          onRefresh={refresh}
+          source={sourceOfRepo(source, repo)}
+          onChange={(patch) => save(changeRepo(source, repo.id, patch))}
+          onMove={movesFor(repo)}
+          onRefresh={onRefresh}
         />
       ))}
-      {!source.repos.length && <span className={styles.profileHint}>{t('settingsSourceEmpty')}</span>}
+      {!repos.length && (
+        <span className={styles.profileHint}>
+          {platform === 'shared' ? t('settingsSourceSharedEmpty') : t('settingsSourceEmpty')}
+        </span>
+      )}
       <div>
         <Button size="small" icon={<IconPlus size={14} />} onClick={addRepo}>
-          {t('settingsSourceAdd')}
+          {platform === 'shared' ? t('settingsSourceAddShared') : t('settingsSourceAdd')}
         </Button>
       </div>
-      <span className={styles.profileHint}>{t('settingsSourceHint')}</span>
     </div>
   );
 };
-
-export default SourceSettings;

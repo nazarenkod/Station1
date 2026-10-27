@@ -1,8 +1,9 @@
-import {IconChevronDown, IconPackage, IconPlus, IconTrash} from '@tabler/icons-react';
-import {App, Button, Empty} from 'antd';
+import {IconChevronDown, IconPlus, IconTrash} from '@tabler/icons-react';
+import {App, Button} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
+import {rulePlatform} from '../../../shared/settings/platforms.js';
 import BuildRuleEditor, {emptyRule} from '../Builds/BuildRuleEditor.jsx';
 import {loadBuildSources, saveBuildSources, usePipelineWatches} from '../Builds/pipeline-watch.js';
 
@@ -17,14 +18,16 @@ const summary = (rule, t) =>
     .join(' · ') || t('buildRuleNoJobs');
 
 /**
- * Where each project's builds come from, written once: a pipeline link of
- * the project is then followed without asking.
+ * Where the builds of one platform of the project come from in GitLab: a
+ * line per rule (the project and its jobs), opened into the editor. The
+ * rules of the other platforms are kept as they are when these are saved.
+ * `openProject` opens a new rule for a GitLab project a pipeline asked about.
  */
-const BuildSourcesSettings = ({openProject = null}) => {
+const BuildSourcesSettings = ({platform, platforms, openProject = null}) => {
   const {t} = useTranslation();
   const {message} = App.useApp();
   const {sources} = usePipelineWatches();
-  const [rules, setRules] = useState(null);
+  const [draft, setDraft] = useState(null);
   const [open, setOpen] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -32,26 +35,34 @@ const BuildSourcesSettings = ({openProject = null}) => {
     loadBuildSources();
   }, []);
 
-  // the saved rules are edited as a draft until saved
-  useEffect(() => {
-    if (rules === null) {
-      setRules(sources.rules);
-      const asked = openProject && sources.rules.find((rule) => rule.project === openProject);
-      setOpen(asked?.id ?? null);
-    }
-  }, [sources.rules, rules, openProject]);
+  const mine = (rule) => rulePlatform(rule, platforms) === platform;
+  const saved = sources.rules.filter(mine);
+  const list = draft ?? saved;
 
-  const list = rules ?? [];
-  const change = (id, next) => setRules(list.map((rule) => (rule.id === id ? next : rule)));
+  // a pipeline without a rule opens one for its project, once
+  useEffect(() => {
+    if (openProject && draft === null && !saved.some((rule) => rule.project === openProject)) {
+      const rule = {...emptyRule(openProject), platform};
+      setDraft([...saved, rule]);
+      setOpen(rule.id);
+    }
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [openProject]);
+
+  const edit = (next) => setDraft(next);
   const add = () => {
-    const rule = emptyRule(openProject ?? '');
-    setRules([...list, rule]);
+    const rule = {...emptyRule(''), platform};
+    edit([...list, rule]);
     setOpen(rule.id);
   };
   const save = async () => {
     setSaving(true);
     try {
-      await saveBuildSources(list.filter((rule) => rule.project.trim()));
+      const others = sources.rules.filter((rule) => !mine(rule));
+      // each rule of this block says its platform from now on
+      const own = list.filter((rule) => rule.project.trim()).map((rule) => ({...rule, platform}));
+      await saveBuildSources([...others, ...own]);
+      setDraft(null);
       message.success(t('settingsSaved'));
     } finally {
       setSaving(false);
@@ -59,68 +70,66 @@ const BuildSourcesSettings = ({openProject = null}) => {
   };
 
   return (
-    <section className={`${styles.card} ${styles.cardOpen}`} aria-label={t('buildSourcesTitle')}>
-      <div className={styles.cardHead}>
-        <span className={`${styles.logo} ${styles.logo_gitlab}`}>
-          <IconPackage size={18} stroke={1.7} />
-        </span>
-        <span className={styles.cardTitleBlock}>
-          <span className={styles.cardTitle}>{t('buildSourcesTitle')}</span>
-          <span className={styles.cardPurpose}>{t('buildSourcesPurpose')}</span>
-        </span>
-      </div>
-      <div className={styles.cardBody}>
-        {list.length === 0 ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('buildSourcesEmpty')} />
-        ) : (
-          <ul className={styles.rules}>
-            {list.map((rule) => (
-              <li key={rule.id} className={styles.rule}>
-                <button
-                  type="button"
-                  className={styles.ruleHead}
-                  aria-expanded={open === rule.id}
-                  onClick={() => setOpen(open === rule.id ? null : rule.id)}
-                >
-                  <span className={styles.ruleText}>
-                    <span className="vi-mono">{rule.project || t('buildRuleNewProject')}</span>
-                    <span className={styles.cardPurpose}>{summary(rule, t)}</span>
-                  </span>
-                  <IconChevronDown
-                    size={16}
-                    className={styles.chevron}
-                    style={{transform: open === rule.id ? 'rotate(180deg)' : 'none'}}
-                    aria-hidden="true"
+    <div className={styles.platformBuilds}>
+      {list.length > 0 && (
+        <ul className={styles.rules}>
+          {list.map((rule) => (
+            <li key={rule.id} className={styles.rule}>
+              <button
+                type="button"
+                className={styles.ruleHead}
+                aria-expanded={open === rule.id}
+                onClick={() => setOpen(open === rule.id ? null : rule.id)}
+              >
+                <span className={styles.ruleText}>
+                  <span className="vi-mono">{rule.project || t('buildRuleNewProject')}</span>
+                  <span className={styles.cardPurpose}>{summary(rule, t)}</span>
+                </span>
+                <IconChevronDown
+                  size={16}
+                  className={styles.chevron}
+                  style={{transform: open === rule.id ? 'rotate(180deg)' : 'none'}}
+                  aria-hidden="true"
+                />
+              </button>
+              {open === rule.id && (
+                <div className={styles.ruleBody}>
+                  <BuildRuleEditor
+                    rule={rule}
+                    onChange={(next) => edit(list.map((item) => (item.id === rule.id ? next : item)))}
                   />
-                </button>
-                {open === rule.id && (
-                  <div className={styles.ruleBody}>
-                    <BuildRuleEditor rule={rule} onChange={(next) => change(rule.id, next)} />
-                    <Button
-                      danger
-                      type="text"
-                      size="small"
-                      icon={<IconTrash size={14} />}
-                      onClick={() => setRules(list.filter((item) => item.id !== rule.id))}
-                    >
-                      {t('buildRuleDelete')}
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className={styles.cardFoot}>
-        <Button type="primary" loading={saving} onClick={save}>
-          {t('jiraSave')}
-        </Button>
-        <Button icon={<IconPlus size={14} />} onClick={add}>
+                  <Button
+                    danger
+                    type="text"
+                    size="small"
+                    icon={<IconTrash size={14} />}
+                    onClick={() => edit(list.filter((item) => item.id !== rule.id))}
+                  >
+                    {t('buildRuleDelete')}
+                  </Button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {!list.length && <span className={styles.profileHint}>{t('settingsBuildsEmpty')}</span>}
+      <div className={styles.platformBuildsActions}>
+        <Button size="small" icon={<IconPlus size={14} />} onClick={add}>
           {t('buildRuleAdd')}
         </Button>
+        {draft !== null && (
+          <>
+            <Button size="small" type="primary" loading={saving} onClick={save}>
+              {t('jiraSave')}
+            </Button>
+            <Button size="small" type="text" onClick={() => setDraft(null)}>
+              {t('Cancel')}
+            </Button>
+          </>
+        )}
       </div>
-    </section>
+    </div>
   );
 };
 

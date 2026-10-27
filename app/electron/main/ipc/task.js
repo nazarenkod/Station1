@@ -10,6 +10,7 @@ import {collectTaskContext} from '../../../common/node/task/context.js';
 import {createTaskStore} from '../../../common/node/task/store.js';
 import {forgetTask} from '../../../common/shared/agent/conversations.js';
 import {AGENT_SESSIONS, GITLAB_CONFIG, JIRA_CONFIG, TASKS} from '../../../common/shared/setting-defs.js';
+import {sourceOfRepo} from '../../../common/shared/settings/source.js';
 import {parseTaskKey} from '../../../common/shared/task/task-text.js';
 import {encryptedSecret} from '../secrets.js';
 
@@ -62,9 +63,11 @@ export function setupTaskIPC({station}) {
   const gitOf = async (profileId) => {
     const profile = (await station.profiles()).list.find((one) => one.id === profileId);
     const paths = await station.sourcePaths(profileId);
-    const repo = profile?.source.repos.find((one) => paths[one.id]?.path);
+    // an app repository before a shared one, on its platform's development branch
+    const repos = profile?.source.repos ?? [];
+    const repo = [...repos.filter((one) => one.platform !== 'shared'), ...repos].find((one) => paths[one.id]?.path);
     const root = repo ? await repoRoot(paths[repo.id].path) : null;
-    return root ? {log: (key) => commitsWithKey(root, profile.source.devBranch, key)} : null;
+    return root ? {log: (key) => commitsWithKey(root, sourceOfRepo(profile.source, repo).devBranch, key)} : null;
   };
 
   const changed = (payload) => broadcast('task:changed', payload);

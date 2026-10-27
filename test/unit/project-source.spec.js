@@ -8,8 +8,8 @@ import {afterAll, beforeAll, describe, expect, it, vi} from 'vitest';
 import {
   agentWorkspace,
   branchToRemember,
+  changeRepo,
   moduleFolder,
-  modulePlatform,
   moduleTree,
   newRepo,
   parseGitmodules,
@@ -18,7 +18,8 @@ import {
   projectSource,
   repoWarnings,
   safeRemote,
-  setModulePlatform,
+  setBranches,
+  sourceFor,
 } from '../../app/common/shared/settings/source.js';
 
 // git runs with the environment of the test, not of a login shell; local
@@ -43,41 +44,76 @@ const {changesToDiscard, fetchRepo, inspectRepo, listBranches, pullRepo, switchB
   await import('../../app/common/node/source/repo.js');
 
 describe('projectSource', () => {
-  it('gives develop and main to a profile without code', () => {
-    expect(projectSource(undefined)).toEqual({devBranch: 'develop', releaseBranch: 'main', repos: [], modules: {}});
+  it('gives develop and main to each platform of a profile without code', () => {
+    expect(projectSource(undefined, ['android', 'ios'])).toEqual({
+      branches: {android: {dev: 'develop', release: 'main'}, ios: {dev: 'develop', release: 'main'}},
+      repos: [],
+    });
   });
 
   it('keeps the branches the person set and drops names git would not take', () => {
-    expect(projectSource({devBranch: ' dev ', releaseBranch: 'release/1.0'})).toMatchObject({
-      devBranch: 'dev',
-      releaseBranch: 'release/1.0',
+    expect(projectSource({branches: {android: {dev: ' dev ', release: 'release/1.0'}}}).branches.android).toEqual({
+      dev: 'dev',
+      release: 'release/1.0',
     });
-    expect(projectSource({devBranch: 'bad name', releaseBranch: 'a..b'})).toMatchObject({
-      devBranch: 'develop',
-      releaseBranch: 'main',
+    expect(projectSource({branches: {android: {dev: 'bad name', release: 'a..b'}}}).branches.android).toEqual({
+      dev: 'develop',
+      release: 'main',
     });
   });
 
-  it('cleans the repositories: one id once, a known role, the first one is the app', () => {
-    const source = projectSource({
-      repos: [
-        {id: 'r1', name: 'bank-android', role: 'nonsense'},
-        {id: 'r1', name: 'again'},
-        {id: 'r2', name: ' backend ', role: 'backend'},
-        {id: 'r3'},
-      ],
-    });
+  it('cleans the repositories: one id once, a platform the project has, else its first one', () => {
+    const source = projectSource(
+      {
+        repos: [
+          {id: 'r1', name: 'bank-android', platform: 'android'},
+          {id: 'r1', name: 'again'},
+          {id: 'r2', name: ' backend ', platform: 'shared'},
+          {id: 'r3', platform: 'ios'},
+          {id: 'r4', platform: 'tv'},
+        ],
+      },
+      ['android'],
+    );
     expect(source.repos).toEqual([
-      {id: 'r1', name: 'bank-android', role: 'app'},
-      {id: 'r2', name: 'backend', role: 'backend'},
-      {id: 'r3', name: 'r3', role: 'other'},
+      {id: 'r1', name: 'bank-android', platform: 'android'},
+      {id: 'r2', name: 'backend', platform: 'shared'},
+      {id: 'r3', name: 'r3', platform: 'android'},
+      {id: 'r4', name: 'r4', platform: 'android'},
     ]);
   });
 
-  it('names a new repository after its folder', () => {
-    const empty = projectSource({});
-    expect(newRepo(empty, '/Users/qa/code/bank-ios/')).toMatchObject({name: 'bank-ios', role: 'app'});
-    expect(newRepo({repos: [{id: 'r1'}]}, '/x/shared-ui').role).toBe('other');
+  it('names a new repository after its folder, in the platform it is added to', () => {
+    expect(newRepo('/Users/qa/code/bank-ios/', 'ios')).toMatchObject({name: 'bank-ios', platform: 'ios'});
+  });
+
+  it('gives the code of one platform with its branches: its repositories first, then the shared ones', () => {
+    const source = projectSource(
+      {
+        branches: {android: {dev: 'dev-a', release: 'main'}, ios: {dev: 'dev-i', release: 'master'}},
+        repos: [
+          {id: 'api', platform: 'shared'},
+          {id: 'and', platform: 'android'},
+          {id: 'ios', platform: 'ios'},
+        ],
+      },
+      ['android', 'ios'],
+    );
+    expect(sourceFor(source, 'ios')).toMatchObject({
+      devBranch: 'dev-i',
+      releaseBranch: 'master',
+      repos: [{id: 'ios'}, {id: 'api'}],
+    });
+    expect(sourceFor(source, 'android').repos.map((repo) => repo.id)).toEqual(['and', 'api']);
+    expect(setBranches(source, 'ios', {dev: 'develop'}).branches.ios).toEqual({dev: 'develop', release: 'master'});
+  });
+
+  it('confirms a repository the station placed itself once it is moved or kept', () => {
+    const source = {repos: [{id: 'r', name: 'r', platform: 'android', guessed: true}]};
+    expect(changeRepo(source, 'r', {platform: 'ios'}).repos).toEqual([{id: 'r', name: 'r', platform: 'ios'}]);
+    expect(changeRepo(source, 'r', {confirm: true}).repos).toEqual([{id: 'r', name: 'r', platform: 'android'}]);
+    expect(changeRepo(source, 'r', {name: 'x'}).repos[0]).toMatchObject({name: 'x', guessed: true});
+    expect(changeRepo(source, 'r', null).repos).toEqual([]);
   });
 });
 
@@ -117,7 +153,7 @@ describe('git output', () => {
 });
 
 describe('repoWarnings', () => {
-  const source = projectSource({});
+  const source = sourceFor(projectSource({}), 'android');
   const state = {ok: true, branch: 'develop', detached: false, changes: [], hasDev: true, hasRelease: true};
 
   it('is quiet for a clean copy on the development branch', () => {
@@ -144,7 +180,19 @@ describe('branchToRemember', () => {
 });
 
 describe('agentWorkspace', () => {
-  const source = projectSource({repos: [{id: 'app'}, {id: 'api', role: 'backend'}, {id: 'lost'}]});
+  const source = sourceFor(
+    projectSource(
+      {
+        repos: [
+          {id: 'app', platform: 'android'},
+          {id: 'api', platform: 'shared'},
+          {id: 'lost', platform: 'android'},
+        ],
+      },
+      ['android'],
+    ),
+    'android',
+  );
 
   it('works in the main repository with the others and checked-out submodules beside it', () => {
     const paths = {app: {path: '/code/app'}, api: {path: '/code/api'}, lost: {path: '/gone'}};
@@ -172,16 +220,14 @@ describe('agentWorkspace', () => {
 
   // ap24v6 (Android) and the iOS app both take ap24f, which has submodules of its own
   const shared = 'git@git.example:mob/ap24f.git';
-  const mobile = setModulePlatform(
-    projectSource({
+  const mobile = projectSource(
+    {
       repos: [
-        {id: 'and', role: 'android'},
-        {id: 'ios', role: 'ios'},
+        {id: 'and', platform: 'android'},
+        {id: 'ios', platform: 'ios'},
       ],
-    }),
-    'and',
-    'tapandpay',
-    'android',
+    },
+    ['android', 'ios'],
   );
   const mobilePaths = {
     and: {path: '/code/and', modules: {'ap24f/submodules/core-kit': '/code/core-kit'}},
@@ -200,27 +246,27 @@ describe('agentWorkspace', () => {
     ios: {ok: true, root: '/code/ios', submodules: [{path: 'Shared/ap24f', initialized: true, url: shared}]},
   };
 
-  it('opens the repository of the device platform, its submodules and the shared ones once', () => {
-    expect(agentWorkspace(mobile, mobilePaths, mobileStates, 'android')).toEqual({
+  it('opens the code of the device platform with all its submodules, not the other platform', () => {
+    expect(agentWorkspace(sourceFor(mobile, 'android'), mobilePaths, mobileStates)).toEqual({
       cwd: '/code/and',
       additionalDirectories: ['/code/and/ap24f', '/code/core-kit', '/code/and/tapandpay'],
     });
-    expect(agentWorkspace(mobile, mobilePaths, mobileStates, 'ios')).toEqual({
+    expect(agentWorkspace(sourceFor(mobile, 'ios'), mobilePaths, mobileStates)).toEqual({
       cwd: '/code/ios',
       additionalDirectories: ['/code/ios/Shared/ap24f'],
     });
   });
 
-  it('opens everything when no device is picked', () => {
-    const all = agentWorkspace(mobile, mobilePaths, mobileStates, null);
+  it('opens every platform when no device is picked, a shared submodule once', () => {
+    const all = agentWorkspace(sourceFor(mobile, null), mobilePaths, mobileStates);
     expect(all.cwd).toBe('/code/and');
     expect(all.additionalDirectories).toContain('/code/ios');
-    expect(all.additionalDirectories).toContain('/code/and/tapandpay');
+    expect(all.additionalDirectories).not.toContain('/code/ios/Shared/ap24f');
   });
 });
 
 describe('submodules as a tree', () => {
-  it('puts a submodule of a submodule under it, and takes the platform and folder from above', () => {
+  it('puts a submodule of a submodule under it, and takes the folder from above', () => {
     const tree = moduleTree([
       {path: 'ap24f/submodules/pb_core'},
       {path: 'auth'},
@@ -233,21 +279,9 @@ describe('submodules as a tree', () => {
       ['ap24f/submodules/pb_core', 1, 'ap24f'],
       ['auth', 0, null],
     ]);
-    const source = setModulePlatform(projectSource({repos: [{id: 'r'}]}), 'r', 'ap24f', 'ios');
-    expect(modulePlatform(source, 'r', 'ap24f/submodules/pb_core', tree)).toBe('ios');
-    expect(modulePlatform(source, 'r', 'auth', tree)).toBe('all');
     expect(moduleFolder('/code', 'ap24f/submodules/pb_core', {ap24f: '/clones/ap24f'}, tree)).toBe(
       '/clones/ap24f/submodules/pb_core',
     );
-  });
-
-  it('keeps only platforms other than «all», of repositories the profile has', () => {
-    const source = projectSource({
-      repos: [{id: 'r'}],
-      modules: {r: {a: {platform: 'ios'}, b: {platform: 'all'}, c: {platform: 'tv'}}, gone: {x: {platform: 'ios'}}},
-    });
-    expect(source.modules).toEqual({r: {a: {platform: 'ios'}}});
-    expect(setModulePlatform(source, 'r', 'a', 'all').modules).toEqual({});
   });
 });
 

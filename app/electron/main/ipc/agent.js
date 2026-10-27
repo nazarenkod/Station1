@@ -24,7 +24,8 @@ import {DEFAULT_STATION_INSTRUCTIONS} from '../../../common/shared/agent/instruc
 import {cleanServer, secretNames, toAcpServers} from '../../../common/shared/agent/mcp-servers.js';
 import {compileMasks, DEFAULT_MASK_PATTERNS} from '../../../common/shared/agent/privacy.js';
 import {AGENT_CONFIG, AI_CONFIG, DEFAULT_SETTINGS, SOURCE_PATHS} from '../../../common/shared/setting-defs.js';
-import {agentWorkspace, branchToRemember} from '../../../common/shared/settings/source.js';
+import {platformKey} from '../../../common/shared/settings/platforms.js';
+import {agentWorkspace, branchToRemember, sourceFor} from '../../../common/shared/settings/source.js';
 import {encryptedSecret} from '../secrets.js';
 
 const BRIDGE_TIMEOUT_MS = 8000;
@@ -254,7 +255,9 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
         : /android/i.test(state?.device?.platform ?? '')
           ? 'android'
           : null;
-      return agentWorkspace(profile?.source ?? {repos: []}, paths, states, platform);
+      // the code of the device's platform; with no device, or one the project is not for, all of it
+      const key = profile && platform ? platformKey(profile, platform) : null;
+      return agentWorkspace(sourceFor(profile?.source ?? {repos: []}, key), paths, states);
     },
   });
 

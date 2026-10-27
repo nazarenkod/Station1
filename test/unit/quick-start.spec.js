@@ -1,6 +1,11 @@
 import {describe, expect, it, vi} from 'vitest';
 
-vi.mock('../../app/common/renderer/polyfills.js', () => ({backend: {}, getSetting: vi.fn(), setSetting: vi.fn()}));
+vi.mock('../../app/common/renderer/polyfills.js', () => ({
+  backend: {},
+  getSetting: vi.fn(),
+  setSetting: vi.fn(),
+  localesPath: '',
+}));
 
 const {endSessionsOnDevice, quickCapabilities} =
   await import('../../app/common/renderer/components/SessionBuilder/QuickStart.jsx');

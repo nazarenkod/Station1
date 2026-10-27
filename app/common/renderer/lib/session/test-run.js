@@ -5,6 +5,7 @@ import {startProblems} from '../../../shared/start-problems.js';
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {useDoctor} from '../../components/Desk/doctor-store.js';
 import {backend} from '../../polyfills.js';
+import {adviceFocus, useProjectAdvice} from '../settings/project-advice.js';
 
 // The test the title bar runs: whether its recording is paused. A paused test
 // lets the traffic through and the app run, but the proxy, the log and the
@@ -37,6 +38,7 @@ export function useStartProblems() {
   const workstation = useSelector((one) => one.workstation);
   const hasSession = useSelector((one) => !!one.inspector.driver);
   const {report} = useDoctor();
+  const advice = useProjectAdvice();
   if (hasSession || !backend.doctor) {
     return [];
   }
@@ -48,6 +50,8 @@ export function useStartProblems() {
     appsError: workstation.appsError,
     report,
     serverRunning: workstation.appium?.status === 'running',
+    advice,
+    fix: advice ? adviceFocus(advice) : null,
   });
 }
 

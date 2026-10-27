@@ -5,6 +5,7 @@ import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 import {useLocation, useNavigate, useOutlet} from 'react-router';
 
+import {projectAppsOf} from '../../../shared/settings/platforms.js';
 import {refreshA11yScreen} from '../../actions/A11y.js';
 import {activeDevice, initWorkstation, isDeviceRunning, setProjectApps} from '../../actions/Workstation.js';
 import {followProfile, startAgent, toggleAgent} from '../../lib/agent/agent-store.js';
@@ -153,10 +154,14 @@ const ProjectAppsFollower = () => {
   const profiles = useProfiles();
   const active = profiles.list.find((profile) => profile.id === profiles.activeId);
   // a string, so the same apps in a new list do not pick again
-  const apps = profiles.loaded ? JSON.stringify(active?.apps ?? []) : null;
+  // only the apps of the platforms the project has (project.platforms)
+  const apps = profiles.loaded
+    ? JSON.stringify({apps: active ? projectAppsOf(active) : [], platforms: active?.platforms ?? null})
+    : null;
   useEffect(() => {
     if (apps !== null) {
-      dispatch(setProjectApps(JSON.parse(apps)));
+      const project = JSON.parse(apps);
+      dispatch(setProjectApps(project.apps, project.platforms));
     }
   }, [apps, dispatch]);
   return null;

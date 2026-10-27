@@ -4,7 +4,7 @@
 
 ## Де в коді й точка розширення
 
-Інтеграція (GitLab) й дія (встановлення). Код: `app/common/shared/builds/pipelines.js`, `app/common/node/gitlab/service.js`, `app/common/node/builds/artifacts.js`, `app/common/renderer/components/Builds/` (`pipeline-watch.js`, `PipelinePanel.jsx`, `BuildRuleEditor.jsx`), `app/common/renderer/components/Settings/BuildSourcesSettings.jsx`.
+Інтеграція (GitLab) й дія (встановлення). Код: `app/common/shared/builds/pipelines.js`, `app/common/node/gitlab/service.js`, `app/common/node/builds/artifacts.js`, `app/common/renderer/components/Builds/` (`pipeline-watch.js`, `PipelinePanel.jsx`, `BuildRuleEditor.jsx`), `app/common/renderer/components/Settings/BuildSourcesSettings.jsx` — правила однієї платформи проєкту (`rulePlatform` з `app/common/shared/settings/platforms.js`) у її вкладці `ProjectPlatforms.jsx`; правило зберігає `platform`, а `pipeline-watch.js` і далі шукає правило за шляхом проєкту GitLab серед усіх.
 
 ## Модель даних
 

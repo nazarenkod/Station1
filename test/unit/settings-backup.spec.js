@@ -108,14 +108,11 @@ describe('export', () => {
 
 describe('the code of a profile', () => {
   const code = {
-    devBranch: 'dev',
-    releaseBranch: 'release',
+    branches: {android: {dev: 'dev', release: 'release'}},
     repos: [
-      {id: 'r-app', name: 'bank-android', role: 'android'},
-      {id: 'r-ui', name: 'design', role: 'shared'},
+      {id: 'r-app', name: 'bank-android', platform: 'android'},
+      {id: 'r-ui', name: 'design', platform: 'shared'},
     ],
-    // the platform of a submodule is the team's: it goes with the profile
-    modules: {'r-app': {tapandpay: {platform: 'android'}}},
   };
   const withCode = (all) => {
     const profiles = profilesOf(all);
@@ -155,6 +152,38 @@ describe('the code of a profile', () => {
 
     data.profiles[0].source = {repos: 'bank-android'};
     expect(parseSettingsFile(JSON.stringify(data))).toMatchObject({ok: false, error: 'shape', detail: 'source'});
+  });
+
+  it('takes a file of the time before the platforms and moves it to them', () => {
+    const all = station();
+    const data = JSON.parse(
+      JSON.stringify(buildExport({profiles: profilesOf(all), all, kind: 'profile', product: 'x'})),
+    );
+    delete data.profiles[0].platforms;
+    data.profiles[0].apps = [{id: 'ua.bank', platform: 'ios'}];
+    data.profiles[0].source = {
+      devBranch: 'dev',
+      releaseBranch: 'main',
+      repos: [
+        {id: 'r1', name: 'bank-ios', role: 'app'},
+        {id: 'r2', name: 'api', role: 'backend'},
+      ],
+    };
+    const file = parseSettingsFile(JSON.stringify(data)).file;
+    expect(file.profiles[0]).toMatchObject({
+      platforms: ['ios'],
+      source: {
+        branches: {ios: {dev: 'dev', release: 'main'}},
+        repos: [
+          {id: 'r1', name: 'bank-ios', platform: 'ios'},
+          {id: 'r2', name: 'api', platform: 'shared'},
+        ],
+      },
+    });
+    const added = applyImport(file, profilesOf(station()), station(), {
+      profiles: [{index: 0, mode: 'new', groups: []}],
+    });
+    expect(added.profiles.list[1]).toMatchObject({platforms: ['ios'], apps: [{id: 'ua.bank', platform: 'ios'}]});
   });
 });
 

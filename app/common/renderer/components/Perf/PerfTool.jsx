@@ -8,8 +8,10 @@ import {useNavigate} from 'react-router';
 import {screenSegments, segmentAt, summarize} from '../../../shared/perf/series.js';
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {startQuickSession} from '../../lib/session/quick-session.js';
+import {adviceText, useProjectAdvice} from '../../lib/settings/project-advice.js';
 import {backend} from '../../polyfills.js';
 import EmptyState from '../Workstation/EmptyState.jsx';
+import {AdviceActions} from '../Workstation/ProjectAdvice.jsx';
 import {formatElapsed} from '../Workstation/SessionChip.jsx';
 import {attachPerf, startPerf, stopPerf, usePerf} from './perf-store.js';
 import PerfChart, {useWidth} from './PerfChart.jsx';
@@ -131,6 +133,7 @@ const PerfTool = () => {
   const device = activeDevice(workstation);
   const app = workstation.app;
   const perf = usePerf();
+  const advice = useProjectAdvice();
   const [range, setRange] = useState('recent');
   const [hoverAt, setHoverAt] = useState(null);
   const [session, setSession] = useState(null);
@@ -188,12 +191,16 @@ const PerfTool = () => {
         tool="perf"
         icon={IconActivity}
         title={t('perfIdleTitle')}
-        text={app?.id ? t('perfIdleText', {app: app.id}) : t('perfNoApp')}
+        text={app?.id ? t('perfIdleText', {app: app.id}) : advice ? adviceText(t, advice) : t('perfNoApp')}
         steps={[t('perfIdleStepAny'), hasSession ? t('perfIdleStepSession') : t('perfIdleStepNewSession')]}
         actions={
-          <Button type="primary" icon={<IconPlayerPlay size={16} />} disabled={!app?.id} onClick={start}>
-            {t('perfStart')}
-          </Button>
+          !app?.id && advice ? (
+            <AdviceActions advice={advice} />
+          ) : (
+            <Button type="primary" icon={<IconPlayerPlay size={16} />} disabled={!app?.id} onClick={start}>
+              {t('perfStart')}
+            </Button>
+          )
         }
       />
     );

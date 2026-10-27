@@ -14,6 +14,19 @@ describe('what stands in the way of «Start session»', () => {
     expect(startProblems({device: pixel, running: false, app})[0]).toMatchObject({key: 'deviceOff', target: 'device'});
   });
 
+  it('says what the project lacks for this device, with the field to fix it, as every tool does', () => {
+    const advice = {kind: 'noPlatform', platform: 'ios', project: 'Bank', only: 'android', other: null};
+    const fix = {section: 'profiles', focus: {field: 'app', platform: 'ios'}};
+    const noPlatform = startProblems({device: iphone, running: true, app: null, advice, fix});
+    expect(noPlatform).toEqual([{key: 'noPlatform', severity: 'warn', target: 'app', params: advice, fix}]);
+    expect(canStart(noPlatform)).toBe(true);
+    const noApp = {kind: 'noApp', platform: 'ios', section: 'multi', project: 'Bank'};
+    expect(startProblems({device: iphone, running: true, app: null, advice: noApp, fix})[0]).toMatchObject({
+      key: 'noAppFor',
+      params: noApp,
+    });
+  });
+
   it('lets a session start without an app, but not with an app the device lacks', () => {
     const none = startProblems({device: pixel, running: true, app: null});
     expect(none).toEqual([{key: 'noApp', severity: 'warn', target: 'app'}]);

@@ -60,6 +60,7 @@ window.electronIPC = {
     renameProfile: async (id, name) => await ipcRenderer.invoke('settings:renameProfile', id, name),
     setProfileApps: async (id, apps) => await ipcRenderer.invoke('settings:setProfileApps', id, apps),
     setProfileSource: async (id, source) => await ipcRenderer.invoke('settings:setProfileSource', id, source),
+    setProfilePlatforms: async (id, change) => await ipcRenderer.invoke('settings:setProfilePlatforms', id, change),
     removeProfile: async (id) => await ipcRenderer.invoke('settings:removeProfile', id),
     profileForApp: async (appId) => await ipcRenderer.invoke('settings:profileForApp', appId),
     exportFile: async (options) => await ipcRenderer.invoke('settings:export', options),

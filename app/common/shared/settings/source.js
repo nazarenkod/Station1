@@ -1,15 +1,17 @@
 // The code of a project: the repositories of the app on this Mac, their
-// submodules and the branches the team develops and releases from. The
-// profile keeps what the team shares (branches, names and roles of the
-// repositories); the folders are this Mac's and live apart, in SOURCE_PATHS.
+// submodules and the branches the team develops and releases from, for each
+// platform of the project apart (project.platforms). The profile keeps what
+// the team shares (branches, names and platforms of the repositories); the
+// folders are this Mac's and live apart, in SOURCE_PATHS.
 
-export const REPO_ROLES = ['app', 'android', 'ios', 'backend', 'shared', 'other'];
+// where a repository belongs: a platform of the project, or «shared» (a backend, a library)
+export const REPO_PLATFORMS = ['android', 'ios', 'multi', 'shared'];
 
-// the platforms of a submodule: one shared by the Android and iOS apps is «all»
-export const MODULE_PLATFORMS = ['all', 'android', 'ios'];
+// the platforms a project can have: Android and iOS apart, or one code for both
+export const PROJECT_PLATFORMS = ['android', 'ios', 'multi'];
 
-// a repository of one platform is left out of the operator's folders while the device is of the other
-const ROLE_PLATFORM = {android: 'android', ios: 'ios'};
+// the roles of the profiles before the platforms, and where their repositories go now
+const LEGACY_ROLE = {android: 'android', ios: 'ios', backend: 'shared', shared: 'shared', other: 'shared'};
 
 export const DEFAULT_DEV_BRANCH = 'develop';
 export const DEFAULT_RELEASE_BRANCH = 'main';
@@ -22,11 +24,19 @@ const branchName = (value, fallback) => {
   return name && !/[\s~^:?*[\\]|\.\.|@\{|^-|\/$|\.lock$/.test(name) ? name : fallback;
 };
 
+/** The platform an old repository role stands for, or null for «app», which the profile decides. */
+export const legacyRolePlatform = (role) => LEGACY_ROLE[role] ?? null;
+
 /**
- * The code of a profile, cleaned up: the branches, and the repositories with
- * an id, a name and a role, no id twice. The first repository is the main one.
+ * The code of a profile, cleaned up: the branches of each platform and the
+ * repositories with an id, a name and a platform, no id twice. A repository
+ * of a platform the project has not, or of none, goes to its first platform.
+ * `guessed` marks one the station placed itself when the profile was moved
+ * to platforms, until the person moves or confirms it.
  */
-export function projectSource(source) {
+export function projectSource(source, platforms = ['android']) {
+  const own = platforms.filter((one) => PROJECT_PLATFORMS.includes(one));
+  const first = own[0] ?? 'android';
   const ids = new Set();
   const repos = [];
   for (const repo of Array.isArray(source?.repos) ? source.repos : []) {
@@ -35,45 +45,74 @@ export function projectSource(source) {
       continue;
     }
     ids.add(id);
+    const wanted = REPO_PLATFORMS.includes(repo?.platform) ? repo.platform : legacyRolePlatform(repo?.role);
+    const platform = wanted === 'shared' || own.includes(wanted) ? wanted : first;
     repos.push({
       id,
       name: String(repo?.name ?? '').trim() || id,
-      role: REPO_ROLES.includes(repo?.role) ? repo.role : repos.length ? 'other' : 'app',
+      platform,
+      ...(repo?.guessed && platform !== 'shared' ? {guessed: true} : {}),
     });
   }
-  return {
-    devBranch: branchName(source?.devBranch, DEFAULT_DEV_BRANCH),
-    releaseBranch: branchName(source?.releaseBranch, DEFAULT_RELEASE_BRANCH),
-    repos,
-    modules: cleanModules(source?.modules, ids),
-  };
+  const branches = {};
+  for (const platform of own.length ? own : [first]) {
+    const set = source?.branches?.[platform];
+    branches[platform] = {
+      dev: branchName(set?.dev ?? source?.devBranch, DEFAULT_DEV_BRANCH),
+      release: branchName(set?.release ?? source?.releaseBranch, DEFAULT_RELEASE_BRANCH),
+    };
+  }
+  return {branches, repos};
 }
 
 /**
- * The platform of each submodule, by repository and the submodule's path in
- * it; «all» is the default and is not kept.
- * @returns {Record<string, Record<string, {platform: string}>>}
+ * The code of one platform as one source with its branches: its own
+ * repositories first (the first is the main one), then the shared ones. A
+ * shared repository on its own takes the branches of the first platform.
+ * Without a platform, every repository, with the first platform's branches.
  */
-function cleanModules(modules, repoIds) {
-  const clean = {};
-  for (const [repoId, byPath] of Object.entries(modules && typeof modules === 'object' ? modules : {})) {
-    if (!repoIds.has(repoId) || !byPath || typeof byPath !== 'object') {
-      continue;
-    }
-    for (const [modulePath, value] of Object.entries(byPath)) {
-      const platform = value?.platform;
-      if (modulePath && MODULE_PLATFORMS.includes(platform) && platform !== 'all') {
-        clean[repoId] = {...clean[repoId], [modulePath]: {platform}};
-      }
-    }
-  }
-  return clean;
+export function sourceFor(source, platform = null) {
+  const branches = source?.branches ?? {};
+  const own = platform && branches[platform] ? branches[platform] : Object.values(branches)[0];
+  const repos = source?.repos ?? [];
+  const mine = platform
+    ? repos.filter((repo) => repo.platform === platform)
+    : repos.filter((repo) => repo.platform !== 'shared');
+  return {
+    platform,
+    devBranch: own?.dev ?? DEFAULT_DEV_BRANCH,
+    releaseBranch: own?.release ?? DEFAULT_RELEASE_BRANCH,
+    repos: [...mine, ...repos.filter((repo) => repo.platform === 'shared')],
+  };
 }
 
-/** The profile's code with one submodule's platform set (`all` takes the setting off). */
-export function setModulePlatform(source, repoId, modulePath, platform) {
-  const byPath = {...source.modules?.[repoId], [modulePath]: {platform}};
-  return projectSource({...source, modules: {...source.modules, [repoId]: byPath}});
+/** The branches a repository is checked against: its platform's, or the first platform's for a shared one. */
+export const sourceOfRepo = (source, repo) =>
+  sourceFor(source, repo?.platform && repo.platform !== 'shared' ? repo.platform : null);
+
+/** The code with one platform's branches set. */
+export function setBranches(source, platform, branches) {
+  return {
+    ...source,
+    branches: {...source.branches, [platform]: {...source.branches?.[platform], ...branches}},
+  };
+}
+
+/** The code with one repository changed, or taken out when the change is null; moving it confirms where it is. */
+export function changeRepo(source, repoId, change) {
+  return {
+    ...source,
+    repos: change
+      ? source.repos.map((repo) => {
+          if (repo.id !== repoId) {
+            return repo;
+          }
+          const {confirm, ...patch} = change;
+          const {guessed: _guessed, ...placed} = repo;
+          return confirm || patch.platform ? {...placed, ...patch} : {...repo, ...patch};
+        })
+      : source.repos.filter((repo) => repo.id !== repoId),
+  };
 }
 
 /**
@@ -102,20 +141,6 @@ export function moduleTree(modules) {
 }
 
 /**
- * The platform a submodule is for: its own setting, else that of the
- * submodule it is in, else «all».
- */
-export function modulePlatform(source, repoId, modulePath, tree) {
-  for (let current = modulePath; current; current = tree.find((one) => one.path === current)?.parent ?? null) {
-    const platform = source.modules?.[repoId]?.[current]?.platform;
-    if (platform) {
-      return platform;
-    }
-  }
-  return 'all';
-}
-
-/**
  * Where a submodule is on this Mac: its own folder when one is set (a clone
  * of its own), or under the folder of the submodule it is in, else inside
  * the repository.
@@ -131,14 +156,14 @@ export function moduleFolder(root, modulePath, own = {}, tree = []) {
   return `${root}/${modulePath}`;
 }
 
-/** A new repository for the profile, named after its folder. */
-export function newRepo(source, folder) {
+/** A new repository of a platform (or «shared»), named after its folder. */
+export function newRepo(folder, platform) {
   const name =
     String(folder ?? '')
       .split(/[\\/]/)
       .filter(Boolean)
       .pop() || 'repo';
-  return {id: newRepoId(), name, role: source.repos.length ? 'other' : 'app'};
+  return {id: newRepoId(), name, platform};
 }
 
 /**
@@ -241,35 +266,30 @@ export function repoWarnings(state, source) {
 }
 
 /**
- * The folders an operator conversation opens: the repositories and their
- * checked-out submodules (or the folders set for them). While the device is
- * Android or iOS, the repositories and submodules of the other platform are
- * left out, and the repository of the device's platform is where it works.
- * A submodule two repositories share (the same address) comes once. A
+ * The folders an operator conversation opens: the repositories of the code
+ * it is given (one platform's, from sourceFor) and their checked-out
+ * submodules (or the folders set for them). The first repository is where it
+ * works. A submodule two repositories share (the same address) comes once. A
  * repository without a folder or not found is left out.
- * @param {object} source the profile's code
+ * @param {{repos: object[]}} source the code of a platform
  * @param {Record<string, {path: string, modules?: Record<string, string>}>} paths the folders of this profile
  * @param {Record<string, object>} states the state of each repository by id
- * @param {string | null} [platform] `android`, `ios`, or null for all
  * @returns {{cwd: string | null, additionalDirectories: string[]}}
  */
-export function agentWorkspace(source, paths = {}, states = {}, platform = null) {
-  const fits = (wanted) => !platform || !wanted || wanted === 'all' || wanted === platform;
-  const ownPlatform = (repo) => Number(!!platform && ROLE_PLATFORM[repo.role] === platform);
-  const repos = [...source.repos].sort((a, b) => ownPlatform(b) - ownPlatform(a));
+export function agentWorkspace(source, paths = {}, states = {}) {
   const folders = [];
   const seen = new Set();
-  for (const repo of repos) {
+  for (const repo of source.repos ?? []) {
     const state = states[repo.id];
     const root = state?.ok ? state.root : null;
-    if (!root || !paths[repo.id]?.path || !fits(ROLE_PLATFORM[repo.role])) {
+    if (!root || !paths[repo.id]?.path) {
       continue;
     }
     folders.push(root);
     const own = paths[repo.id]?.modules ?? {};
     const tree = moduleTree(state.submodules ?? []);
     for (const module of tree) {
-      if (!(module.initialized || own[module.path]) || !fits(modulePlatform(source, repo.id, module.path, tree))) {
+      if (!(module.initialized || own[module.path])) {
         continue;
       }
       const same = module.url || `${repo.id}:${module.path}`;

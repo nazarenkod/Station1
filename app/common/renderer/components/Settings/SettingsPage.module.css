@@ -631,3 +631,75 @@ button.cardHead:hover {
 .sourceModuleOff {
   margin: 0;
 }
+
+/* the platforms of a project (project.platforms) */
+
+.platforms {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.platformTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.platformAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.platformBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.platformPart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--vi-hairline);
+  border-radius: var(--vi-radius-md);
+  transition:
+    border-color var(--vi-mid) var(--vi-ease),
+    box-shadow var(--vi-mid) var(--vi-ease);
+}
+
+.platformPartFocused {
+  border-color: var(--vi-accent-ring);
+  box-shadow: 0 0 0 3px var(--vi-accent-bg);
+}
+
+.platformPartTitle {
+  font-size: var(--vi-text-sm);
+  font-weight: 600;
+  color: var(--ant-color-text-secondary);
+}
+
+.platformBuilds {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.platformBuildsActions {
+  display: flex;
+  gap: 8px;
+}
+
+.sourceGuessed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--vi-radius-sm);
+  font-size: var(--vi-text-sm);
+  color: var(--vi-warn-fg);
+  background: var(--vi-warn-bg);
+}

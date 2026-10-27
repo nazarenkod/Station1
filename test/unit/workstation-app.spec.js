@@ -135,3 +135,20 @@ describe('the app after the apps of the device are read', function () {
     expect(store.getState().workstation.app).toBeNull();
   });
 });
+
+describe('a device of a platform the project has not', function () {
+  it('gets no app, even one installed from the last run (project.platforms)', function () {
+    expect(
+      appForProject({
+        projectApps: [{id: privatAndroid.id, platform: 'android'}],
+        platform: 'ios',
+        installed: [{id: privatIos.id}],
+        current: privatIos,
+        platforms: ['android'],
+      }),
+    ).toBe(null);
+    expect(
+      appForProject({projectApps: project, platform: 'ios', installed: null, current: null, platforms: ['multi']}),
+    ).toBe(privatIos.id);
+  });
+});
