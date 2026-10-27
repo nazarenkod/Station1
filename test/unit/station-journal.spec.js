@@ -177,7 +177,9 @@ describe('station journal: summary, filter and text', function () {
       'os: macOS 14.6 arm64',
       'shell: /bin/zsh',
       'shell env: timed out after 8.0 s',
-      'PATH: /usr/bin:/bin',
+      'PATH:',
+      '  /usr/bin',
+      '  /bin',
       'ANDROID_HOME: /sdk',
     ]);
   });

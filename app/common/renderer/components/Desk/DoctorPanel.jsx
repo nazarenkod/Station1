@@ -331,7 +331,10 @@ const DoctorPanel = () => {
       command: fix?.command,
       action: actionFor(fix),
       // the operator gets the whole problem with the station's advice and fixes it with the person's yes
-      agent: needsFix(check.status) && check.id !== 'doctorFailed' ? () => askOnTask(fixPrompt(t, check, fix)) : null,
+      agent:
+        needsFix(check.status) && check.id !== 'doctorFailed'
+          ? () => askOnTask(fixPrompt(t, check, fix), {topic: `fix:${check.id}`})
+          : null,
       // Kiro CLI is the operator's way out of the Mac: an integration, as Jira and GitLab are
       integration: check.id.startsWith('kiro'),
     };

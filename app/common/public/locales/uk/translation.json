@@ -2279,5 +2279,19 @@
   "dataReverted": "Повернуто",
   "dataRevertedTag": "повернуто",
   "dataCollapse": "Згорнути",
-  "dataExpand": "Розгорнути"
+  "dataExpand": "Розгорнути",
+  "agentWorking": "Оператор працює…",
+  "agentWaitingYou": "Оператор чекає вашої відповіді на картці",
+  "agentInterrupted": "Відповідь обірвалася",
+  "agentInterrupted_noAnswer": "Хід закінчився без відповіді: схоже, зник звʼязок із Kiro. Продовжіть, і оператор піде далі з того місця.",
+  "agentInterrupted_max_tokens": "Відповідь вийшла задовгою й обрізана.",
+  "agentInterrupted_max_turn_requests": "Оператор зробив забагато кроків за один хід.",
+  "agentInterrupted_cancelled": "Хід зупинено.",
+  "agentInterrupted_refusal": "Модель відмовилась відповідати.",
+  "agentInterrupted_other": "Хід закінчився раніше, ніж оператор відповів.",
+  "agentContinue": "Продовжити",
+  "agentContinueMessage": "Звʼязок обривався. Продовжуй з того місця, де зупинився.",
+  "stationRestart": "Перезапустити станцію",
+  "stationRestartAsk": "Перезапустити станцію?",
+  "stationRestartText": "Сесія Appium і хід оператора обірвуться. Проксі Mac і все, що станція змінила, повернеться як було; розмови й налаштування лишаться."
 }

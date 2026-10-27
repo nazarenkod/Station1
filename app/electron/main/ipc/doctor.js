@@ -75,6 +75,13 @@ export function setupDoctorIPC() {
   // the server is ours: it goes away with the app
   app.on('before-quit', () => appium.stop());
 
+  // the whole station again, as after a quit: what it changed outside (the Mac's proxy, Appium) is put back first
+  ipcMain.handle('doctor:restartStation', () => {
+    journal.add({level: 'info', text: 'station restart asked'});
+    app.relaunch();
+    app.quit();
+  });
+
   // the agent fixes the environment through these
   return {
     check: () => checkEnvironment({appium}),

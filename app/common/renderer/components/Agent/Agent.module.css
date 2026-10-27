@@ -482,3 +482,12 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* the turn that runs: what the operator is doing and for how long */
+.working {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vi-text-2);
+  font-size: var(--vi-text-sm);
+}

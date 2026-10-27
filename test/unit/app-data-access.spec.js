@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {parseStatList, sandboxCommand, shellQuote} from '../../app/common/node/app-data/android.js';
+import {parseStatList, sandboxCommand, shellQuote, writeScript} from '../../app/common/node/app-data/android.js';
 import {findAppProcess, parseDevicectlFiles} from '../../app/common/node/app-data/iphone.js';
 import {parseGroups} from '../../app/common/node/app-data/simulator.js';
 import {
@@ -106,6 +106,20 @@ describe('the device tools’ output', function () {
     );
     expect(sandboxCommand('ua.app', 'root', 'ls')).toMatch(/^su 0 sh -c /);
     expect(shellQuote("it's")).toBe(`'it'\\''s'`);
+  });
+
+  it('puts a pushed file in place with the app’s rights, and as root gives it and its folders to the app', function () {
+    expect(writeScript('run-as', 'shared_prefs/app.xml', '/data/local/tmp/s1')).toBe(
+      "umask 007 && mkdir -p 'shared_prefs' && cat '/data/local/tmp/s1' > 'shared_prefs/app.xml'",
+    );
+    expect(writeScript('run-as', 'top.txt', '/data/local/tmp/s1')).toBe(
+      "umask 007 && cat '/data/local/tmp/s1' > 'top.txt'",
+    );
+    expect(writeScript('root', 'files/datastore/a.preferences_pb', '/t')).toBe(
+      "umask 007 && mkdir -p 'files/datastore' && cat '/t' > 'files/datastore/a.preferences_pb' && " +
+        "chown $(stat -c %u:%g .) 'files' 'files/datastore' 'files/datastore/a.preferences_pb' && " +
+        "(restorecon 'files' 'files/datastore' 'files/datastore/a.preferences_pb' 2>/dev/null; true)",
+    );
   });
 
   it('reads the group containers of a simulator app', function () {

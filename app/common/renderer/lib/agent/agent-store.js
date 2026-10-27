@@ -27,6 +27,10 @@ let state = {
   // the journal's turn number of each turn line of the chat, to roll a turn back
   turns: {},
   pendingTurn: null,
+  // when the turn that runs began, for «working… N s»
+  turnStartedAt: null,
+  // why the last turn stopped before its answer (Kiro's stop reason), or null
+  interrupted: null,
   needs: null,
   // whether this profile let its data go to the agent; null until known
   consent: null,
@@ -41,6 +45,8 @@ let state = {
 };
 const listeners = new Set();
 let started = false;
+// what each conversation was opened for (a fix of one check of the doctor): the same ask goes on there
+const topics = new Map();
 // every conversation's chat by its session: Kiro replays one while it loads, before the window knows its id
 const chats = new Map();
 
@@ -174,6 +180,7 @@ async function openAnew(profileId, taskKey, key) {
     sessionId: null,
     changes: [],
     turns: {},
+    interrupted: null,
   });
   // the first time this window opens a conversation it has no chat of it: Kiro replays it
   const replay = !chats.size;
@@ -221,6 +228,7 @@ export async function newConversation() {
     needs: null,
     budget: null,
     mcp: [],
+    interrupted: null,
   });
   const result = await backend.agent.newConversation({profileId, taskKey});
   if (!result.ok) {
@@ -237,7 +245,7 @@ export async function newConversation() {
 
 export async function resumeConversation(sessionId) {
   const profileId = activeProfileId();
-  publish({status: 'starting', chat: emptyChat(), sessionId, changes: [], turns: {}, error: null});
+  publish({status: 'starting', chat: emptyChat(), sessionId, changes: [], turns: {}, error: null, interrupted: null});
   const result = await backend.agent.resume({profileId, sessionId});
   if (!result.ok) {
     failed(result);
@@ -272,10 +280,14 @@ export async function sendMessage(message, chips, {deep = false, confirmCredits 
     needs: null,
     budget: null,
     pendingTurn: turn,
+    turnStartedAt: Date.now(),
+    interrupted: null,
   });
   const result = await backend.agent.prompt({sessionId: state.sessionId, message, chips, deep, confirmCredits});
   if (result.ok) {
-    publish({status: 'ready'});
+    // a turn cut short (the network, a limit) says so, and «Go on» picks it up
+    const stop = result.stopReason ?? 'end_turn';
+    publish({status: 'ready', turnStartedAt: null, interrupted: stop === 'end_turn' ? null : stop});
     refreshChanges();
     return;
   }
@@ -293,8 +305,34 @@ export async function sendMessage(message, chips, {deep = false, confirmCredits 
     });
     return;
   }
-  publish({chat: {...state.chat, busy: false}});
+  publish({chat: {...state.chat, busy: false}, turnStartedAt: null});
   failed(result);
+}
+
+/**
+ * Goes on after a turn that broke off or an error: the conversation is
+ * loaded again when Kiro lost it, and the operator is told to carry on from
+ * where it stopped.
+ * @param {string} message the words that ask to go on, in the person's language
+ */
+export async function continueConversation(message) {
+  const sessionId = state.sessionId;
+  if (!sessionId) {
+    await openConversation();
+    return;
+  }
+  publish({status: 'starting', error: null, errorDetail: null, interrupted: null});
+  const result = await backend.agent.resume({profileId: activeProfileId(), sessionId});
+  if (!result.ok) {
+    failed(result);
+    return;
+  }
+  publish({
+    status: 'ready',
+    model: result.model ?? state.model,
+    chat: chats.get(result.sessionId) ?? state.chat,
+  });
+  await sendMessage(message, []);
 }
 
 export async function giveConsent() {
@@ -379,10 +417,17 @@ const whenIdle = () =>
  * Opens the chat on the task's conversation and sends a message there, for
  * the buttons of the desk: right away, or as soon as the turn that runs ends.
  */
-export async function askOnTask(message, {deep = false, chips = []} = {}) {
+export async function askOnTask(message, {deep = false, chips = [], topic = null} = {}) {
   publish({open: true});
   await openConversation();
   await whenIdle();
+  // an ask with a topic of its own (fixing one check) gets a conversation of its own: the context stays small and cheap
+  if (topic && topics.get(state.sessionId) !== topic) {
+    await newConversation();
+    if (state.sessionId) {
+      topics.set(state.sessionId, topic);
+    }
+  }
   if (state.sessionId) {
     await sendMessage(message, chips, {deep});
   }

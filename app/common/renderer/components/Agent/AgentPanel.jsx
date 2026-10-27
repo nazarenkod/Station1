@@ -27,6 +27,7 @@ import {
   answerPermission,
   cancelTurn,
   confirmCredits,
+  continueConversation,
   dismissNeeds,
   giveConsent,
   newConversation,
@@ -341,6 +342,7 @@ const AgentPanel = () => {
   const [deep, setDeep] = useState(false);
   const [width, setWidth] = useState(readWidth);
   const [past, setPast] = useState([]);
+  const [now, setNow] = useState(Date.now());
   const listRef = useRef(null);
   const language = i18n.language?.slice(0, 2) ?? 'uk';
 
@@ -353,6 +355,15 @@ const AgentPanel = () => {
         : chips;
     return list.filter(Boolean).filter((one) => !removed.has(`${one.kind}:${one.id}`));
   }, [chips, agent.draft, removed]);
+
+  // the seconds of the turn that runs tick on
+  useEffect(() => {
+    if (agent.status !== 'busy') {
+      return undefined;
+    }
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [agent.status]);
 
   const lastText = agent.chat.items.at(-1)?.text;
   useEffect(() => {
@@ -394,6 +405,13 @@ const AgentPanel = () => {
   };
 
   const credits = chatCredits(agent.chat);
+  // a turn that ended on a tool call has no answer: it broke off (the network, a limit)
+  const items = agent.chat.items;
+  const afterAsk = items.slice(items.findLastIndex((item) => item.type === 'user') + 1);
+  const endedOnTool =
+    afterAsk.some((item) => item.type === 'turn') &&
+    afterAsk.findLastIndex((item) => item.type === 'tool') >
+      afterAsk.findLastIndex((item) => item.type === 'agent' && item.text?.trim());
   // the steps the last answer offers, until the next message
   const lastAnswer = agent.chat.items.findLast((item) => item.type === 'agent' || item.type === 'user');
   const nextSteps = lastAnswer?.type === 'agent' ? stepsOf(lastAnswer.text) : [];
@@ -457,8 +475,12 @@ const AgentPanel = () => {
             <b>{t(`agentError_${agent.error}`, {defaultValue: t('agentError_other')})}</b>
             {agent.errorDetail && <code className={styles.detail}>{agent.errorDetail}</code>}
             <div className={styles.cardActions}>
-              <Button size="small" onClick={() => openConversation()}>
-                {t('agentRetry')}
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => (agent.sessionId ? continueConversation(t('agentContinueMessage')) : openConversation())}
+              >
+                {agent.sessionId ? t('agentContinue') : t('agentRetry')}
               </Button>
             </div>
           </div>
@@ -537,6 +559,30 @@ const AgentPanel = () => {
               </div>
             </div>
           ))}
+        {busy && (
+          <div className={styles.working} role="status">
+            <IconLoader2 size={14} className={styles.spin} />
+            {agent.permissions.length ? t('agentWaitingYou') : t('agentWorking')}
+            {agent.turnStartedAt && (
+              <span className={styles.muted}>
+                {Math.max(0, Math.round((now - agent.turnStartedAt) / 1000))} {t('agentSeconds')}
+              </span>
+            )}
+          </div>
+        )}
+        {!busy && agent.status === 'ready' && (agent.interrupted || endedOnTool) && (
+          <div className={styles.card}>
+            <b>{t('agentInterrupted')}</b>
+            <span className={styles.muted}>
+              {t(`agentInterrupted_${agent.interrupted ?? 'noAnswer'}`, {defaultValue: t('agentInterrupted_other')})}
+            </span>
+            <div className={styles.cardActions}>
+              <Button size="small" type="primary" onClick={() => continueConversation(t('agentContinueMessage'))}>
+                {t('agentContinue')}
+              </Button>
+            </div>
+          </div>
+        )}
         {nextSteps.length > 0 && !busy && (
           <div className={styles.nextSteps} role="group" aria-label={t('agentNextSteps')}>
             {nextSteps.map((step) => (
@@ -628,7 +674,7 @@ const AgentPanel = () => {
           }}
           autoSize={{minRows: 2, maxRows: 8}}
           placeholder={t('agentPlaceholder')}
-          disabled={agent.status === 'starting' || agent.status === 'error' || !agent.sessionId}
+          disabled={agent.status === 'starting' || !agent.sessionId}
         />
         <div className={styles.composeBar}>
           <Tooltip title={t('agentDeepHint')}>

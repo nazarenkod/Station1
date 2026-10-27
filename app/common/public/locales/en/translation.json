@@ -2263,5 +2263,19 @@
   "dataReverted": "Reverted",
   "dataRevertedTag": "reverted",
   "dataCollapse": "Collapse",
-  "dataExpand": "Expand"
+  "dataExpand": "Expand",
+  "agentWorking": "The operator is working…",
+  "agentWaitingYou": "The operator waits for your answer on the card",
+  "agentInterrupted": "The answer broke off",
+  "agentInterrupted_noAnswer": "The turn ended with no answer: the link to Kiro seems to have dropped. Go on, and the operator carries on from there.",
+  "agentInterrupted_max_tokens": "The answer came out too long and was cut.",
+  "agentInterrupted_max_turn_requests": "The operator took too many steps in one turn.",
+  "agentInterrupted_cancelled": "The turn was stopped.",
+  "agentInterrupted_refusal": "The model refused to answer.",
+  "agentInterrupted_other": "The turn ended before the operator answered.",
+  "agentContinue": "Go on",
+  "agentContinueMessage": "The connection dropped. Carry on from where you stopped.",
+  "stationRestart": "Restart the station",
+  "stationRestartAsk": "Restart the station?",
+  "stationRestartText": "The Appium session and the operator’s turn stop. The Mac’s proxy and everything the station changed are put back; conversations and settings stay."
 }

@@ -29,6 +29,23 @@ export function parseEnvOutput(output) {
 }
 
 /**
+ * The environment of the app without what `npm run` puts in it when the
+ * station is started from its repository: the `node_modules/.bin` chain at
+ * the head of PATH would find the project's own tools first, and the
+ * `npm_*` variables (npm_config_prefix above all) break nvm in a shell profile.
+ */
+export function withoutNpmRun(env) {
+  const clean = Object.fromEntries(Object.entries(env ?? {}).filter(([name]) => !/^npm_/i.test(name)));
+  if (clean.PATH) {
+    clean.PATH = clean.PATH.split(path.delimiter)
+      .filter((dir) => dir && !/[\\/]node_modules[\\/]\.bin$/.test(dir) && !/@npmcli[\\/]run-script/.test(dir))
+      .filter((dir, index, all) => all.indexOf(dir) === index)
+      .join(path.delimiter);
+  }
+  return clean;
+}
+
+/**
  * Directories of the Android SDK tools that are often missing from PATH even
  * when ANDROID_HOME is set.
  */
@@ -58,17 +75,18 @@ export async function shellEnvFailure() {
 }
 
 async function readShellEnv() {
-  let env = {...process.env};
+  const base = withoutNpmRun(process.env);
+  let env = {...base};
   if (process.platform !== 'win32') {
     const shell = process.env.SHELL || '/bin/zsh';
     const started = Date.now();
     const result = await run(shell, ['-ilc', `printf %s ${ENV_START}; env -0`], {
       timeout: ENV_TIMEOUT_MS,
-      env: process.env,
+      env: base,
     });
     setSummary({shell, shellEnv: {ok: result.ok, ms: Date.now() - started, timedOut: result.timedOut}});
     if (result.ok) {
-      env = {...env, ...parseEnvOutput(result.stdout)};
+      env = withoutNpmRun({...env, ...parseEnvOutput(result.stdout)});
     } else {
       // the tools are looked up on the app's bare PATH then; the doctor says why
       shellEnvProblem = {shell, timedOut: result.timedOut, seconds: ENV_TIMEOUT_MS / 1000};

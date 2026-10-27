@@ -1,5 +1,8 @@
+import {IconPower} from '@tabler/icons-react';
+import {Button, Popconfirm} from 'antd';
 import {useTranslation} from 'react-i18next';
 
+import {backend} from '../../polyfills.js';
 import {Stagger, StaggerItem} from '../AppShell/motion.jsx';
 import DevicesPanel from './DevicesPanel.jsx';
 import DoctorPanel from './DoctorPanel.jsx';
@@ -16,7 +19,20 @@ const StationPage = () => {
     <div className={styles.desk}>
       <Stagger className={styles.inner}>
         <StaggerItem>
-          <h1 className={styles.pageTitle}>{t('wsTool_station')}</h1>
+          <div className={styles.pageHead}>
+            <h1 className={styles.pageTitle}>{t('wsTool_station')}</h1>
+            {backend.doctor?.restartStation && (
+              <Popconfirm
+                title={t('stationRestartAsk')}
+                description={t('stationRestartText')}
+                okText={t('stationRestart')}
+                cancelText={t('Cancel')}
+                onConfirm={() => backend.doctor.restartStation()}
+              >
+                <Button icon={<IconPower size={15} />}>{t('stationRestart')}</Button>
+              </Popconfirm>
+            )}
+          </div>
         </StaggerItem>
         <StaggerItem className={styles.top}>
           <DoctorPanel />

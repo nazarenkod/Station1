@@ -247,7 +247,20 @@ export function formatSummary(summary = {}) {
     ['ANDROID_HOME', summary.androidHome],
     ['JAVA_HOME', summary.javaHome],
   ];
-  return lines.filter(([, value]) => value).map(([name, value]) => `${name}: ${redact(value)}`);
+  return lines
+    .filter(([, value]) => value)
+    .flatMap(([name, value]) =>
+      // a PATH reads as its folders, one a line, in the order they are searched
+      name === 'PATH'
+        ? [
+            `${name}:`,
+            ...String(value)
+              .split(':')
+              .filter(Boolean)
+              .map((dir) => `  ${redact(dir)}`),
+          ]
+        : [`${name}: ${redact(value)}`],
+    );
 }
 
 /**

@@ -21,7 +21,7 @@ import {
   parseInstalledDrivers,
   parseVersion,
 } from '../../app/common/node/doctor/environment.js';
-import {androidToolDirs, parseEnvOutput, run} from '../../app/common/node/doctor/exec.js';
+import {androidToolDirs, parseEnvOutput, run, withoutNpmRun} from '../../app/common/node/doctor/exec.js';
 
 describe('doctor: devices', function () {
   it('parses adb devices with states and models', function () {
@@ -318,5 +318,24 @@ describe('doctor: the agent’s Kiro CLI', function () {
     expect(kiroCheck({version: null})).toEqual({id: 'kiroMissing', status: 'warn'});
     expect(kiroCheck({version, acpHelp: 'Agent engine: "v1", "v2"', whoami: {ok: true}}).id).toBe('kiroV3');
     expect(kiroCheck({version, acpHelp, whoami: {ok: false}}).id).toBe('kiroLogin');
+  });
+});
+
+describe('the environment of a station started with npm run', () => {
+  it('drops the node_modules/.bin chain and the npm variables, keeping the rest in order', () => {
+    const env = withoutNpmRun({
+      PATH: [
+        '/Users/me/git/Station1/node_modules/.bin',
+        '/Users/me/git/node_modules/.bin',
+        '/Users/me/.nvm/versions/node/v24/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin',
+        '/opt/homebrew/bin',
+        '/usr/bin',
+        '/opt/homebrew/bin',
+      ].join(':'),
+      npm_config_prefix: '/usr/local',
+      npm_lifecycle_event: 'dev:electron',
+      ANDROID_HOME: '/sdk',
+    });
+    expect(env).toEqual({PATH: '/opt/homebrew/bin:/usr/bin', ANDROID_HOME: '/sdk'});
   });
 });
