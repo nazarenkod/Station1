@@ -257,6 +257,46 @@
   font-size: var(--vi-text-sm);
 }
 
+/* a permission: what is asked in a line, the details folded away */
+.permission {
+  gap: 4px;
+}
+
+.permissionHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.permissionIcon {
+  flex: none;
+  color: var(--vi-warn-fg);
+}
+
+.permissionLine {
+  display: block;
+  overflow: hidden;
+  font-family: var(--vi-font-mono);
+  font-size: var(--vi-text-xs);
+  color: var(--vi-text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.permissionMore > summary {
+  list-style: none;
+}
+
+.permissionMore > summary::-webkit-details-marker {
+  display: none;
+}
+
+.permissionMore[open] > summary {
+  margin-bottom: 4px;
+}
+
 .cardActions {
   display: flex;
   flex-wrap: wrap;

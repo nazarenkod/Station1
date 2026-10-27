@@ -7,6 +7,7 @@ import {
   IconPlayerStop,
   IconPlus,
   IconSend,
+  IconShieldQuestion,
   IconTool,
   IconX,
 } from '@tabler/icons-react';
@@ -61,9 +62,8 @@ const readWidth = () => {
 
 const OPTION_LABEL = {
   allow_once: 'agentAllowOnce',
-  allow_always: 'agentAllowAlways',
+  allow_always: 'agentAllowAlwaysShort',
   reject_once: 'agentReject',
-  reject_always: 'agentRejectAlways',
 };
 
 /** The chips of the next message: where the person is and what is picked. */
@@ -154,9 +154,13 @@ const TurnLine = ({item, turn, changes, language, notes, chips}) => {
   return (
     <div className={styles.turn}>
       <span className={styles.turnRow}>
-        {t('agentTurnCredits', {credits: formatCredits(item.credits, language)})}
-        {item.ms ? ` · ${(item.ms / 1000).toFixed(1)} ${t('agentSeconds')}` : ''}
-        {item.toolChars ? ` · ${t('agentTurnContext', {count: approxTokens(item.toolChars)})}` : ''}
+        {[
+          item.credits !== null && t('agentTurnUsed', {credits: formatCredits(item.credits, language)}),
+          item.ms && `${(item.ms / 1000).toFixed(1)} ${t('agentSeconds')}`,
+          item.toolChars && t('agentTurnContext', {count: approxTokens(item.toolChars)}),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         {notes?.length > 0 && (
           <Popover
             content={
@@ -211,48 +215,70 @@ const TurnLine = ({item, turn, changes, language, notes, chips}) => {
   );
 };
 
+// the arguments of a call in one line: the first few, each cut short
+const inputLine = (input) =>
+  input && typeof input === 'object'
+    ? Object.entries(input)
+        .slice(0, 3)
+        .map(
+          ([key, value]) =>
+            `${key}: ${(typeof value === 'object' ? JSON.stringify(value) : String(value)).slice(0, 60)}`,
+        )
+        .join(' · ')
+    : '';
+
+// «reject always» is left out: a rejected call can be asked again, and four buttons are too many for a yes
+const SHOWN_OPTIONS = ['allow_once', 'allow_always', 'reject_once'];
+
 const PermissionCard = ({request}) => {
   const {t} = useTranslation();
   const preview = request.preview;
+  const line = inputLine(request.input);
+  const options = request.options.filter((option) => SHOWN_OPTIONS.includes(option.kind));
   return (
-    <div className={styles.card}>
-      <b>{t('agentPermissionTitle', {tool: request.tool ?? request.title})}</b>
-      {request.server && request.server !== 'station' && (
-        <span className={styles.muted}>{t('agentPermissionServer', {server: request.server})}</span>
-      )}
+    <div className={`${styles.card} ${styles.permission}`}>
+      <span className={styles.permissionHead}>
+        <IconShieldQuestion size={15} className={styles.permissionIcon} />
+        <b>{t('agentPermissionTitle', {tool: request.tool ?? request.title})}</b>
+        {request.server && request.server !== 'station' && <span className={styles.toolServer}>{request.server}</span>}
+      </span>
       {preview?.discard ? (
         <>
           <span>{t('agentPermissionCheckout', {repo: preview.repo, branch: preview.branch})}</span>
           {preview.discard.length > 0 ? (
-            <>
-              <span className={styles.warn}>
+            <details className={styles.permissionMore}>
+              <summary className={styles.warn}>
                 {t('agentPermissionDiscard', {count: preview.discard.length + preview.more})}
-              </span>
+              </summary>
               <pre className={styles.code}>{preview.discard.join('\n')}</pre>
-            </>
+            </details>
           ) : (
             <span className={styles.muted}>{t('settingsSourceSwitchClean')}</span>
           )}
         </>
       ) : preview?.command ? (
-        <>
-          <span>{t('agentPermissionCommand')}</span>
-          <pre className={styles.code}>{preview.command}</pre>
-        </>
+        <code className={styles.permissionLine} title={preview.command}>
+          {preview.command}
+        </code>
       ) : (
-        request.input && <pre className={styles.code}>{JSON.stringify(request.input, null, 1).slice(0, 1500)}</pre>
+        line && (
+          <details className={styles.permissionMore}>
+            <summary className={styles.permissionLine}>{line}</summary>
+            <pre className={styles.code}>{JSON.stringify(request.input, null, 1).slice(0, 1500)}</pre>
+          </details>
+        )
       )}
       <div className={styles.cardActions}>
-        {request.options.map((option) => (
-          <Button
-            key={option.optionId}
-            size="small"
-            type={option.kind === 'allow_once' ? 'primary' : 'default'}
-            danger={option.kind.startsWith('reject')}
-            onClick={() => answerPermission(request.id, option.optionId)}
-          >
-            {OPTION_LABEL[option.kind] ? t(OPTION_LABEL[option.kind]) : option.name}
-          </Button>
+        {options.map((option) => (
+          <Tooltip key={option.optionId} title={option.kind === 'allow_always' ? t('agentAllowAlways') : undefined}>
+            <Button
+              size="small"
+              type={option.kind === 'allow_once' ? 'primary' : option.kind === 'reject_once' ? 'text' : 'default'}
+              onClick={() => answerPermission(request.id, option.optionId)}
+            >
+              {t(OPTION_LABEL[option.kind])}
+            </Button>
+          </Tooltip>
         ))}
       </div>
     </div>
@@ -378,12 +404,13 @@ const AgentPanel = () => {
             {agent.chat.title ??
               (taskKey ? `${taskKey} · ${taskData?.context?.task.summary ?? ''}` : t('agentGeneral'))}
           </span>
-          <span className={styles.muted}>
-            {t('agentHeadCredits', {
-              conversation: formatCredits(credits, language),
-              today: formatCredits(agent.credits?.summary?.today ?? null, language),
-            })}
-          </span>
+          {(agent.model || credits !== null) && (
+            <span className={styles.muted}>
+              {[agent.model, credits !== null && t('agentUsed', {credits: formatCredits(credits, language)})]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          )}
         </div>
         <ContextUsage context={agent.chat.context} />
         <Tooltip title={t('agentNew')}>

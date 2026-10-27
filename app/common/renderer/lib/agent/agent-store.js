@@ -15,6 +15,8 @@ let state = {
   status: 'idle',
   error: null,
   sessionId: null,
+  // the model the conversation runs on, by Kiro's name of it
+  model: null,
   key: null,
   chat: emptyChat(),
   permissions: [],
@@ -137,6 +139,9 @@ export function startAgent() {
 const failed = (result) =>
   publish({status: 'error', error: result.error ?? 'other', errorDetail: result.detail ?? null});
 
+// the conversation being opened: a second call while it opens waits for the same one
+let opening = null;
+
 /** Opens the conversation of the profile that is on (and of its task). */
 export async function openConversation({taskKey = currentTaskKey()} = {}) {
   const profileId = activeProfileId();
@@ -147,6 +152,19 @@ export async function openConversation({taskKey = currentTaskKey()} = {}) {
   if (state.key === key && state.sessionId) {
     return;
   }
+  if (opening?.key === key) {
+    return await opening.done;
+  }
+  const done = openAnew(profileId, taskKey, key).finally(() => {
+    if (opening?.done === done) {
+      opening = null;
+    }
+  });
+  opening = {key, done};
+  return await done;
+}
+
+async function openAnew(profileId, taskKey, key) {
   backend.agent.consented(profileId).then((consent) => publish({consent}));
   publish({status: 'starting', error: null, key, chat: emptyChat(), sessionId: null, changes: [], turns: {}});
   // the first time this window opens a conversation it has no chat of it: Kiro replays it
@@ -156,7 +174,12 @@ export async function openConversation({taskKey = currentTaskKey()} = {}) {
     failed(result);
     return;
   }
-  publish({status: 'ready', sessionId: result.sessionId, chat: chats.get(result.sessionId) ?? emptyChat()});
+  publish({
+    status: 'ready',
+    sessionId: result.sessionId,
+    model: result.model ?? null,
+    chat: chats.get(result.sessionId) ?? emptyChat(),
+  });
   refreshChanges();
 }
 
@@ -177,13 +200,31 @@ export function askAbout(pick) {
 
 export async function newConversation() {
   const profileId = activeProfileId();
-  publish({status: 'starting', chat: emptyChat(), sessionId: null, changes: [], turns: {}, error: null});
-  const result = await backend.agent.newConversation({profileId, taskKey: currentTaskKey()});
+  const taskKey = currentTaskKey();
+  publish({
+    status: 'starting',
+    key: `${profileId}/${taskKey ?? ''}`,
+    chat: emptyChat(),
+    sessionId: null,
+    model: null,
+    changes: [],
+    turns: {},
+    error: null,
+    needs: null,
+    budget: null,
+    mcp: [],
+  });
+  const result = await backend.agent.newConversation({profileId, taskKey});
   if (!result.ok) {
     failed(result);
     return;
   }
-  publish({status: 'ready', sessionId: result.sessionId, chat: chats.get(result.sessionId) ?? emptyChat()});
+  publish({
+    status: 'ready',
+    sessionId: result.sessionId,
+    model: result.model ?? null,
+    chat: chats.get(result.sessionId) ?? emptyChat(),
+  });
 }
 
 export async function resumeConversation(sessionId) {
@@ -194,7 +235,12 @@ export async function resumeConversation(sessionId) {
     failed(result);
     return;
   }
-  publish({status: 'ready', sessionId: result.sessionId, chat: chats.get(result.sessionId) ?? emptyChat()});
+  publish({
+    status: 'ready',
+    sessionId: result.sessionId,
+    model: result.model ?? null,
+    chat: chats.get(result.sessionId) ?? emptyChat(),
+  });
   refreshChanges();
 }
 
@@ -307,10 +353,28 @@ export function followProfile() {
   }
 }
 
-/** Opens the chat on the task's conversation and sends a message there, for the task card's buttons. */
+// resolves when no turn runs: a message sent mid-turn would land in the middle of another answer
+const whenIdle = () =>
+  state.status !== 'busy'
+    ? Promise.resolve()
+    : new Promise((resolve) => {
+        const check = () => {
+          if (state.status !== 'busy') {
+            listeners.delete(check);
+            resolve();
+          }
+        };
+        listeners.add(check);
+      });
+
+/**
+ * Opens the chat on the task's conversation and sends a message there, for
+ * the buttons of the desk: right away, or as soon as the turn that runs ends.
+ */
 export async function askOnTask(message, {deep = false, chips = []} = {}) {
   publish({open: true});
   await openConversation();
+  await whenIdle();
   if (state.sessionId) {
     await sendMessage(message, chips, {deep});
   }

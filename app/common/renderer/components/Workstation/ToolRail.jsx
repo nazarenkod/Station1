@@ -51,7 +51,7 @@ const ToolRail = () => {
             title={t(`wsTool_${tool.key}`)}
           >
             <span className={styles.railIcon}>
-              <Icon size={20} stroke={1.7} />
+              <Icon size={24} stroke={1.6} />
               {badge && (
                 <span className={`${styles.railBadge} ${styles[`railBadge_${badge.severity}`]}`}>{badge.count}</span>
               )}
@@ -69,7 +69,7 @@ const ToolRail = () => {
           aria-current={pathname === '/settings' ? 'page' : undefined}
         >
           <span className={styles.railIcon}>
-            <IconSettings size={20} stroke={1.7} />
+            <IconSettings size={24} stroke={1.6} />
           </span>
           <span className={styles.railLabel}>{t('wsSettingsShort')}</span>
         </Link>

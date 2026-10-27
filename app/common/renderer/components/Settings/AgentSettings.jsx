@@ -1,10 +1,10 @@
-import {IconBrain, IconCheck, IconPlugConnected, IconPlus, IconRestore, IconTrash} from '@tabler/icons-react';
-import {App, Button, Checkbox, Input, InputNumber, Select, Switch, Tag} from 'antd';
+import {IconBrain, IconCheck, IconPlugConnected, IconRestore} from '@tabler/icons-react';
+import {App, Button, Input, InputNumber, Tag} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {formatCredits} from '../../../shared/agent/credits.js';
-import {cleanServer} from '../../../shared/agent/mcp-servers.js';
+import {cleanServer, secretNames, serversFromJson, serversToJson} from '../../../shared/agent/mcp-servers.js';
 import {AGENT_CONFIG, AGENT_CONSENT, AGENT_PROJECT, DEFAULT_SETTINGS} from '../../../shared/setting-defs.js';
 import {refreshCredits, useAgent} from '../../lib/agent/agent-store.js';
 import {useProfiles} from '../../lib/settings/profiles-store.js';
@@ -27,185 +27,108 @@ const useSettingValue = (key, follow = null) => {
   return [value, save];
 };
 
-/** A name and a value, the value hidden in the keychain when it is a token or a key. */
-const PairList = ({pairs, onChange, secrets, onSecret, namePlaceholder}) => {
+const JSON_EXAMPLE = `{
+  "mcpServers": {
+    "github": {"type": "http", "url": "https://api.githubcopilot.com/mcp/", "headers": {"Authorization": "Bearer …"}},
+    "files": {"command": "npx", "args": ["-y", "@acme/mcp-server"], "env": {"API_TOKEN": "…"}}
+  }
+}`;
+
+/** A server under the JSON: its state, whether a key is missing, and «Check». */
+const ServerRow = ({server, status}) => {
   const {t} = useTranslation();
+  const [saved, setSaved] = useState(null);
+  const [check, setCheck] = useState(null);
+  useEffect(() => {
+    backend.agent.mcpSecretNames(server.id).then(setSaved);
+  }, [server]);
+  const runCheck = async () => {
+    setCheck({running: true});
+    setCheck(await backend.agent.testMcp(server));
+  };
+  const missing = saved ? secretNames(server).filter((name) => !saved.includes(name)) : [];
+  const state = !server.enabled ? 'disabled' : status ? (status.failedAuthorization ? 'login' : status.status) : null;
   return (
-    <div className={styles.agentPairs}>
-      {pairs.map((pair, index) => (
-        <div key={pair.id} className={styles.agentPair}>
-          <Input
-            value={pair.name}
-            placeholder={namePlaceholder}
-            onChange={(e) => onChange(pairs.map((one, at) => (at === index ? {...one, name: e.target.value} : one)))}
-            className={styles.mono}
-          />
-          {pair.hidden ? (
-            <Input.Password
-              placeholder={secrets.includes(pair.name) ? t('agentMcpSecretSaved') : t('agentMcpSecretValue')}
-              onBlur={(e) => e.target.value && onSecret(pair.name, e.target.value)}
-              className={styles.mono}
-            />
-          ) : (
-            <Input
-              value={pair.value}
-              onChange={(e) => onChange(pairs.map((one, at) => (at === index ? {...one, value: e.target.value} : one)))}
-              className={styles.mono}
-            />
-          )}
-          <Checkbox
-            checked={pair.hidden}
-            onChange={(e) =>
-              onChange(pairs.map((one, at) => (at === index ? {...one, hidden: e.target.checked, value: ''} : one)))
-            }
-          >
-            {t('agentMcpHidden')}
-          </Checkbox>
-          <Button
-            type="text"
-            icon={<IconTrash size={14} />}
-            onClick={() => onChange(pairs.filter((_, at) => at !== index))}
-          />
-        </div>
-      ))}
-      <Button
-        size="small"
-        type="link"
-        icon={<IconPlus size={14} />}
-        onClick={() =>
-          onChange([...pairs, {id: Math.random().toString(36).slice(2, 9), name: '', value: '', hidden: false}])
-        }
-      >
-        {t('agentMcpAddPair')}
+    <div className={styles.mcpRow}>
+      <b className={styles.mono}>{server.name}</b>
+      <span className={styles.profileHint}>{t(`agentMcpKind_${server.kind}`)}</span>
+      {state && <Tag>{t(`agentMcpState_${state}`, {defaultValue: state})}</Tag>}
+      {missing.length > 0 && <Tag color="warning">{t('agentMcpNeedsKey', {names: missing.join(', ')})}</Tag>}
+      <span className={styles.spacer} />
+      {check?.ok && <span className={styles.profileHint}>{t('agentMcpTools', {count: check.tools.length})}</span>}
+      {check && check.ok === false && (
+        <span className={styles.sourceWarn} title={check.detail || undefined}>
+          {t(`agentMcpError_${check.error}`, {defaultValue: t('agentMcpError_other')})}
+        </span>
+      )}
+      <Button size="small" icon={<IconPlugConnected size={14} />} loading={check?.running} onClick={runCheck}>
+        {t('agentMcpCheck')}
       </Button>
     </div>
   );
 };
 
-const ServerCard = ({server, onChange, onRemove, status}) => {
+/**
+ * The servers as one mcp.json, the format other agents use: pasted from
+ * there as it is. Tokens and keys in it go to the keychain on saving and
+ * show as <keychain> after.
+ */
+const ServerJson = ({servers, onChange, statuses}) => {
   const {t} = useTranslation();
   const {message} = App.useApp();
-  const [secrets, setSecrets] = useState([]);
-  const [check, setCheck] = useState(null);
+  const shown = serversToJson(servers);
+  const [text, setText] = useState(shown);
+  const [error, setError] = useState(null);
+  // saved, or another profile: the field shows what is kept now
   useEffect(() => {
-    backend.agent.mcpSecretNames(server.id).then(setSecrets);
-  }, [server.id]);
-  const saveSecret = async (name, value) => {
-    setSecrets(await backend.agent.setMcpSecrets(server.id, {[name]: value}));
-    message.success(t('agentMcpSecretKept'));
-  };
-  const runCheck = async () => {
-    setCheck({running: true});
-    setCheck(await backend.agent.testMcp(server));
-  };
-  const state = status ? (status.failedAuthorization ? 'login' : status.status) : null;
-  return (
-    <div className={styles.sourceRepo}>
-      <div className={styles.sourceRepoHead}>
-        <Input
-          value={server.name}
-          onChange={(e) => onChange({...server, name: e.target.value})}
-          className={styles.sourceName}
-          aria-label={t('agentMcpName')}
-        />
-        <Select
-          value={server.kind}
-          onChange={(kind) => onChange({...server, kind})}
-          options={[
-            {value: 'http', label: t('agentMcpKind_http')},
-            {value: 'stdio', label: t('agentMcpKind_stdio')},
-          ]}
-          className={styles.sourceRole}
-        />
-        <Switch checked={server.enabled} onChange={(enabled) => onChange({...server, enabled})} size="small" />
-        {state && <Tag>{t(`agentMcpState_${state}`, {defaultValue: state})}</Tag>}
-        <Button
-          type="text"
-          danger
-          icon={<IconTrash size={16} />}
-          onClick={onRemove}
-          aria-label={t('settingsSourceRemove')}
-        />
-      </div>
-      {server.kind === 'http' ? (
-        <>
-          <Input
-            value={server.url}
-            placeholder="https://mcp.example.com/mcp"
-            onChange={(e) => onChange({...server, url: e.target.value})}
-            className={styles.mono}
-          />
-          <PairList
-            pairs={server.headers}
-            onChange={(headers) => onChange({...server, headers})}
-            secrets={secrets}
-            onSecret={saveSecret}
-            namePlaceholder="Authorization"
-          />
-          <Checkbox checked={server.oauth} onChange={(e) => onChange({...server, oauth: e.target.checked})}>
-            {t('agentMcpOauth')}
-          </Checkbox>
-        </>
-      ) : (
-        <>
-          <Input
-            value={[server.command, ...server.args].join(' ')}
-            placeholder="npx -y @acme/mcp-server"
-            onChange={(e) => {
-              const [command = '', ...args] = e.target.value.split(' ');
-              onChange({...server, command, args});
-            }}
-            className={styles.mono}
-          />
-          <PairList
-            pairs={server.env}
-            onChange={(env) => onChange({...server, env})}
-            secrets={secrets}
-            onSecret={saveSecret}
-            namePlaceholder="API_TOKEN"
-          />
-        </>
-      )}
-      <div className={styles.sourceActions}>
-        <Button size="small" icon={<IconPlugConnected size={14} />} loading={check?.running} onClick={runCheck}>
-          {t('agentMcpCheck')}
-        </Button>
-        {check?.ok && <span className={styles.profileHint}>{t('agentMcpTools', {count: check.tools.length})}</span>}
-        {check && check.ok === false && (
-          <span className={styles.sourceError}>
-            <span className={styles.sourceWarn}>
-              {t(`agentMcpError_${check.error}`, {defaultValue: t('agentMcpError_other')})}
-            </span>
-            {check.detail && <code className={styles.sourceDetail}>{check.detail}</code>}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-};
+    setText(shown);
+    setError(null);
+  }, [shown]);
 
-const ServerList = ({servers, onChange, statuses}) => {
-  const {t} = useTranslation();
+  const save = async () => {
+    const result = serversFromJson(text, servers);
+    if (!result.ok) {
+      setError(t(`agentMcpJsonError_${result.error}`, {detail: result.detail ?? ''}));
+      return;
+    }
+    for (const [serverId, values] of Object.entries(result.secrets)) {
+      await backend.agent.setMcpSecrets(serverId, values);
+    }
+    setError(null);
+    await onChange(result.servers);
+    message.success(
+      Object.keys(result.secrets).length
+        ? t('agentMcpSavedWithKeys')
+        : t('agentMcpSaved', {count: result.servers.length}),
+    );
+  };
+
   return (
     <div className={styles.profileApps}>
-      {servers.map((server, index) => (
-        <ServerCard
-          key={server.id}
-          server={server}
-          status={statuses.find((one) => one.name === server.name)}
-          onChange={(next) => onChange(servers.map((one, at) => (at === index ? cleanServer(next) : one)))}
-          onRemove={() => onChange(servers.filter((_, at) => at !== index))}
-        />
-      ))}
-      <div>
-        <Button
-          size="small"
-          icon={<IconPlus size={14} />}
-          onClick={() => onChange([...servers, cleanServer({name: 'server', kind: 'http'})])}
-        >
-          {t('agentMcpAdd')}
+      <Input.TextArea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        autoSize={{minRows: 4, maxRows: 24}}
+        placeholder={JSON_EXAMPLE}
+        spellCheck={false}
+        className={styles.mono}
+        status={error ? 'error' : undefined}
+        aria-label={t('agentMcpJson')}
+      />
+      {error && <span className={styles.sourceWarn}>{error}</span>}
+      <div className={styles.sourceActions}>
+        <Button size="small" type="primary" icon={<IconCheck size={14} />} disabled={text === shown} onClick={save}>
+          {t('Save')}
         </Button>
+        {text !== shown && (
+          <Button size="small" onClick={() => setText(shown)}>
+            {t('Cancel')}
+          </Button>
+        )}
       </div>
+      {servers.map((server) => (
+        <ServerRow key={server.id} server={server} status={statuses.find((one) => one.name === server.name)} />
+      ))}
     </div>
   );
 };
@@ -394,13 +317,13 @@ const AgentSettings = () => {
         <div className={styles.cardBody}>
           <div className={styles.profileApps}>
             <span className={styles.agentLabel}>{t('agentMcpProject')}</span>
-            <ServerList
+            <ServerJson
               servers={(project.mcpServers ?? []).map(cleanServer)}
               statuses={agent.mcp}
               onChange={(mcpServers) => saveProject({mcpServers})}
             />
             <span className={styles.agentLabel}>{t('agentMcpStation')}</span>
-            <ServerList
+            <ServerJson
               servers={(config.mcpServers ?? []).map(cleanServer)}
               statuses={agent.mcp}
               onChange={(mcpServers) => saveConfig({mcpServers})}

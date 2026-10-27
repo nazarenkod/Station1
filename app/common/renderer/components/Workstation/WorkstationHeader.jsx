@@ -10,13 +10,15 @@ import {useTask} from '../../lib/task/task-store.js';
 import DevicePicker from './DevicePicker.jsx';
 import ProfilePicker from './ProfilePicker.jsx';
 import SessionChip from './SessionChip.jsx';
+import StartButton from './StartButton.jsx';
 
 import styles from './Workstation.module.css';
 
 /**
  * The window's title bar in one row: the brand, the tools, the project (its
- * profile names the app) and the device every tool shares, the session, and
- * the settings.
+ * profile names the app) and the device every tool shares, the session (or
+ * the button that starts it with everything around it), the journal and the
+ * dispatcher.
  */
 const WorkstationHeader = () => {
   const {t} = useTranslation();
@@ -43,6 +45,7 @@ const WorkstationHeader = () => {
         <span className={styles.contextDivider} />
         <DevicePicker />
       </div>
+      <StartButton />
       <SessionChip />
       <Tooltip title={`${t('agentTitle')} · ⌘J`}>
         <button

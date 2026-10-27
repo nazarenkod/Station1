@@ -1,6 +1,7 @@
 // Ported from vision (backend/src/a11y/jira-bug.ts): keep in sync until both use a shared package.
 
 import type {JiraField, JiraIssueType, JiraParentIssue, JiraUser} from '../../../node/jira/client';
+import {PRODUCT_NAME} from '../../../shared/product.js';
 import type {A11yRule, A11yViolation} from './types';
 
 /** The functional block, or service, is what a check's name says before its first dot. */
@@ -192,7 +193,7 @@ export function inspectorBugText(input: {
     ...(details.length ? ['', '*Деталі*', ...details] : []),
     '',
     ...problemNotes(problem, violations.length),
-    '_Знайдено у Vision Inspector._',
+    `_Знайдено у ${PRODUCT_NAME}._`,
   ].join('\n');
   return {summary, description, block, screen};
 }

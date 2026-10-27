@@ -13,7 +13,7 @@ import {
   trackHandler,
 } from '../../common/node/journal.js';
 import {PRODUCT_NAME} from '../../common/shared/product.js';
-import {getJournalWindow} from './windows.js';
+import {getJournalWindow, openJournalWindow} from './windows.js';
 
 // changes reach the journal window in batches: a burst of commands is one message
 const SEND_EVERY_MS = 250;
@@ -67,6 +67,7 @@ export function setupJournal() {
   ipcMain.handle('journal:list', () => ({summary: getSummary(), entries: journal.list()}));
   ipcMain.handle('journal:previous', async () => await readPreviousJournal(journalDir()));
   ipcMain.handle('journal:clear', () => journal.clear());
+  ipcMain.handle('journal:open', () => openJournalWindow());
   ipcMain.handle('journal:save', async (_evt, text, name) => {
     const {canceled, filePath} = await dialog.showSaveDialog(getJournalWindow() ?? undefined, {
       defaultPath: path.join(app.getPath('downloads'), name),

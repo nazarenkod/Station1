@@ -10,6 +10,7 @@
 
 - `app/common/shared/perf/parsers.js` — чисті розбори виводу інструментів: `/proc/stat`, `/proc/<pid>/stat`, `ps -A` (процеси застосунку), `dumpsys meminfo`, `dumpsys package` (DEBUGGABLE), `launchctl list` симулятора, `ps` і `footprint` Mac, ентайтлменти (`get-task-allow`).
 - `app/common/shared/perf/series.js` — CPU з двох замірів, межа ряду, переходи процесів (старт і завершення), відрізки екранів і зведення відрізка.
+- `app/common/shared/perf/perf-rules.js` — знахідки збору без еталона (критерій 19): `perfFindings` (`perf-cpu-high`, `perf-memory-growth`) з порогами `PERF_RULES`. Робочий стіл (`Desk.jsx`, `useSessionAnalysis`) рахує їх з `usePerf()` на кожну версію сховища; знахідки лишаються, доки не почався новий збір.
 - `app/common/node/perf/android.js` — заміри Android: один `adb shell` на секунду (рядок `/proc/stat` і `/proc/<pid>/stat` усіх процесів застосунку), `dumpsys meminfo <пакет>` раз на 5 с, тип збірки з `dumpsys package`.
 - `app/common/node/perf/ios.js` — заміри симулятора: pid з `simctl spawn <udid> launchctl list`, CPU-час із `ps -o time=`, потоки з `ps -M`, пам'ять з `footprint -f bytes --noCategories` раз на 2 с, тип збірки з `codesign -d --entitlements`.
 - `app/common/node/perf/session.js` — `PerfSession`: таймери, ряд замірів, позначки процесу, стан; шле пачки в інтерфейс, як `LogSession`.
@@ -52,6 +53,7 @@
 
 ## Тести
 
+- `test/unit/perf-rules.spec.js` — критерій 19 (CPU й памʼять)
 - `test/unit/perf-android.spec.js` — критерій 1
 - `test/unit/perf-ios.spec.js` — критерій 2
 - `test/unit/perf-series.spec.js` — критерії 5, 7

@@ -7,7 +7,7 @@
 Головний процес:
 
 - `app/common/node/agent/acp-client.js` — JSON-RPC 2.0 через stdin/stdout дочірнього процесу, по повідомленню на рядок. Запити агента до клієнта отримують відповідь обробника або помилку `-32601`, ніколи тишу.
-- `app/common/node/agent/kiro.js` — `KiroAgent`: процес `kiro-cli acp --agent-engine=v3 --auth-method=cli`, `initialize`, `session/new` і `session/load` (теки й сервери щоразу заново), `session/prompt`, `session/cancel`, `session/set_config_option`, `_kiro/account/getUsage`. Після кожного `session/new` і `session/load` вимикає `contentCollection`. `kiroProblem()` зводить помилку до слова: `missing`, `login`, `credits`, `network`, `stopped`, `other`.
+- `app/common/node/agent/kiro.js` — `KiroAgent`: процес `kiro-cli acp --agent-engine=v3 --auth-method=cli`, `initialize`, `session/new` і `session/load` (теки й сервери щоразу заново), `session/prompt`, `session/cancel`, `session/set_config_option`, `_kiro/account/getUsage`. Після кожного `session/new` і `session/load` вимикає `contentCollection` і закріплює модель (`pinModel`: опція `model` з `configOptions`, вибір — `pickModel`), повертає її назву. `kiroProblem()` зводить помилку до слова: `missing`, `login`, `credits`, `network`, `stopped`, `other`.
 - `app/common/node/agent/service.js` — `createAgentService()`, головна логіка:
   - яка розмова в профілю й задачі: поточна, завантажена знову або нова;
   - що відкриває розмова: `cwd` — репозиторій (або тека станції), `additionalDirectories` — сабмодулі, інші репозиторії й тека станції; сервери — `station` першим, потім сервери станції й профілю з секретами з Keychain;
@@ -27,21 +27,22 @@
 - `credits.js` — журнал, суми (сьогодні, тиждень, розмова, задача, профіль), поріг, формат «0,06».
 - `conversations.js` — мапа «профіль → задача → сесія Kiro» з власним id розмови станції.
 - `instructions.js` — типові інструкції станції (англійською, для агента) і steering-документ із трьох шарів.
-- `mcp-servers.js` — сервери MCP: чистка, приховані поля (`hidden`, не `secret`: експорт прибирає поля з такою назвою), формат ACP, стан із `_kiro/mcp/status`.
+- `mcp-servers.js` — сервери MCP: чистка, приховані поля (`hidden`, не `secret`: експорт прибирає поля з такою назвою), формат ACP, стан із `_kiro/mcp/status`, `serversToJson` / `serversFromJson` — текст `mcp.json` (поля з назвою як у секрету виймаються для Keychain, `KEYCHAIN_VALUE` = `<keychain>`).
+- `model.js` — закріплена модель (`DEFAULT_MODEL` = `claude-sonnet-5.5`), `pickModel` (бажана, інакше найновіша тієї самої родини), `modelName`.
 - `permissions.js` — що станція відповідає сама: читання станції — так; shell, що лише читає, — так; запис файлів і shell, що змінює, — ні; решта — людині.
 
 Вікно:
 
-- `app/common/renderer/lib/agent/agent-store.js` — стан чату (зовнішнє сховище), надсилання, дозвіл, поріг, відкат, «Читати далі».
+- `app/common/renderer/lib/agent/agent-store.js` — стан чату (зовнішнє сховище), модель розмови, надсилання, дозвіл, поріг, відкат, «Читати далі». Одночасні `openConversation` чекають одного відкриття (`opening`); `askOnTask` надсилає після `whenIdle`.
 - `app/common/renderer/lib/agent/bridge.js` — відповідає головному процесу: стан (вкладка, пристрій, застосунок, екран), стиснуте дерево, шлях сесії, знахідки доступності.
 - `app/common/renderer/lib/agent/selection.js`, `picks.js` — що обрано у вкладках (вкладка, запит, рядок логу).
-- `app/common/renderer/components/Agent/` — панель чату (`AgentPanel.jsx`), безпечний показ Markdown (`AgentText.jsx`).
-- `app/common/renderer/components/Settings/AgentSettings.jsx` — розділ «Агент».
+- `app/common/renderer/components/Agent/` — панель чату (`AgentPanel.jsx`: шапка з моделлю й `agentUsed`, коротка `PermissionCard` — `inputLine`, без `reject_always`), безпечний показ Markdown (`AgentText.jsx`).
+- `app/common/renderer/components/Settings/AgentSettings.jsx` — розділ «Диспетчер»; MCP — `ServerJson` (поле `mcp.json`, «Зберегти» пише секрети через `agent:setMcpSecrets`, потім сервери) і `ServerRow` (стан, «потрібен ключ», «Перевірити»).
 - Кнопка в шапці — `WorkstationHeader.jsx`; ⌘J, вкладка в чипі, зміна профілю — `AgentFollower` у `Workstation.jsx`.
 
 ## Модель даних
 
-- `AGENT_CONFIG` (станція, група експорту `agentStation`): `{stationInstructions: null | текст, personalInstructions, mcpServers, readBudget, deepBudget, dailyCreditLimit}`.
+- `AGENT_CONFIG` (станція, група експорту `agentStation`): `{stationInstructions: null | текст, personalInstructions, mcpServers, readBudget, deepBudget, dailyCreditLimit, model}`.
 - `AGENT_PROJECT` (профіль, група `agent`): `{instructions, mcpServers}`.
 - `AGENT_CONSENT` (лише цей Mac): `{profiles: {[profileId]: true}, confirmedDay}`.
 - `AGENT_SESSIONS` (лише цей Mac): `{[profileId]: {current: {[задача | '_general']: sessionId}, list: [{sessionId, conversation, key, title, createdAt, updatedAt}]}}`.
@@ -60,11 +61,14 @@
 - **`contentCollection` вимкнено в кожній розмові** (2026-10-27). За замовчуванням Kiro його вмикає, а дані проєкту банківські.
 - **Дозволи вирішує станція, не підказки MCP.** Для інструментів станції станція знає, які з них лише читають; `readOnlyHint` — лише для показу.
 - **Номер ходу для журналу змін** веде головний процес (`turnOf`). Вікно перед надсиланням питає номер наступного ходу й прив'язує до нього рядок ходу, щоб «Відкотити все за хід» знало, що відкочувати.
-- **Вибір моделі й зусилля не зроблено.** Kiro V3 на плані Free не пропонує `model` чи `effortLevel` серед `configOptions`; з'явиться, коли Kiro дасть.
+- **Модель закріплено, а не обрано** (2026-10-27). Kiro V3 тепер пропонує `model` серед `configOptions` (`auto`, `claude-sonnet-4.5`, `claude-haiku-4.5` та інші), `effortLevel` — ні. Станція ставить Sonnet: 5.5, коли акаунт його дасть, а доти найновіший Sonnet зі списку. Вибір у налаштуваннях — коли знадобиться.
+- **MCP — одним `mcp.json`, а не картками** (2026-10-27). Сервери копіюють з інших агентів готовим JSON; картки змушували переписувати їх поле за полем. Секрети з JSON ідуть у Keychain за назвою поля, бо в `mcp.json` немає позначки «секрет».
+- **В інтерфейсі агент — «Диспетчер»** (2026-10-27). Назва пасує станції; у коді й ключах лишилося `agent`.
 
 ## Тести
 
 - `test/unit/agent-acp.spec.js` — чат із подій, з'єднання ACP, дозволи, `kiroProblem`.
 - `test/unit/agent-sessions.spec.js` — мапа розмов, сервіс: нова розмова, повторне завантаження, втрачена сесія, дозвіл, довідка, поріг, кредити.
-- `test/unit/agent-credits.spec.js`, `test/unit/agent-context.spec.js`, `test/unit/agent-profile.spec.js`, `test/unit/agent-mcp.spec.js`, `test/unit/doctor.spec.js`.
+- `test/unit/agent-credits.spec.js`, `test/unit/agent-context.spec.js`, `test/unit/agent-profile.spec.js`, `test/unit/agent-mcp.spec.js` (зокрема `mcp.json`), `test/unit/agent-model.spec.js`, `test/unit/doctor.spec.js`.
+- Наживо (27.10.2026, окрема тека даних): «Нова розмова» відкриває нову розмову на Claude Sonnet 4.5; «Виправити з диспетчером» на Node.js одразу надсилає промпт, картка дозволу `env_run_fix` — команда й три кнопки, «Відхилити»; «Використано 0,45 кредиту»; `mcp.json` з токеном — у полі `<keychain>`, токен у Keychain, «Перевірити» пояснює, що адреса не відповідає.
 - Наживо (27.10.2026): дозвіл профілю, `station_state` без питань, 0,15 кр. за хід, картка дозволу `proxy_mock_set`, підміна в налаштуваннях і її відкат, план Kiro в налаштуваннях.

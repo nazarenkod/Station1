@@ -1,3 +1,4 @@
+import {noteDeviceUse} from '../../shared/device-use.js';
 import {WORKSTATION} from '../../shared/setting-defs.js';
 import {backend, getSetting, setSetting} from '../polyfills.js';
 import {log} from '../utils/logger.js';
@@ -5,6 +6,7 @@ import {log} from '../utils/logger.js';
 export const SET_WORKSTATION_DEVICES = 'SET_WORKSTATION_DEVICES';
 export const SET_WORKSTATION_DEVICES_LOADING = 'SET_WORKSTATION_DEVICES_LOADING';
 export const SET_WORKSTATION_DEVICE = 'SET_WORKSTATION_DEVICE';
+export const SET_WORKSTATION_DEVICE_USE = 'SET_WORKSTATION_DEVICE_USE';
 export const SET_WORKSTATION_APPS = 'SET_WORKSTATION_APPS';
 export const SET_WORKSTATION_APP = 'SET_WORKSTATION_APP';
 export const SET_WORKSTATION_PROJECT_APPS = 'SET_WORKSTATION_PROJECT_APPS';
@@ -21,8 +23,8 @@ export const activeDevice = (workstation) =>
   workstation.devices.find((device) => device.id === workstation.deviceId) ?? null;
 
 async function persist(getState) {
-  const {deviceId, app} = getState().workstation;
-  await setSetting(WORKSTATION, {deviceId, app});
+  const {deviceId, app, deviceUse} = getState().workstation;
+  await setSetting(WORKSTATION, {deviceId, app, deviceUse});
 }
 
 // the platform of a project app a device runs
@@ -63,6 +65,7 @@ export function initWorkstation() {
       type: RESTORE_WORKSTATION,
       deviceId: saved.deviceId ?? null,
       app: saved.app ?? null,
+      deviceUse: saved.deviceUse ?? {},
     });
     if (!backend.doctor) {
       return;
@@ -117,11 +120,11 @@ export function refreshDevices({quiet = false} = {}) {
       const {devices} = await backend.doctor.devices();
       dispatch({type: SET_WORKSTATION_DEVICES, devices});
       const {deviceId} = getState().workstation;
-      // the doctor lists what can be used now first, real phones before emulators
-      const running = devices.filter(isDeviceRunning);
-      // keep the chosen device while it is connected, otherwise take the first one that runs
+      // the most used first (the reducer sorts them), then as the doctor lists them: real phones before emulators
+      const running = getState().workstation.devices.filter(isDeviceRunning);
+      // keep the chosen device while it is connected, otherwise take the one used most that runs
       if (!running.some((device) => device.id === deviceId) && running.length) {
-        await dispatch(selectDevice(running[0].id));
+        await dispatch(selectDevice(running[0].id, {byPerson: false}));
       } else if (!quiet || (!isDeviceRunning(before) && isDeviceRunning(activeDevice(getState().workstation)))) {
         // a quiet poll reads the apps again only when the device has just come up
         await dispatch(refreshApps());
@@ -154,11 +157,29 @@ export function watchDevices() {
   };
 }
 
-export function selectDevice(deviceId) {
+/**
+ * Makes a device the one every tool works with. A device the person picked
+ * counts as used; the station's own pick of a connected one does not.
+ */
+export function selectDevice(deviceId, {byPerson = true} = {}) {
   return async (dispatch, getState) => {
     dispatch({type: SET_WORKSTATION_DEVICE, deviceId});
+    if (byPerson) {
+      dispatch({
+        type: SET_WORKSTATION_DEVICE_USE,
+        deviceUse: noteDeviceUse(getState().workstation.deviceUse, deviceId),
+      });
+    }
     await persist(getState);
     await dispatch(refreshApps());
+  };
+}
+
+/** A session started on a device: it counts as used. */
+export function noteSessionDevice(deviceId) {
+  return async (dispatch, getState) => {
+    dispatch({type: SET_WORKSTATION_DEVICE_USE, deviceUse: noteDeviceUse(getState().workstation.deviceUse, deviceId)});
+    await persist(getState);
   };
 }
 

@@ -16,9 +16,11 @@ import {useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
 import {SEVERITIES, severityRank} from '../../../shared/findings/findings.js';
+import {perfFindings} from '../../../shared/perf/perf-rules.js';
 import {Stagger, StaggerItem} from '../AppShell/motion.jsx';
 import GoalsPanel from '../Goals/GoalsPanel.jsx';
 import {useLogs} from '../Logs/logs-store.js';
+import {usePerf} from '../Perf/perf-store.js';
 import {useProxy} from '../Proxy/proxy-store.js';
 import NewTestDialog from './NewTestDialog.jsx';
 import TaskPanel from './TaskPanel.jsx';
@@ -26,7 +28,7 @@ import TaskPanel from './TaskPanel.jsx';
 import styles from './Desk.module.css';
 
 const LISTED = 10;
-const TOOL_PATHS = {proxy: '/proxy', logs: '/logs', a11y: '/a11y', builds: '/builds'};
+const TOOL_PATHS = {proxy: '/proxy', logs: '/logs', perf: '/perf', a11y: '/a11y', builds: '/builds'};
 // the audit has its own scale; the desk shows everything on the findings scale
 const A11Y_SEVERITY = {error: 'high', warning: 'medium', info: 'low'};
 
@@ -38,6 +40,7 @@ const useSessionAnalysis = () => {
   const {t} = useTranslation();
   const proxy = useProxy();
   const logs = useLogs();
+  const perf = usePerf();
   const scan = useSelector((state) => state.inspector.a11yScan);
   const screen = useSelector((state) => state.inspector.a11yScreen);
   const build = useSelector((state) => state.builds.current);
@@ -50,6 +53,15 @@ const useSessionAnalysis = () => {
       ...[...proxy.findings.values()].map((f) => ({...f, tool: 'proxy'})),
       ...[...logs.findings.values()].filter((f) => !logs.appId || f.forApp).map((f) => ({...f, tool: 'logs'})),
       ...(build.status === 'ready' ? build.findings.map((f) => ({...f, tool: 'builds'})) : []),
+      // what the last measurement showed stays until a new one starts
+      ...(perf.samples.length
+        ? perfFindings({
+            samples: perf.samples,
+            markers: perf.markers,
+            appId: perf.appId,
+            endAt: perf.samples.at(-1).at + 1000,
+          })
+        : []),
     ].map((finding) => ({
       id: finding.id,
       tool: finding.tool,
@@ -81,15 +93,16 @@ const useSessionAnalysis = () => {
       rows,
       requests: proxy.order.length,
       logLines: logs.entries.length,
+      perfSeconds: perf.samples.length,
       screen: scan ? screen?.title || '' : null,
       build: build.status === 'ready' ? build.build : null,
     };
     // the stores change in place: their versions say when
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, proxy.version, logs.version, scan, screen, build]);
+  }, [t, proxy.version, logs.version, perf.version, scan, screen, build]);
 };
 
-const TOOLS = ['proxy', 'logs', 'a11y', 'builds'];
+const TOOLS = ['proxy', 'logs', 'perf', 'a11y', 'builds'];
 const SEVERITY_SHOWN = ['high', 'medium', 'low'];
 
 /**
@@ -99,6 +112,7 @@ const coverageText = (analysis, t) =>
   [
     analysis.requests > 0 && t('deskCoverage_requests', {count: analysis.requests}),
     analysis.logLines > 0 && t('deskCoverage_lines', {count: analysis.logLines}),
+    analysis.perfSeconds > 0 && t('deskCoverage_perf', {minutes: Math.max(1, Math.round(analysis.perfSeconds / 60))}),
     analysis.screen !== null && t('deskCoverage_screen', {screen: analysis.screen || '—'}),
     analysis.build && t('deskCoverage_build', {version: analysis.build.version || analysis.build.build}),
   ]

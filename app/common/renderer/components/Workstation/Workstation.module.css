@@ -241,7 +241,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
+  gap: 4px;
   padding: 10px 6px;
   border-right: 1px solid var(--vi-hairline);
   background: var(--vi-surface-glass);
@@ -254,8 +254,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 0 6px;
+  gap: 5px;
+  padding: 10px 0 8px;
   border: 0;
   border-radius: var(--vi-radius-md);
   background: none;
@@ -267,7 +267,8 @@
   cursor: pointer;
   transition:
     color var(--vi-mid) var(--vi-ease),
-    background var(--vi-mid) var(--vi-ease);
+    background var(--vi-mid) var(--vi-ease),
+    box-shadow var(--vi-mid) var(--vi-ease);
 }
 
 .railItem:hover {
@@ -279,31 +280,15 @@
   outline-offset: -2px;
 }
 
+/* the open tool is outlined in its colour; the settings have none and take the strong border */
 .railActive,
 .railActive:hover {
   color: var(--vi-text);
+  font-weight: 600;
   background: var(--ant-color-bg-container);
   box-shadow:
-    0 0 0 1px var(--vi-border),
-    0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-/* the tool's colour: a bar on the active one, the icon tinted */
-.railItem::before {
-  content: '';
-  position: absolute;
-  left: -6px;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--tool-color);
-  opacity: 0;
-  transition: opacity var(--vi-mid) var(--vi-ease);
-}
-
-.railActive::before {
-  opacity: 1;
+    0 0 0 2px var(--tool-color, var(--vi-border-strong)),
+    0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
 .railIcon {

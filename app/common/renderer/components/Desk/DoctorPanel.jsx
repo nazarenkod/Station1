@@ -161,9 +161,89 @@ export const PanelFoot = ({open, onToggle, hidden, summary}) => {
 const isProblem = (row) => needsFix(row.status);
 
 /**
- * The environment, as a list with a coloured status per line: every check of
- * the doctor, the Appium server, the proxy, the log and the integrations.
- * Problems stay in view; the rest folds into one line until opened.
+ * What the dispatcher is asked to fix: the check, what is wrong, and what the
+ * station would do about it, so it can start fixing right away.
+ */
+const fixPrompt = (t, check, fix) => {
+  const raw = {interpolation: {escapeValue: false}};
+  const advice = fix ? t(`deskFix_${fix.key}`, {defaultValue: ''}) : '';
+  return [
+    t('deskFixWithAgentPrompt', {
+      name: t(`deskCheck_${CHECK_NAME[check.id] ?? check.id}`, check.params),
+      text: t(`doctorCheck_${check.id}_${check.status}`, check.params),
+      id: check.id,
+      ...raw,
+    }),
+    advice && t('deskFixWithAgentAdvice', {advice, ...raw}),
+    fix?.command && t('deskFixWithAgentCommand', {command: fix.command, ...raw}),
+    t('deskFixWithAgentDo'),
+  ]
+    .filter(Boolean)
+    .join('\n');
+};
+
+/** One list of the environment: its head with the count of problems, the rows, the foot. */
+const EnvList = ({id, title, rows, report, loading, onRecheck, fit = false, okText, okMuted = false}) => {
+  const {t} = useTranslation();
+  const [open, setOpen] = useState(false);
+  const problems = rows.filter(isProblem);
+  const rest = rows.filter((row) => !isProblem(row));
+  return (
+    <section
+      className={`vi-panel ${styles.listPanel} ${open ? styles.listPanelOpen : ''} ${fit ? styles.listPanelFit : ''}`}
+      aria-labelledby={id}
+    >
+      <div className={styles.panelHead}>
+        <h2 id={id} className={styles.cardTitle}>
+          {title}
+        </h2>
+        {report &&
+          (problems.length ? (
+            <span className={problems.some((row) => row.status === 'error') ? styles.headError : styles.headWarn}>
+              {t('deskEnvIssues', {count: problems.length})}
+            </span>
+          ) : (
+            <span className={okMuted ? styles.dim : styles.headOk}>{okText ?? t('deskDoctorOk')}</span>
+          ))}
+        <span className={styles.spacer} />
+        {onRecheck && (
+          <Button
+            size="small"
+            type="text"
+            aria-label={t('deskDoctorRecheck')}
+            title={t('deskDoctorRecheck')}
+            icon={<IconRefresh size={14} />}
+            loading={loading}
+            onClick={onRecheck}
+          />
+        )}
+      </div>
+
+      {!report ? (
+        <Skeleton active title={false} paragraph={{rows: 4}} className={styles.panelSkeleton} />
+      ) : (
+        <>
+          <ul className={styles.statusList}>
+            {[...problems, ...rest].map((row) => (
+              <StatusRow key={row.key} row={row} />
+            ))}
+          </ul>
+          <PanelFoot
+            open={open}
+            onToggle={() => setOpen(!open)}
+            hidden={Math.max(0, rows.length - VISIBLE_ROWS)}
+            summary={t('deskEnvTotal', {count: rows.length})}
+          />
+        </>
+      )}
+    </section>
+  );
+};
+
+/**
+ * The environment as two lists with a coloured status per line: the tools
+ * (every check of the doctor, the Appium server, the proxy, the log) and the
+ * integrations. Problems stay in view; the rest folds away until opened.
  */
 const DoctorPanel = () => {
   const {t} = useTranslation();
@@ -174,7 +254,6 @@ const DoctorPanel = () => {
   const logs = useLogs();
   const {report, loading} = useDoctor();
   const [fixing, setFixing] = useState(null);
-  const [open, setOpen] = useState(false);
   const load = useCallback(() => loadDoctor({again: true}), []);
 
   useEffect(() => {
@@ -251,19 +330,8 @@ const DoctorPanel = () => {
         fixText: fix ? t(`deskFix_${fix.key}`, {defaultValue: ''}) : '',
         command: fix?.command,
         action: actionFor(fix),
-        // the agent looks closer and runs the fix with the person's yes
-        agent:
-          needsFix(check.status) && check.id !== 'doctorFailed'
-            ? () =>
-                askOnTask(
-                  t('deskFixWithAgentPrompt', {
-                    name: t(`deskCheck_${CHECK_NAME[check.id] ?? check.id}`, check.params),
-                    text: t(`doctorCheck_${check.id}_${check.status}`, check.params),
-                    id: check.id,
-                    interpolation: {escapeValue: false},
-                  }),
-                )
-            : null,
+        // the dispatcher gets the whole problem with the station's advice and fixes it with the person's yes
+        agent: needsFix(check.status) && check.id !== 'doctorFailed' ? () => askOnTask(fixPrompt(t, check, fix)) : null,
       };
     }),
     {
@@ -313,62 +381,39 @@ const DoctorPanel = () => {
       status: logs.started ? 'ok' : 'off',
       text: logs.started ? t('deskCheckLogsOn') : t('deskCheckLogsOff'),
     },
-    ...['jira', 'gitlab'].map((key) => ({
-      key,
-      name: t(`deskCheck_${key}`),
-      value: report?.integrations?.[key] ? t('deskCheckValue_connected') : t('deskCheckValue_notConnected'),
-      status: report?.integrations?.[key] ? 'ok' : 'off',
-      text: report?.integrations?.[key] ? t(`deskCheck_${key}On`) : t(`deskCheck_${key}Off`),
-      action: !report?.integrations?.[key] && toSettings,
-    })),
   ];
-  const problems = rows.filter(isProblem);
-  const rest = rows.filter((row) => !isProblem(row));
+  const integrations = ['jira', 'gitlab'].map((key) => ({
+    key,
+    name: t(`deskCheck_${key}`),
+    value: report?.integrations?.[key] ? t('deskCheckValue_connected') : t('deskCheckValue_notConnected'),
+    status: report?.integrations?.[key] ? 'ok' : 'off',
+    text: report?.integrations?.[key] ? t(`deskCheck_${key}On`) : t(`deskCheck_${key}Off`),
+    action: !report?.integrations?.[key] && toSettings,
+  }));
 
   return (
-    <section className={`vi-panel ${styles.listPanel} ${open ? styles.listPanelOpen : ''}`} aria-labelledby="desk-env">
-      <div className={styles.panelHead}>
-        <h2 id="desk-env" className={styles.cardTitle}>
-          {t('deskEnvironment')}
-        </h2>
-        {report &&
-          (problems.length ? (
-            <span className={problems.some((row) => row.status === 'error') ? styles.headError : styles.headWarn}>
-              {t('deskEnvIssues', {count: problems.length})}
-            </span>
-          ) : (
-            <span className={styles.headOk}>{t('deskDoctorOk')}</span>
-          ))}
-        <span className={styles.spacer} />
-        <Button
-          size="small"
-          type="text"
-          aria-label={t('deskDoctorRecheck')}
-          title={t('deskDoctorRecheck')}
-          icon={<IconRefresh size={14} />}
-          loading={loading}
-          onClick={load}
-        />
-      </div>
-
-      {!report ? (
-        <Skeleton active title={false} paragraph={{rows: 4}} className={styles.panelSkeleton} />
-      ) : (
-        <>
-          <ul className={styles.statusList}>
-            {[...problems, ...rest].map((row) => (
-              <StatusRow key={row.key} row={row} />
-            ))}
-          </ul>
-          <PanelFoot
-            open={open}
-            onToggle={() => setOpen(!open)}
-            hidden={Math.max(0, rows.length - VISIBLE_ROWS)}
-            summary={t('deskEnvTotal', {count: rows.length})}
-          />
-        </>
-      )}
-    </section>
+    <div className={styles.envColumn}>
+      <EnvList
+        id="desk-tools"
+        title={t('deskEnvTools')}
+        rows={rows}
+        report={report}
+        loading={loading}
+        onRecheck={load}
+      />
+      <EnvList
+        id="desk-integrations"
+        title={t('deskEnvIntegrations')}
+        rows={integrations}
+        report={report}
+        fit
+        okMuted={integrations.some((row) => row.status !== 'ok')}
+        okText={t('deskEnvConnected', {
+          count: integrations.filter((row) => row.status === 'ok').length,
+          total: integrations.length,
+        })}
+      />
+    </div>
   );
 };
 

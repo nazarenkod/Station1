@@ -578,3 +578,18 @@ button.cardHead:hover {
   align-items: center;
   gap: 6px;
 }
+
+/* a server under the MCP JSON: its name, state and «Check» in a line */
+.mcpRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--vi-hairline);
+  border-radius: var(--vi-radius-md);
+}
+
+.mcpRow .spacer {
+  flex: 1;
+}

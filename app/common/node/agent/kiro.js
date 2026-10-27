@@ -1,6 +1,7 @@
 import {spawn} from 'node:child_process';
 import {EventEmitter} from 'node:events';
 
+import {modelName, modelOption, pickModel} from '../../shared/agent/model.js';
 import {AcpClient} from './acp-client.js';
 
 // The agent is Kiro CLI on its V3 engine, spoken to over ACP. One process
@@ -140,18 +141,37 @@ export class KiroAgent extends EventEmitter {
     return await this.client.request(method, params);
   }
 
-  /** A new conversation; content collection is turned off when Kiro offers the switch. */
-  async newSession({cwd, additionalDirectories = [], mcpServers = []}) {
+  /**
+   * A new conversation on the pinned model; content collection is turned off
+   * when Kiro offers the switch. `model` is the name of the model it runs on.
+   */
+  async newSession({cwd, additionalDirectories = [], mcpServers = [], model = null}) {
     const result = await this.request('session/new', {cwd, additionalDirectories, mcpServers});
     await this.keepPrivate(result.sessionId, result.configOptions);
-    return result;
+    return {...result, model: await this.pinModel(result.sessionId, result.configOptions, model)};
   }
 
   /** An earlier conversation, with its folders and servers given again: Kiro does not keep them. */
-  async loadSession({sessionId, cwd, additionalDirectories = [], mcpServers = []}) {
+  async loadSession({sessionId, cwd, additionalDirectories = [], mcpServers = [], model = null}) {
     const result = await this.request('session/load', {sessionId, cwd, additionalDirectories, mcpServers});
     await this.keepPrivate(sessionId, result?.configOptions);
-    return {...result, sessionId};
+    return {...result, sessionId, model: await this.pinModel(sessionId, result?.configOptions, model)};
+  }
+
+  /** Sets the wanted model (or the nearest one offered); the name of the model the session is on. */
+  async pinModel(sessionId, options, wanted) {
+    const option = modelOption(options);
+    const value = option
+      ? pickModel(
+          (option.options ?? []).map((one) => one.value),
+          wanted,
+        )
+      : null;
+    if (!value || value === option.currentValue) {
+      return modelName(option);
+    }
+    const changed = await this.setConfig(sessionId, 'model', value).catch(() => null);
+    return changed ? modelName({...option, currentValue: value}) : modelName(option);
   }
 
   async keepPrivate(sessionId, options = []) {

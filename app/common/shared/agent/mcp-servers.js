@@ -112,3 +112,104 @@ export function serverState(status) {
   const state = ['connected', 'failed', 'disabled'].includes(status.status) ? status.status : 'connecting';
   return {state, tools, error: status.error ?? status.message ?? null};
 }
+
+// ---- the servers as mcp.json, the format Claude, Kiro and Cursor share
+
+// what a hidden field shows in the JSON: its value is in the keychain
+export const KEYCHAIN_VALUE = '<keychain>';
+
+// names of fields that hold a token or a key: their values go to the keychain
+const SECRET_NAME = /token|secret|key|password|passwd|auth|bearer|cookie|credential/i;
+
+/**
+ * The servers as the text of an mcp.json: `{"mcpServers": {"<name>": {...}}}`.
+ * A hidden field shows `<keychain>` in place of its value.
+ */
+export function serversToJson(servers) {
+  const entries = cleanServers(servers).map((server) => {
+    const fields = (list) =>
+      Object.fromEntries(
+        list.filter((pair) => pair.name).map((pair) => [pair.name, pair.hidden ? KEYCHAIN_VALUE : pair.value]),
+      );
+    const body =
+      server.kind === 'http'
+        ? {
+            type: 'http',
+            url: server.url,
+            ...(server.headers.length ? {headers: fields(server.headers)} : {}),
+            ...(server.oauth ? {oauth: true} : {}),
+          }
+        : {
+            command: server.command,
+            ...(server.args.length ? {args: server.args} : {}),
+            ...(server.env.length ? {env: fields(server.env)} : {}),
+          };
+    return [server.name, server.enabled ? body : {...body, disabled: true}];
+  });
+  return JSON.stringify({mcpServers: Object.fromEntries(entries)}, null, 2);
+}
+
+const isObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * Servers from the text of an mcp.json; the inner object without
+ * `mcpServers` is taken too. A server keeps the id of the one of the same
+ * name before, so its keychain fields stay. A value of a field named like a
+ * secret is taken out to go to the keychain; `<keychain>` keeps the saved one.
+ * @param {string} text
+ * @param {object[]} [previous] the servers as they were
+ * @returns {{ok: true, servers: object[], secrets: Record<string, Record<string, string>>} | {ok: false, error: string, detail?: string}}
+ */
+export function serversFromJson(text, previous = []) {
+  let parsed;
+  try {
+    parsed = text.trim() ? JSON.parse(text) : {};
+  } catch (error) {
+    return {ok: false, error: 'json', detail: error.message};
+  }
+  const map = isObject(parsed?.mcpServers) ? parsed.mcpServers : parsed;
+  if (!isObject(map)) {
+    return {ok: false, error: 'shape'};
+  }
+  const before = new Map(cleanServers(previous).map((server) => [server.name, server]));
+  const servers = [];
+  const secrets = {};
+  for (const [name, body] of Object.entries(map)) {
+    if (!isObject(body)) {
+      return {ok: false, error: 'server', detail: name};
+    }
+    const was = before.get(name);
+    const kind = body.url || body.type === 'http' || body.type === 'sse' ? 'http' : 'stdio';
+    const server = cleanServer({
+      id: was?.id,
+      name,
+      kind,
+      command: body.command,
+      args: body.args,
+      url: body.url,
+      oauth: !!body.oauth,
+      enabled: body.disabled !== true,
+    });
+    const found = {};
+    const fields = (object) =>
+      Object.entries(isObject(object) ? object : {}).map(([field, value]) => {
+        const text = String(value ?? '');
+        const id = Math.random().toString(36).slice(2, 9);
+        if (text === KEYCHAIN_VALUE) {
+          return {id, name: field, value: '', hidden: true};
+        }
+        if (SECRET_NAME.test(field) && text) {
+          found[field] = text;
+          return {id, name: field, value: '', hidden: true};
+        }
+        return {id, name: field, value: text, hidden: false};
+      });
+    server.env = kind === 'stdio' ? fields(body.env) : [];
+    server.headers = kind === 'http' ? fields(body.headers) : [];
+    if (Object.keys(found).length) {
+      secrets[server.id] = found;
+    }
+    servers.push(server);
+  }
+  return {ok: true, servers, secrets};
+}

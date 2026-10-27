@@ -22,6 +22,14 @@
   align-items: start;
 }
 
+/* the tools and the integrations, one under the other */
+.envColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vi-space-4);
+  min-width: 0;
+}
+
 .analytics {
   flex: 1;
   min-height: 360px;
@@ -63,7 +71,8 @@
   overflow-y: auto;
 }
 
-.listPanelOpen .statusList {
+.listPanelOpen .statusList,
+.listPanelFit .statusList {
   height: auto;
 }
 
@@ -563,6 +572,10 @@
 
 .tool_a11y {
   --tool-color: var(--vi-tool-a11y);
+}
+
+.tool_perf {
+  --tool-color: var(--vi-tool-perf);
 }
 
 .tool_builds {

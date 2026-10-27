@@ -189,6 +189,7 @@ window.electronIPC = {
     list: async () => await ipcRenderer.invoke('journal:list'),
     previous: async () => await ipcRenderer.invoke('journal:previous'),
     clear: async () => await ipcRenderer.invoke('journal:clear'),
+    open: async () => await ipcRenderer.invoke('journal:open'),
     save: async (text, name) => await ipcRenderer.invoke('journal:save', text, name),
     report: (error) => ipcRenderer.send('journal:report', error),
     onChanged: subscribe('journal:changed'),

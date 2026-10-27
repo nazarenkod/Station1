@@ -129,6 +129,7 @@ export function createAgentService(deps) {
     // the station's folder carries the instructions; with no code it is where the agent works
     const additionalDirectories = code.cwd ? [...code.additionalDirectories, deps.home] : code.additionalDirectories;
     return {
+      model: config.model,
       cwd: code.cwd ?? deps.home,
       additionalDirectories,
       mcpServers: [stationServer({port, token, conversation}), ...toAcpServers(servers, secrets, off)],
@@ -145,8 +146,8 @@ export function createAgentService(deps) {
       taskKey,
     });
     await deps.set(AGENT_SESSIONS, sessions);
-    open.set(result.sessionId, {profileId, taskKey, conversation});
-    return {sessionId: result.sessionId, conversation, fresh: true};
+    open.set(result.sessionId, {profileId, taskKey, conversation, model: result.model});
+    return {sessionId: result.sessionId, conversation, model: result.model, fresh: true};
   };
 
   const load = async (profileId, sessionId) => {
@@ -155,9 +156,9 @@ export function createAgentService(deps) {
     const taskKey = entry?.key && entry.key !== '_general' ? entry.key : null;
     // Kiro sends the conversation again as updates; the window starts it clean
     deps.send('agent:reset', {sessionId});
-    await deps.kiro.loadSession({sessionId, ...(await sessionInputs(profileId, conversation))});
-    open.set(sessionId, {profileId, taskKey, conversation});
-    return {sessionId, conversation, fresh: false};
+    const result = await deps.kiro.loadSession({sessionId, ...(await sessionInputs(profileId, conversation))});
+    open.set(sessionId, {profileId, taskKey, conversation, model: result?.model ?? null});
+    return {sessionId, conversation, model: result?.model ?? null, fresh: false};
   };
 
   const service = {
@@ -170,7 +171,8 @@ export function createAgentService(deps) {
         const sessionId = currentSession(await deps.get(AGENT_SESSIONS), profileId, taskKey);
         // a window opened anew has no chat yet: the conversation is loaded again to replay it
         if (sessionId && open.has(sessionId) && !replay) {
-          return {ok: true, sessionId, conversation: open.get(sessionId).conversation, fresh: false};
+          const known = open.get(sessionId);
+          return {ok: true, sessionId, conversation: known.conversation, model: known.model ?? null, fresh: false};
         }
         if (sessionId) {
           try {
@@ -199,7 +201,7 @@ export function createAgentService(deps) {
         return {
           ok: true,
           ...(open.has(sessionId)
-            ? {sessionId, conversation: open.get(sessionId).conversation}
+            ? {sessionId, conversation: open.get(sessionId).conversation, model: open.get(sessionId).model ?? null}
             : await load(profileId, sessionId)),
         };
       } catch (error) {

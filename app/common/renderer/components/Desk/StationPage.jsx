@@ -17,7 +17,6 @@ const StationPage = () => {
       <Stagger className={styles.inner}>
         <StaggerItem>
           <h1 className={styles.pageTitle}>{t('wsTool_station')}</h1>
-          <p className={styles.dim}>{t('stationPageText')}</p>
         </StaggerItem>
         <StaggerItem className={styles.top}>
           <DoctorPanel />

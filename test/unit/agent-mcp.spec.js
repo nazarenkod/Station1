@@ -8,7 +8,10 @@ import {mcpProblem, testMcpServer} from '../../app/common/node/agent/mcp-test.js
 import {
   cleanServer,
   cleanServers,
+  KEYCHAIN_VALUE,
   secretNames,
+  serversFromJson,
+  serversToJson,
   serverState,
   toAcpServers,
 } from '../../app/common/shared/agent/mcp-servers.js';
@@ -110,5 +113,54 @@ describe('«Check» next to a server', () => {
     expect(ok).toEqual({ok: true, tools: [{name: 'getIssue', description: 'An issue by key'}]});
     const refused = await testMcpServer({type: 'http', url, headers: [{name: 'Authorization', value: 'Bearer bad'}]});
     expect(refused).toMatchObject({ok: false, error: 'auth'});
+  });
+});
+
+describe('MCP servers as mcp.json', () => {
+  const json = JSON.stringify({
+    mcpServers: {
+      github: {
+        type: 'http',
+        url: 'https://api.githubcopilot.com/mcp/',
+        headers: {Authorization: 'Bearer ghp_x', 'X-Team': 'qa'},
+      },
+      files: {command: 'npx', args: ['-y', '@acme/mcp'], env: {API_TOKEN: 'secret-1', MODE: 'ro'}, disabled: true},
+    },
+  });
+
+  it('reads the servers and takes the tokens and keys out for the keychain', () => {
+    const result = serversFromJson(json);
+    expect(result.ok).toBe(true);
+    const [github, files] = result.servers;
+    expect(github).toMatchObject({
+      name: 'github',
+      kind: 'http',
+      url: 'https://api.githubcopilot.com/mcp/',
+      enabled: true,
+    });
+    expect(github.headers).toMatchObject([
+      {name: 'Authorization', value: '', hidden: true},
+      {name: 'X-Team', value: 'qa', hidden: false},
+    ]);
+    expect(files).toMatchObject({kind: 'stdio', command: 'npx', args: ['-y', '@acme/mcp'], enabled: false});
+    expect(result.secrets).toEqual({[github.id]: {Authorization: 'Bearer ghp_x'}, [files.id]: {API_TOKEN: 'secret-1'}});
+  });
+
+  it('writes them back with the hidden values as <keychain>, and reads that as the saved secret', () => {
+    const {servers} = serversFromJson(json);
+    const text = serversToJson(servers);
+    expect(text).not.toContain('ghp_x');
+    expect(JSON.parse(text).mcpServers.github.headers.Authorization).toBe(KEYCHAIN_VALUE);
+    expect(JSON.parse(text).mcpServers.files.disabled).toBe(true);
+    const again = serversFromJson(text, servers);
+    expect(again.secrets).toEqual({});
+    expect(again.servers.map((server) => server.id)).toEqual(servers.map((server) => server.id));
+  });
+
+  it('takes the inner object without mcpServers, and explains a broken text', () => {
+    expect(serversFromJson('{"a": {"url": "https://x"}}').servers[0]).toMatchObject({name: 'a', kind: 'http'});
+    expect(serversFromJson('{"mcpServers": ').ok).toBe(false);
+    expect(serversFromJson('{"mcpServers": {"a": 1}}')).toMatchObject({ok: false, error: 'server', detail: 'a'});
+    expect(serversFromJson('')).toMatchObject({ok: true, servers: []});
   });
 });

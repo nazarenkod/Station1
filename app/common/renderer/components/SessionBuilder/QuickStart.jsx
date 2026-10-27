@@ -5,7 +5,7 @@ import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
-import {activeDevice, isDeviceRunning, selectDevice} from '../../actions/Workstation.js';
+import {activeDevice, isDeviceRunning, noteSessionDevice, selectDevice} from '../../actions/Workstation.js';
 import {DEFAULT_PORT, startQuickSession} from '../../lib/session/quick-session.js';
 import {appsProblemText, appVersionLabel} from '../Workstation/app-labels.js';
 import {deviceSubtitle} from '../Workstation/DevicePicker.jsx';
@@ -51,6 +51,8 @@ const QuickStart = ({loadNewSession, onAdvanced}) => {
       });
       if (result.error) {
         setError({text: t(result.error.key, result.error.params), settings: result.error.settings});
+      } else if (!result.refused) {
+        dispatch(noteSessionDevice(device.id));
       }
     } finally {
       setBusy(null);

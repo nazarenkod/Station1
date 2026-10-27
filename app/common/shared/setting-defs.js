@@ -1,5 +1,7 @@
 // Definitions for all the persistent settings used in the app
 
+import {DEFAULT_MODEL} from './agent/model.js';
+
 // the workstation speaks Ukrainian until the user picks another language
 export const DEFAULT_LANGUAGE = 'uk';
 
@@ -25,7 +27,7 @@ export const AI_CONFIG = 'AI_CONFIG';
 export const JIRA_MEMORY = 'JIRA_MEMORY';
 // GitLab site and the project builds come from; the access token is kept apart, encrypted
 export const GITLAB_CONFIG = 'GITLAB_CONFIG';
-// the device and app every tool of the workstation works with, and the apps used lately
+// the device and app every tool of the workstation works with, the apps used lately, and how often each device was used
 export const WORKSTATION = 'WORKSTATION';
 // the builds opened lately, to install them again
 export const BUILDS_HISTORY = 'BUILDS_HISTORY';
@@ -90,7 +92,7 @@ export const DEFAULT_SETTINGS = {
   [AI_CONFIG]: null,
   [JIRA_MEMORY]: {},
   [GITLAB_CONFIG]: null,
-  [WORKSTATION]: {deviceId: null, app: null},
+  [WORKSTATION]: {deviceId: null, app: null, deviceUse: {}},
   [BUILDS_HISTORY]: [],
   [BUILD_JOBS]: {},
   [PIPELINE_WATCHES]: [],
@@ -108,6 +110,8 @@ export const DEFAULT_SETTINGS = {
     readBudget: 40000,
     deepBudget: 200000,
     dailyCreditLimit: 0,
+    // the model every conversation is pinned to; the newest of its family when the account lacks it
+    model: DEFAULT_MODEL,
   },
   [AGENT_PROJECT]: {instructions: '', mcpServers: [], notes: []},
   [AGENT_CONSENT]: {profiles: {}, confirmedDay: null},

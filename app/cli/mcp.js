@@ -9,13 +9,14 @@ import {checkEnvironment} from '../common/node/doctor/environment.js';
 import {scanServers} from '../common/node/doctor/servers.js';
 import {DEFAULT_A11Y_CONFIG} from '../common/renderer/lib/a11y/config';
 import {A11Y_RULES} from '../common/renderer/lib/a11y/types';
+import {PRODUCT_NAME} from '../common/shared/product.js';
 
 const text = (value) => ({
   content: [{type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2)}],
 });
 
 /**
- * Vision Inspector's checks for agents (Kiro CLI, Claude Code…). Driving the
+ * The station's checks for agents (Kiro CLI, Claude Code…). Driving the
  * app is left to the official appium-mcp; these tools look at what it shows.
  */
 export async function startMcpServer() {
@@ -46,8 +47,7 @@ export async function startMcpServer() {
     'audit_screen',
     {
       title: 'Accessibility audit of the current screen',
-      description:
-        'Checks the screen an Appium session shows against Vision Inspector accessibility rules: labels, touch targets, contrast, reading order and more. Returns the score and the issues with fixes.',
+      description: `Checks the screen an Appium session shows against ${PRODUCT_NAME} accessibility rules: labels, touch targets, contrast, reading order and more. Returns the score and the issues with fixes.`,
       inputSchema: {
         server: z.string().optional().describe('Appium server URL, default http://127.0.0.1:4723'),
         session: z.string().optional().describe("Session id; the server's first session when omitted"),

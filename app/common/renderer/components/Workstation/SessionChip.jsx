@@ -1,7 +1,11 @@
+import {IconNotebook} from '@tabler/icons-react';
+import {Tooltip} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
+
+import {backend} from '../../polyfills.js';
 
 import styles from './Workstation.module.css';
 
@@ -13,15 +17,14 @@ export function formatElapsed(ms) {
 }
 
 /**
- * The running Appium session and how long it lasts; without one, whether our
- * Appium server is up.
+ * The running Appium session and how long it lasts; without one, the way to
+ * the station's journal.
  */
 const SessionChip = () => {
   const {t} = useTranslation();
   const navigate = useNavigate();
   const hasSession = useSelector((state) => !!state.inspector.driver);
   const startedAt = useSelector((state) => state.inspector.sessionStartTime);
-  const appium = useSelector((state) => state.workstation.appium);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -47,18 +50,17 @@ const SessionChip = () => {
     );
   }
 
-  const running = appium?.status === 'running';
+  // no session: the station's journal, where its commands and errors are, Appium's among them
+  if (!backend.journal) {
+    return null;
+  }
   return (
-    <button
-      className={styles.chip}
-      title={running ? t('wsAppiumRunning', {port: appium.port}) : undefined}
-      onClick={() => navigate('/session')}
-    >
-      <span className={`${styles.dot} ${running ? styles.dotOn : styles.dotOff}`} />
-      <span className={running ? styles.chipText : undefined}>
-        {running ? t('wsAppiumRunning', {port: appium.port}) : t('wsNoSession')}
-      </span>
-    </button>
+    <Tooltip title={`${t('journalTitle')} · ⌥⌘L`}>
+      <button className={styles.chip} onClick={() => backend.journal.open()}>
+        <IconNotebook size={16} stroke={1.7} />
+        <span className={styles.chipText}>{t('journalTitle')}</span>
+      </button>
+    </Tooltip>
   );
 };
 
