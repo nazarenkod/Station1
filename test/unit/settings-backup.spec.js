@@ -17,9 +17,10 @@ import {
   PROXY_CONFIG,
   SAVED_SESSIONS,
   SESSION_SERVER_PARAMS,
+  SOURCE_PATHS,
   WORKSTATION,
 } from '../../app/common/shared/setting-defs.js';
-import {ensureProfiles, setProfileApps} from '../../app/common/shared/settings/profiles.js';
+import {ensureProfiles, setProfileApps, setProfileSource} from '../../app/common/shared/settings/profiles.js';
 import {
   applyImport,
   buildExport,
@@ -93,6 +94,56 @@ describe('export', () => {
     }
     expect(text).toContain('acme.atlassian.net');
     expect(text).toContain('Pixel');
+  });
+});
+
+describe('the code of a profile', () => {
+  const code = {
+    devBranch: 'dev',
+    releaseBranch: 'release',
+    repos: [
+      {id: 'r-app', name: 'bank-android', role: 'android'},
+      {id: 'r-ui', name: 'design', role: 'shared'},
+    ],
+  };
+  const withCode = (all) => {
+    const profiles = profilesOf(all);
+    return setProfileSource(profiles, profiles.activeId, code);
+  };
+
+  it('goes out with the branches and repositories, never with the folders of this Mac', () => {
+    const all = {...station(), [SOURCE_PATHS]: {any: {'r-app': {path: '/Users/me/code/bank-android'}}}};
+    const file = buildExport({profiles: withCode(all), all, kind: 'all', product: 'x'});
+    expect(file.profiles[0].source).toEqual(code);
+    expect(JSON.stringify(file)).not.toContain('/Users/me/code');
+  });
+
+  it('comes back with the same repositories, so the folders here still fit', () => {
+    const all = station();
+    const text = JSON.stringify(buildExport({profiles: withCode(all), all, kind: 'profile', product: 'x'}));
+    const file = parseSettingsFile(text).file;
+    expect(file.profiles[0].source).toEqual(code);
+
+    const here = profilesOf(station());
+    const replaced = applyImport(file, here, station(), {profiles: [{index: 0, mode: 'replace', groups: []}]});
+    expect(replaced.profiles.list[0].source).toEqual(code);
+    const added = applyImport(file, here, station(), {profiles: [{index: 0, mode: 'new', groups: []}]});
+    expect(added.profiles.list[1].source).toEqual(code);
+  });
+
+  it('keeps the code here for a file made before the code, and refuses a broken one', () => {
+    const all = station();
+    const data = JSON.parse(
+      JSON.stringify(buildExport({profiles: profilesOf(all), all, kind: 'profile', product: 'x'})),
+    );
+    delete data.profiles[0].source;
+    const file = parseSettingsFile(JSON.stringify(data)).file;
+    const here = withCode(station());
+    const {profiles} = applyImport(file, here, station(), {profiles: [{index: 0, mode: 'replace', groups: []}]});
+    expect(profiles.list[0].source).toEqual(code);
+
+    data.profiles[0].source = {repos: 'bank-android'};
+    expect(parseSettingsFile(JSON.stringify(data))).toMatchObject({ok: false, error: 'shape', detail: 'source'});
   });
 });
 
@@ -266,6 +317,40 @@ describe('the station settings and their backups', () => {
     expect(backups.at(-1).day).toBe('2026-10-03');
     await writeFile(path.join(dir, 'backups', 'notes.txt'), 'mine');
     expect(await readdir(path.join(dir, 'backups'))).toContain('notes.txt');
+  });
+
+  it('keeps the folders of the repositories apart: a copy shares them, a removed repository or profile drops them', async () => {
+    const {store, settings} = make();
+    const first = await settings.profiles();
+    const id = first.activeId;
+    await settings.setProfileSource(id, {
+      repos: [
+        {id: 'r-app', name: 'app'},
+        {id: 'r-ui', name: 'ui'},
+      ],
+    });
+    await settings.setSourcePath(id, 'r-app', {path: '/code/app'});
+    await settings.setSourcePath(id, 'r-ui', {path: '/code/ui'});
+    await settings.setSourcePath(id, 'r-app', {previousBranch: 'develop'});
+    expect(await settings.sourcePaths(id)).toEqual({
+      'r-app': {path: '/code/app', previousBranch: 'develop'},
+      'r-ui': {path: '/code/ui'},
+    });
+    expect((await settings.profiles()).list[0].source.repos.map((repo) => repo.id)).toEqual(['r-app', 'r-ui']);
+
+    const copy = await settings.addProfile('Копія', {copy: true});
+    expect(await settings.sourcePaths(copy.id)).toEqual(await settings.sourcePaths(id));
+    expect((await settings.profiles()).list[1].source.repos).toHaveLength(2);
+
+    await settings.setProfileSource(id, {repos: [{id: 'r-app', name: 'app'}]});
+    expect(Object.keys(await settings.sourcePaths(id))).toEqual(['r-app']);
+    await settings.setSourcePath(id, 'r-app', {path: null});
+    expect(await settings.sourcePaths(id)).toEqual({});
+
+    await settings.removeProfile(copy.id);
+    expect(store.map.get(SOURCE_PATHS)[copy.id]).toBeUndefined();
+    const text = await settings.exportText({kind: 'all'});
+    expect(text).not.toContain('/code/');
   });
 
   it('makes the first profile once and switches profiles through the store', async () => {

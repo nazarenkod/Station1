@@ -57,6 +57,7 @@ window.electronIPC = {
     addProfile: async (name, options) => await ipcRenderer.invoke('settings:addProfile', name, options),
     renameProfile: async (id, name) => await ipcRenderer.invoke('settings:renameProfile', id, name),
     setProfileApps: async (id, apps) => await ipcRenderer.invoke('settings:setProfileApps', id, apps),
+    setProfileSource: async (id, source) => await ipcRenderer.invoke('settings:setProfileSource', id, source),
     removeProfile: async (id) => await ipcRenderer.invoke('settings:removeProfile', id),
     profileForApp: async (appId) => await ipcRenderer.invoke('settings:profileForApp', appId),
     exportFile: async (options) => await ipcRenderer.invoke('settings:export', options),
@@ -65,6 +66,18 @@ window.electronIPC = {
     backups: async () => await ipcRenderer.invoke('settings:backups'),
     restore: async (file) => await ipcRenderer.invoke('settings:restore', file),
     onChanged: subscribe('settings:changed'),
+  },
+  source: {
+    pickFolder: async () => await ipcRenderer.invoke('source:pickFolder'),
+    setPath: async (profileId, repoId, folder) => await ipcRenderer.invoke('source:setPath', profileId, repoId, folder),
+    inspect: async (profileId) => await ipcRenderer.invoke('source:inspect', profileId),
+    branches: async (profileId, repoId) => await ipcRenderer.invoke('source:branches', profileId, repoId),
+    preview: async (profileId, repoId) => await ipcRenderer.invoke('source:preview', profileId, repoId),
+    fetch: async (profileId, repoId) => await ipcRenderer.invoke('source:fetch', profileId, repoId),
+    switchBranch: async (profileId, repoId, branch) =>
+      await ipcRenderer.invoke('source:switch', profileId, repoId, branch),
+    pull: async (profileId, repoId) => await ipcRenderer.invoke('source:pull', profileId, repoId),
+    restoreBranch: async (profileId, repoId) => await ipcRenderer.invoke('source:restoreBranch', profileId, repoId),
   },
   ai: {
     status: async () => await ipcRenderer.invoke('ai:status'),

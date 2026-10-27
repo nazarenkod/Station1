@@ -54,6 +54,9 @@ const backend = {
   get settings() {
     return window.electronIPC.settings;
   },
+  get source() {
+    return window.electronIPC.source;
+  },
   get journal() {
     return window.electronIPC.journal;
   },

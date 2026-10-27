@@ -1,5 +1,14 @@
 import {GROUPS, PROFILE_GROUPS, readGroups, STATION_GROUPS, withoutSecrets, writeGroups} from './groups.js';
-import {activeProfile, addProfile, keepActive, profilePatch, projectApps, setProfileApps} from './profiles.js';
+import {
+  activeProfile,
+  addProfile,
+  keepActive,
+  profilePatch,
+  projectApps,
+  setProfileApps,
+  setProfileSource,
+} from './profiles.js';
+import {projectSource} from './source.js';
 
 // The file the settings travel in between Macs and people. It holds groups
 // of settings only (see groups.js), never tokens or keys.
@@ -35,6 +44,8 @@ export function buildExport({profiles, all, kind, profileId, groups, product, no
   const profileEntry = (profile) => ({
     name: profile.name,
     apps: projectApps(profile.apps),
+    // the repositories by name and role and the branches; the folders are this Mac's
+    source: projectSource(profile.source),
     groups: Object.fromEntries(
       wanted(PROFILE_GROUPS)
         .filter((id) => profile.groups?.[id] !== undefined)
@@ -121,11 +132,28 @@ export function parseSettingsFile(text) {
     ) {
       return fail('shape', 'apps');
     }
+    if (
+      entry.source !== undefined &&
+      !(
+        entry.source &&
+        typeof entry.source === 'object' &&
+        (entry.source.repos === undefined ||
+          (Array.isArray(entry.source.repos) && entry.source.repos.every((repo) => repo && typeof repo === 'object')))
+      )
+    ) {
+      return fail('shape', 'source');
+    }
     const read = readFileGroups(entry.groups, 'profile');
     if (!read.ok) {
       return read;
     }
-    profiles.push({name: entry.name.trim(), apps: projectApps(entry.apps), groups: read.groups});
+    profiles.push({
+      name: entry.name.trim(),
+      apps: projectApps(entry.apps),
+      // a file made before the code had none; the profile here keeps its own then
+      source: entry.source === undefined ? null : projectSource(entry.source),
+      groups: read.groups,
+    });
   }
   const station = readFileGroups(data.station, 'station');
   if (!station.ok) {
@@ -211,11 +239,14 @@ export function applyImport(file, profiles, all, choice) {
       };
       // the file's app of a platform takes the place of the one here
       next = setProfileApps(next, existing.id, [...entry.apps, ...(existing.apps ?? [])]);
+      if (entry.source) {
+        next = setProfileSource(next, existing.id, entry.source);
+      }
       if (existing.id === next.activeId) {
         write(chosen);
       }
     } else {
-      const added = addProfile(next, entry.name, {groups: chosen});
+      const added = addProfile(next, entry.name, {groups: chosen, code: entry.source});
       next = setProfileApps(added.profiles, added.profile.id, entry.apps);
     }
   }

@@ -45,6 +45,8 @@ export const PROXY_VIEW = 'PROXY_VIEW';
 export const LOGS_VIEW = 'LOGS_VIEW';
 // the project profiles: their names, apps and settings, and which one is on
 export const PROFILES = 'PROFILES';
+// the folders of each profile's repositories on this Mac, by profile and repository; never exported
+export const SOURCE_PATHS = 'SOURCE_PATHS';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -86,4 +88,5 @@ export const DEFAULT_SETTINGS = {
   [PROXY_VIEW]: {view: 'list', hiddenHosts: [], onlyHosts: [], expanded: []},
   [LOGS_VIEW]: {scope: 'app', minLevel: 'V', query: '', tags: [], hiddenTags: []},
   [PROFILES]: null,
+  [SOURCE_PATHS]: {},
 };

@@ -14,6 +14,7 @@ import {setupJiraIPC} from './ipc/jira.js';
 import {setupLogsIPC} from './ipc/logs.js';
 import {setupProxyIPC} from './ipc/proxy.js';
 import {setupSettingsIPC} from './ipc/settings.js';
+import {setupSourceIPC} from './ipc/source.js';
 import {setupJournal} from './journal.js';
 import {setupMainWindow} from './windows.js';
 
@@ -55,6 +56,6 @@ app.on('ready', async () => {
   setupBuildsIPC();
   setupLogsIPC();
   setupProxyIPC();
-  setupSettingsIPC();
+  setupSourceIPC(setupSettingsIPC());
   await setupMainWindow();
 });

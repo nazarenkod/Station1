@@ -1,4 +1,5 @@
 import {PROFILE_GROUPS, readGroups, writeGroups} from './groups.js';
+import {projectSource} from './source.js';
 
 // The settings of the profile that is on live in the setting keys, where the
 // tools read them. The other profiles keep theirs in PROFILES; switching
@@ -98,12 +99,14 @@ export function profilePatch(profile, all) {
 /**
  * A new profile, empty or a copy of the one that is on. It is not turned on.
  */
-export function addProfile(profiles, name, {copyFrom = null, all = {}, groups = null, apps = []} = {}) {
+export function addProfile(profiles, name, {copyFrom = null, all = {}, groups = null, apps = [], code = null} = {}) {
   const source = copyFrom ? keepActive(profiles, all).list.find((profile) => profile.id === copyFrom) : null;
   const profile = {
     id: newId(),
     name: uniqueName(profiles, name),
     apps: source ? [] : apps,
+    // a copy works on the same code, so its repositories and branches come along
+    source: projectSource(code ?? source?.source),
     updatedAt: now(),
     groups: structuredClone(groups ?? source?.groups ?? {}),
   };
@@ -143,6 +146,16 @@ export function setProfileApps(profiles, id, apps) {
       profile.id === id
         ? {...profile, apps: wanted, updatedAt: now()}
         : {...profile, apps: projectApps(profile.apps).filter((app) => !ids.has(app.id))},
+    ),
+  };
+}
+
+/** The code of a profile: its repositories and branches. */
+export function setProfileSource(profiles, id, source) {
+  return {
+    ...profiles,
+    list: profiles.list.map((profile) =>
+      profile.id === id ? {...profile, source: projectSource(source), updatedAt: now()} : profile,
     ),
   };
 }

@@ -19,7 +19,8 @@ const FILTERS = [{name: 'JSON', extensions: ['json']}];
 /**
  * Project profiles, export and import of the settings, and the backup
  * copies. Whatever changes the setting keys tells the windows which keys
- * changed, so the tools pick the new settings up at once.
+ * changed, so the tools pick the new settings up at once. Gives the station
+ * settings back for the other areas that keep something per profile.
  */
 export function setupSettingsIPC() {
   const station = createStationSettings({
@@ -47,6 +48,9 @@ export function setupSettingsIPC() {
   );
   ipcMain.handle('settings:renameProfile', async (_evt, id, name) => changed(await station.renameProfile(id, name)));
   ipcMain.handle('settings:setProfileApps', async (_evt, id, apps) => changed(await station.setProfileApps(id, apps)));
+  ipcMain.handle('settings:setProfileSource', async (_evt, id, source) =>
+    changed(await station.setProfileSource(id, source)),
+  );
   ipcMain.handle('settings:removeProfile', async (_evt, id) => changed(await station.removeProfile(id)));
   ipcMain.handle('settings:profileForApp', (_evt, appId) => station.profileForApp(appId));
 
@@ -93,4 +97,5 @@ export function setupSettingsIPC() {
 
   ipcMain.handle('settings:backups', () => station.listBackups());
   ipcMain.handle('settings:restore', async (_evt, file) => changed(await station.restore(file)));
+  return station;
 }

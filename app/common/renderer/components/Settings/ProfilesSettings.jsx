@@ -13,6 +13,7 @@ import {
   switchProfile,
   useProfiles,
 } from '../../lib/settings/profiles-store.js';
+import SourceSettings from './SourceSettings.jsx';
 import {ExportDialog} from './StationTransfer.jsx';
 
 import styles from './SettingsPage.module.css';
@@ -155,6 +156,7 @@ const ProfileCard = ({profile, active, onlyOne}) => {
           )}
           <span className={styles.profileHint}>{t('settingsProfileAppsHint')}</span>
         </div>
+        <SourceSettings profile={profile} />
       </div>
       <div className={styles.cardFoot}>
         <Button icon={<IconPencil size={16} />} onClick={() => setRenaming(true)}>

@@ -386,3 +386,123 @@ button.cardHead:hover {
 .backupRow > :last-child {
   margin-left: auto;
 }
+
+/* the code of a project: its repositories, their state and git actions */
+.source {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--vi-hairline);
+}
+
+.sourceBranches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px 16px;
+}
+
+.sourceBranch {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.sourceRepo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--vi-hairline);
+  border-radius: var(--vi-radius-md);
+}
+
+.sourceRepoHead,
+.sourceFolder,
+.sourceActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sourceName {
+  flex: 1;
+  min-width: 140px;
+}
+
+.sourceRole {
+  width: 130px;
+}
+
+.sourceFolder > .mono {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vi-text-2);
+  font-size: var(--vi-text-sm);
+}
+
+.sourceIcon {
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+
+.sourceWarn {
+  color: var(--vi-warn-fg);
+  font-size: var(--vi-text-sm);
+}
+
+.sourceModules {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 18px;
+  font-size: var(--vi-text-sm);
+}
+
+.sourceActions {
+  padding-top: 4px;
+}
+
+.sourceSwitch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sourceChanges {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 240px;
+  overflow: auto;
+  font-size: var(--vi-text-sm);
+}
+
+.sourceChanges li {
+  display: flex;
+  gap: 8px;
+}
+
+.sourceKind {
+  width: 100px;
+  flex: none;
+  color: var(--vi-text-3);
+}
+
+.sourceError {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.sourceDetail {
+  font-family: var(--vi-font-mono);
+  font-size: var(--vi-text-xs);
+  color: var(--vi-text-3);
+  white-space: pre-wrap;
+  max-width: 520px;
+}

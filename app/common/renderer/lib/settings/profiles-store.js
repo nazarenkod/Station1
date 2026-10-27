@@ -112,6 +112,7 @@ export async function addProfile(name, {copy = false, open = true} = {}) {
 
 export const renameProfile = (id, name) => backend.settings.renameProfile(id, name);
 export const setProfileApps = (id, apps) => backend.settings.setProfileApps(id, apps);
+export const setProfileSource = (id, source) => backend.settings.setProfileSource(id, source);
 
 export async function removeProfile(id) {
   await flushViews();

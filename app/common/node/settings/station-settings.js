@@ -1,7 +1,7 @@
 import {mkdir, readdir, readFile, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
-import {PROFILES} from '../../shared/setting-defs.js';
+import {PROFILES, SOURCE_PATHS} from '../../shared/setting-defs.js';
 import {GROUP_KEYS} from '../../shared/settings/groups.js';
 import {
   addProfile,
@@ -11,8 +11,10 @@ import {
   removeProfile,
   renameProfile,
   setProfileApps,
+  setProfileSource,
   switchProfile,
 } from '../../shared/settings/profiles.js';
+import {projectSource} from '../../shared/settings/source.js';
 import {
   applyImport,
   buildBackup,
@@ -70,13 +72,28 @@ export function createStationSettings({
   // what the screens need: no settings inside, only names, apps and which one is on
   const outline = (profiles) => ({
     activeId: profiles.activeId,
-    list: profiles.list.map(({id, name, apps, updatedAt}) => ({id, name, apps: projectApps(apps), updatedAt})),
+    list: profiles.list.map(({id, name, apps, source, updatedAt}) => ({
+      id,
+      name,
+      apps: projectApps(apps),
+      source: projectSource(source),
+      updatedAt,
+    })),
   });
 
   const save = async (profiles, patch = {}) => {
     await writePatch(patch);
     await store.set(PROFILES, profiles);
     return {profiles: outline(profiles), changedKeys: Object.keys(patch)};
+  };
+
+  // the folders of the repositories, this Mac's only: by profile, then by repository
+  const readPaths = async () => (await store.get(SOURCE_PATHS)) ?? {};
+  const writePaths = async (change) => {
+    const paths = {...(await readPaths())};
+    change(paths);
+    await store.set(SOURCE_PATHS, paths);
+    return paths;
   };
 
   // ---- backups
@@ -146,6 +163,12 @@ export function createStationSettings({
     async addProfile(name, {copy = false} = {}) {
       const {profiles, all} = await load();
       const {profiles: next, profile} = addProfile(profiles, name, {copyFrom: copy ? profiles.activeId : null, all});
+      if (copy) {
+        // the copy works on the same folders
+        await writePaths((paths) => {
+          paths[profile.id] = structuredClone(paths[profiles.activeId] ?? {});
+        });
+      }
       return {...(await save(next)), id: profile.id};
     },
 
@@ -159,6 +182,36 @@ export function createStationSettings({
       return await save(setProfileApps(profiles, id, apps));
     },
 
+    async setProfileSource(id, source) {
+      const {profiles} = await load();
+      const next = setProfileSource(profiles, id, source);
+      const kept = new Set(next.list.find((profile) => profile.id === id)?.source.repos.map((repo) => repo.id) ?? []);
+      // a repository taken out of the profile leaves its folder behind
+      await writePaths((paths) => {
+        paths[id] = Object.fromEntries(Object.entries(paths[id] ?? {}).filter(([repoId]) => kept.has(repoId)));
+      });
+      return await save(next);
+    },
+
+    async sourcePaths(profileId) {
+      return (await readPaths())[profileId] ?? {};
+    },
+
+    /** Sets what is known of a repository folder here: its path, the branch before a switch. */
+    async setSourcePath(profileId, repoId, value) {
+      const paths = await writePaths((all) => {
+        const next = {...all[profileId]?.[repoId], ...value};
+        const folders = {...all[profileId]};
+        if (next.path) {
+          folders[repoId] = next;
+        } else {
+          delete folders[repoId];
+        }
+        all[profileId] = folders;
+      });
+      return paths[profileId] ?? {};
+    },
+
     async removeProfile(id) {
       const {profiles, all} = await load();
       const result = removeProfile(profiles, id, all);
@@ -166,6 +219,9 @@ export function createStationSettings({
         return null;
       }
       await backup('before-delete');
+      await writePaths((paths) => {
+        delete paths[id];
+      });
       return await save(result.profiles, result.patch);
     },
 
