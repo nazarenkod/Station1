@@ -1,5 +1,6 @@
 import {
   IconArrowDown,
+  IconBrain,
   IconCopy,
   IconDeviceFloppy,
   IconDeviceMobile,
@@ -24,6 +25,9 @@ import {useNavigate} from 'react-router';
 import {SEVERITIES, severityRank} from '../../../shared/findings/findings.js';
 import {LOG_LEVELS} from '../../../shared/findings/log-rules.js';
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
+import {askAbout} from '../../lib/agent/agent-store.js';
+import {logPick} from '../../lib/agent/picks.js';
+import {setPick} from '../../lib/agent/selection.js';
 import {logsView} from '../../lib/settings/views.js';
 import {backend} from '../../polyfills.js';
 import {SeverityTag} from '../Findings/FindingsList.jsx';
@@ -444,6 +448,11 @@ const LogsTool = () => {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [logs.version, effectiveScope]);
 
+  // the line picked here goes with the next message to the agent
+  useEffect(() => {
+    const entry = selected === null ? null : logs.entries.find((one) => one.seq === selected);
+    setPick('log', entry ? logPick(entry) : null);
+  }, [selected, logs.entries]);
   const selectedEntry = useMemo(
     () => (selected === null ? null : logs.entries.find((entry) => entry.seq === selected)),
     // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -732,6 +741,14 @@ const LogsTool = () => {
                 <Button size="small" icon={<IconPlus size={14} />} onClick={() => ruleFromLine(selectedEntry)}>
                   {t('logsRuleFromLine')}
                 </Button>
+                <Tooltip title={t('agentAskAbout')}>
+                  <Button
+                    size="small"
+                    aria-label={t('agentAskAbout')}
+                    icon={<IconBrain size={14} />}
+                    onClick={() => askAbout({kind: 'log', ...logPick(selectedEntry)})}
+                  />
+                </Tooltip>
                 <Tooltip title={t('logsCopy')}>
                   <Button
                     size="small"

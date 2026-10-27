@@ -20,6 +20,9 @@ const COMMANDS = {
   java: {mac: 'brew install --cask temurin@17', win: 'winget install EclipseAdoptium.Temurin.17.JDK'},
   javaHome: {mac: `echo 'export JAVA_HOME="$(/usr/libexec/java_home)"' >> ~/.zshrc`},
   xcode: {mac: 'sudo xcode-select -s /Applications/Xcode.app/Contents/Developer'},
+  kiroMissing: {mac: 'curl -fsSL https://cli.kiro.dev/install | bash'},
+  kiroV3: {mac: 'kiro-cli update'},
+  kiroLogin: {mac: 'kiro-cli login'},
   // shows how long the profile takes and where it stops to ask something
   shellEnv: ({shell}) => `time ${shell} -ilc exit`,
 };

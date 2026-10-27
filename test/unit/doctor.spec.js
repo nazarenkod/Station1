@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
+import {kiroCheck} from '../../app/common/node/agent/kiro-doctor.js';
 import {appiumArgs} from '../../app/common/node/doctor/appium-server.js';
 import {
   androidDeviceName,
@@ -298,5 +299,24 @@ describe('the Appium server the station starts', function () {
     expect(args.slice(0, 4)).toEqual(['--address', '127.0.0.1', '--port', '4723']);
     expect(args).toContain('--allow-cors');
     expect(appiumArgs(4724, ['--log-level', 'debug']).slice(-2)).toEqual(['--log-level', 'debug']);
+  });
+});
+
+describe('doctor: the agent’s Kiro CLI', function () {
+  const version = {raw: '2.34.2'};
+  const acpHelp = 'Agent engine to use: "v1", "v2" (default), or "v3"';
+
+  it('is fine with the V3 engine and someone signed in', function () {
+    expect(kiroCheck({version, acpHelp, whoami: {ok: true}})).toEqual({
+      id: 'kiro',
+      status: 'ok',
+      params: {version: '2.34.2'},
+    });
+  });
+
+  it('says what is missing: kiro-cli, the V3 engine or the sign-in', function () {
+    expect(kiroCheck({version: null})).toEqual({id: 'kiroMissing', status: 'warn'});
+    expect(kiroCheck({version, acpHelp: 'Agent engine: "v1", "v2"', whoami: {ok: true}}).id).toBe('kiroV3');
+    expect(kiroCheck({version, acpHelp, whoami: {ok: false}}).id).toBe('kiroLogin');
   });
 });

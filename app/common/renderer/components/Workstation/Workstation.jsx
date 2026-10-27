@@ -6,13 +6,18 @@ import {useDispatch, useSelector, useStore} from 'react-redux';
 import {useLocation, useNavigate, useOutlet} from 'react-router';
 
 import {activeDevice, initWorkstation, isDeviceRunning, setProjectApps} from '../../actions/Workstation.js';
+import {followProfile, startAgent, toggleAgent} from '../../lib/agent/agent-store.js';
+import {startAgentBridge} from '../../lib/agent/bridge.js';
+import {setPick} from '../../lib/agent/selection.js';
 import {profileForApp, startProfiles, switchProfile, useProfiles} from '../../lib/settings/profiles-store.js';
 import {loadSessionFileIfOpened} from '../../polyfills.js';
+import AgentPanel from '../Agent/AgentPanel.jsx';
 import {PageTransition} from '../AppShell/motion.jsx';
 import {startPipelineWatches} from '../Builds/pipeline-watch.js';
 import {logsState, startLogs} from '../Logs/logs-store.js';
 import SessionExpiryModal from '../SessionInspector/SessionExpiryModal.jsx';
 import {useInspectorActions} from '../SessionInspector/use-inspector.js';
+import {toolOf} from './tools.js';
 import WorkstationHeader from './WorkstationHeader.jsx';
 
 import styles from './Workstation.module.css';
@@ -93,6 +98,34 @@ const ProfileFollower = () => {
 };
 
 /**
+ * Keeps the agent with the person: the open tab goes into the next message,
+ * ⌘J opens and closes the chat, another profile has its own conversation.
+ */
+const AgentFollower = () => {
+  const location = useLocation();
+  const {t} = useTranslation();
+  const profiles = useProfiles();
+  useEffect(() => {
+    const tool = toolOf(location.pathname);
+    setPick('tab', tool ? {id: tool.key, label: t(`wsTool_${tool.key}`)} : null);
+  }, [location.pathname, t]);
+  useEffect(() => {
+    const onKey = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'j') {
+        event.preventDefault();
+        toggleAgent();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  useEffect(() => {
+    followProfile();
+  }, [profiles.activeId]);
+  return null;
+};
+
+/**
  * The QA engineer's workstation: a title bar with the tools and the shared
  * device and app, and the open tool below.
  */
@@ -109,6 +142,9 @@ const Workstation = () => {
     startProfiles(store);
     // the pipelines followed for builds go on whichever tool is open
     startPipelineWatches(store);
+    // the agent's chat, and the window's answers to what the agent asks the station
+    startAgent();
+    startAgentBridge(store);
     // a session file or a shared session link opens straight in the Inspector
     (async () => {
       const hasSessionLink = new URL(window.location.href).searchParams.has('state');
@@ -121,11 +157,15 @@ const Workstation = () => {
   return (
     <div className={styles.workstation}>
       <WorkstationHeader />
-      <div className={styles.toolArea}>
-        <AnimatePresence mode="wait">
-          <PageTransition key={location.pathname}>{outlet}</PageTransition>
-        </AnimatePresence>
+      <div className={styles.body}>
+        <div className={styles.toolArea}>
+          <AnimatePresence mode="wait">
+            <PageTransition key={location.pathname}>{outlet}</PageTransition>
+          </AnimatePresence>
+        </div>
+        <AgentPanel />
       </div>
+      <AgentFollower />
       <SessionKeepAlive />
       <LogsFollower />
       <ProfileFollower />

@@ -47,6 +47,14 @@ export const LOGS_VIEW = 'LOGS_VIEW';
 export const PROFILES = 'PROFILES';
 // the folders of each profile's repositories on this Mac, by profile and repository; never exported
 export const SOURCE_PATHS = 'SOURCE_PATHS';
+// the station's agent: instructions of the station and the person, MCP servers for every profile, budgets and the credit threshold
+export const AGENT_CONFIG = 'AGENT_CONFIG';
+// the project's part of the agent: its instructions and MCP servers; goes with the profile
+export const AGENT_PROJECT = 'AGENT_PROJECT';
+// the profiles whose data the person let go to the agent, and the day the credit threshold was passed with a yes; never exported
+export const AGENT_CONSENT = 'AGENT_CONSENT';
+// which Kiro session holds which conversation, by profile; never exported
+export const AGENT_SESSIONS = 'AGENT_SESSIONS';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -89,4 +97,15 @@ export const DEFAULT_SETTINGS = {
   [LOGS_VIEW]: {scope: 'app', minLevel: 'V', query: '', tags: [], hiddenTags: []},
   [PROFILES]: null,
   [SOURCE_PATHS]: {},
+  [AGENT_CONFIG]: {
+    stationInstructions: null,
+    personalInstructions: '',
+    mcpServers: [],
+    readBudget: 40000,
+    deepBudget: 200000,
+    dailyCreditLimit: 0,
+  },
+  [AGENT_PROJECT]: {instructions: '', mcpServers: []},
+  [AGENT_CONSENT]: {profiles: {}, confirmedDay: null},
+  [AGENT_SESSIONS]: {},
 };

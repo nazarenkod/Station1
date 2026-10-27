@@ -73,7 +73,15 @@ describe('export', () => {
     expect(file.exportedAt).toBe('2026-10-26T10:00:00.000Z');
     expect(file.station).toBeUndefined();
     expect(file.profiles).toHaveLength(1);
-    expect(Object.keys(file.profiles[0].groups)).toEqual(['proxy', 'logs', 'filters', 'a11y', 'builds', 'jira']);
+    expect(Object.keys(file.profiles[0].groups)).toEqual([
+      'proxy',
+      'logs',
+      'filters',
+      'a11y',
+      'builds',
+      'jira',
+      'agent',
+    ]);
   });
 
   it('puts only the chosen groups in', () => {

@@ -506,3 +506,56 @@ button.cardHead:hover {
   white-space: pre-wrap;
   max-width: 520px;
 }
+
+/* the agent: credits, budgets, instructions, MCP servers */
+.agentStats,
+.agentNumbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-bottom: 10px;
+}
+
+.agentNumbers label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--vi-text-2);
+  font-size: var(--vi-text-sm);
+}
+
+.agentConsent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--vi-text-2);
+  font-size: var(--vi-text-sm);
+}
+
+.agentLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.agentPairs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agentPair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.agentFiles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--vi-text-sm);
+}

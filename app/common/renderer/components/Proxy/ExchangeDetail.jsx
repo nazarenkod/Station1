@@ -1,5 +1,6 @@
 import {
   IconBan,
+  IconBrain,
   IconChevronDown,
   IconCopy,
   IconDots,
@@ -16,6 +17,8 @@ import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {parseHeaderLines, ruleMatches} from '../../../shared/proxy/mock-rules.js';
+import {askAbout} from '../../lib/agent/agent-store.js';
+import {exchangePick} from '../../lib/agent/picks.js';
 import {backend} from '../../polyfills.js';
 import {formatDuration, formatSize, headerLines, prettyBody, statusTone, toCurl} from './exchange-utils.js';
 import {proxyState, resumePause, saveProxyConfig, useProxy} from './proxy-store.js';
@@ -354,6 +357,15 @@ const ExchangeDetail = ({exchange, pause, mockRuleNames, onClose}) => {
               : exchange.status || 'ERR'}
         </span>
         <div className={styles.spacer} />
+        <Tooltip title={t('agentAskAbout')}>
+          <Button
+            type="text"
+            size="small"
+            aria-label={t('agentAskAbout')}
+            icon={<IconBrain size={16} />}
+            onClick={() => askAbout({kind: 'request', ...exchangePick(exchange)})}
+          />
+        </Tooltip>
         <Tooltip title={t('proxyClose')}>
           <Button type="text" size="small" aria-label={t('proxyClose')} icon={<IconX size={16} />} onClick={onClose} />
         </Tooltip>

@@ -1,6 +1,8 @@
 import {
   A11Y_CONFIG,
   A11Y_ISSUE_STATES,
+  AGENT_CONFIG,
+  AGENT_PROJECT,
   AI_CONFIG,
   BUILD_JOBS,
   DEFAULT_SETTINGS,
@@ -34,6 +36,8 @@ import {
 export const GROUP_KEYS = [
   A11Y_CONFIG,
   A11Y_ISSUE_STATES,
+  AGENT_CONFIG,
+  AGENT_PROJECT,
   AI_CONFIG,
   BUILD_JOBS,
   GITLAB_CONFIG,
@@ -82,8 +86,8 @@ const pick = (value, names) => Object.fromEntries(Object.entries(value ?? {}).fi
 const get = (all, key) => all[key] ?? DEFAULT_SETTINGS[key];
 const copy = (value) => (value === undefined ? undefined : structuredClone(value));
 
-export const PROFILE_GROUPS = ['proxy', 'logs', 'filters', 'a11y', 'builds', 'jira'];
-export const STATION_GROUPS = ['general', 'integrations', 'devices', 'inspector'];
+export const PROFILE_GROUPS = ['proxy', 'logs', 'filters', 'a11y', 'builds', 'jira', 'agent'];
+export const STATION_GROUPS = ['general', 'integrations', 'devices', 'inspector', 'agentStation'];
 
 /**
  * @type {Record<string, {
@@ -161,6 +165,13 @@ export const GROUPS = {
     }),
     valid: (value) => isObject(value) && isObjectOrNull(value.bug) && isObjectOrNull(value.memory),
   },
+  agent: {
+    scope: 'profile',
+    // the project's instructions and MCP servers; their secrets stay in the keychain
+    read: (all) => withoutSecrets(get(all, AGENT_PROJECT)),
+    write: (value) => ({[AGENT_PROJECT]: {...DEFAULT_SETTINGS[AGENT_PROJECT], ...withoutSecrets(copy(value) ?? {})}}),
+    valid: (value) => isObject(value) && isText(value.instructions) && isList(value.mcpServers),
+  },
   general: {
     scope: 'station',
     read: (all) => ({language: get(all, PREFERRED_LANGUAGE), theme: get(all, PREFERRED_THEME)}),
@@ -235,6 +246,14 @@ export const GROUPS = {
       isList(value.attributes) &&
       isText(value.framework),
   },
+};
+
+// the agent of the station, for every profile: instructions, servers, budgets
+GROUPS.agentStation = {
+  scope: 'station',
+  read: (all) => withoutSecrets(get(all, AGENT_CONFIG)),
+  write: (value) => ({[AGENT_CONFIG]: {...DEFAULT_SETTINGS[AGENT_CONFIG], ...withoutSecrets(copy(value) ?? {})}}),
+  valid: (value) => isObject(value) && isList(value.mcpServers),
 };
 
 /** The groups of one scope read from the settings, as {group: value}. */

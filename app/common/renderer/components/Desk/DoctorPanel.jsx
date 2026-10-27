@@ -28,6 +28,10 @@ const CHECK_NAME = {
   adb: 'adb',
   java: 'java',
   xcode: 'xcode',
+  kiro: 'kiro',
+  kiroMissing: 'kiro',
+  kiroV3: 'kiro',
+  kiroLogin: 'kiro',
   shellEnv: 'shellEnv',
   doctorFailed: 'doctorFailed',
 };

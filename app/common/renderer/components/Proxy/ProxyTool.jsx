@@ -22,6 +22,8 @@ import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
 
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
+import {exchangePick} from '../../lib/agent/picks.js';
+import {setPick} from '../../lib/agent/selection.js';
 import {proxyView} from '../../lib/settings/views.js';
 import {backend} from '../../polyfills.js';
 import EmptyState from '../Workstation/EmptyState.jsx';
@@ -313,6 +315,10 @@ const ProxyTool = () => {
   }, [firstPause]);
 
   const exchange = selected ? proxy.byId.get(selected) : null;
+  // the request picked here goes with the next message to the agent
+  useEffect(() => {
+    setPick('request', exchange ? exchangePick(exchange) : null);
+  }, [exchange]);
   const pause = exchange ? proxy.pauses.find((p) => p.exchangeId === exchange.id) : null;
   const mockRuleNames = useMemo(
     () => Object.fromEntries(proxy.config.mockRules.map((r) => [r.id, r.name])),

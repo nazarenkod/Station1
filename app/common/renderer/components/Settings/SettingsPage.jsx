@@ -17,6 +17,7 @@ import {Stagger, StaggerItem} from '../AppShell/motion.jsx';
 import {JiraSettingsFields, useJiraSettings} from '../Jira/JiraSettingsModal.jsx';
 import ChangeLanguage from '../SessionBuilder/AppSettings/ChangeLanguage.jsx';
 import ToggleTheme from '../SessionBuilder/AppSettings/ToggleTheme.jsx';
+import AgentSettings from './AgentSettings.jsx';
 import BuildSourcesSettings from './BuildSourcesSettings.jsx';
 import {GitLabSettingsFields, useGitLabSettings} from './GitLabSettings.jsx';
 import IosSigningSettings from './IosSigningSettings.jsx';
@@ -25,7 +26,7 @@ import StationTransfer from './StationTransfer.jsx';
 
 import styles from './SettingsPage.module.css';
 
-const SECTIONS = ['integrations', 'profiles', 'builds', 'devices', 'general'];
+const SECTIONS = ['integrations', 'agent', 'profiles', 'builds', 'devices', 'general'];
 
 /**
  * One outside service as a single line: what it is, what it is connected to
@@ -260,7 +261,29 @@ const Builds = ({openProject}) => {
   );
 };
 
-const PAGES = {integrations: Integrations, profiles: Profiles, builds: Builds, devices: Devices, general: General};
+const Agent = () => {
+  const {t} = useTranslation();
+  return (
+    <Stagger className={styles.section}>
+      <StaggerItem>
+        <h2 className={styles.sectionTitle}>{t('settingsAgent')}</h2>
+        <p className={styles.sectionText}>{t('settingsAgentText')}</p>
+      </StaggerItem>
+      <StaggerItem className={styles.section}>
+        <AgentSettings />
+      </StaggerItem>
+    </Stagger>
+  );
+};
+
+const PAGES = {
+  integrations: Integrations,
+  agent: Agent,
+  profiles: Profiles,
+  builds: Builds,
+  devices: Devices,
+  general: General,
+};
 
 /**
  * The workstation's settings: outside services and their keys, project

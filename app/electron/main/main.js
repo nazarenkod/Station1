@@ -5,6 +5,7 @@ import debug from 'electron-debug';
 
 import {installExtensions} from './debug.js';
 import {isDev, setupIPCListeners} from './helpers.js';
+import {setupAgentIPC} from './ipc/agent.js';
 import {setupAiIPC} from './ipc/ai.js';
 import {setupBuildsIPC} from './ipc/builds.js';
 import {setupDeviceIPC} from './ipc/device.js';
@@ -54,8 +55,10 @@ app.on('ready', async () => {
   setupGitLabIPC();
   setupDeviceIPC();
   setupBuildsIPC();
-  setupLogsIPC();
-  setupProxyIPC();
-  setupSourceIPC(setupSettingsIPC());
+  const logs = setupLogsIPC();
+  const proxy = setupProxyIPC();
+  const station = setupSettingsIPC();
+  setupSourceIPC(station);
+  setupAgentIPC({station, proxy, logs});
   await setupMainWindow();
 });

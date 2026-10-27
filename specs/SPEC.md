@@ -329,8 +329,8 @@
 
 | Частина | Спека | Стан |
 |---|---|---|
-| Агент на Kiro: чат на кожній вкладці, розмова на задачу, кредити, дозволи, інструкції, MCP з авторизацією | [agent.core](agent.core/spec.md) | approved |
-| Інструменти станції для агента (MCP): дані сесії в межах бюджету, правила, підміни, фільтри, налаштування, відкат | [agent.station-mcp](agent.station-mcp/spec.md) | approved |
+| Агент на Kiro: чат на кожній вкладці, розмова на задачу, кредити, дозволи, інструкції, MCP з авторизацією | [agent.core](agent.core/spec.md) | implemented |
+| Інструменти станції для агента (MCP): дані сесії в межах бюджету, правила, підміни, фільтри, налаштування, відкат | [agent.station-mcp](agent.station-mcp/spec.md) | implemented |
 | Памʼять агента: уроки й поправки користувача | [agent.memory](agent.memory/spec.md) | approved |
 | Код застосунку в проєкті: локальний репозиторій, сабмодулі, гілки `develop` і `main` | [project.source](project.source/spec.md) | implemented |
 | Задача: Jira, повʼязані задачі, Confluence, MR із коментарів → контекст задачі й імпакт-аналіз | [task.context](task.context/spec.md) | approved |

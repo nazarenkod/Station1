@@ -57,6 +57,9 @@ const backend = {
   get source() {
     return window.electronIPC.source;
   },
+  get agent() {
+    return window.electronIPC.agent;
+  },
   get journal() {
     return window.electronIPC.journal;
   },

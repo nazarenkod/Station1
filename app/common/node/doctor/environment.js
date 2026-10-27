@@ -2,6 +2,7 @@ import {access} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+import {checkKiro} from '../agent/kiro-doctor.js';
 import {runTool, shellEnv, shellEnvFailure} from './exec.js';
 
 export const CHECK_STATUS = {OK: 'ok', WARN: 'warn', ERROR: 'error'};
@@ -196,11 +197,13 @@ async function checkXcode() {
  */
 export async function checkEnvironment() {
   const env = await shellEnv();
-  const [node, appium, android, xcode] = await Promise.all([
+  const [node, appium, android, xcode, kiro] = await Promise.all([
     checkNode(),
     checkAppium(),
     checkAndroid(env),
     process.platform === 'darwin' ? checkXcode() : [],
+    // the station's agent runs on Kiro CLI
+    checkKiro(),
   ]);
   const drivers = await checkDrivers(appium.version);
   const shell = await shellEnvFailure();
@@ -212,6 +215,7 @@ export async function checkEnvironment() {
       ...drivers.checks,
       ...android.checks,
       ...xcode,
+      kiro,
     ],
     appiumVersion: appium.version?.raw ?? null,
     drivers: drivers.drivers,

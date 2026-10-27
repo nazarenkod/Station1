@@ -51,4 +51,7 @@ export function setupLogsIPC() {
     await writeFile(result.filePath, `${session.entries.map(logLine).join('\n')}\n`);
     return result.filePath;
   });
+
+  // the agent reads the log from here
+  return {snapshot: () => session?.snapshot() ?? null};
 }

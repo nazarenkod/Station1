@@ -163,4 +163,7 @@ export function setupProxyIPC() {
       proxy.stop(),
     ]).finally(() => app.quit());
   });
+
+  // the agent reads the traffic from here
+  return {snapshot: () => proxy.snapshot()};
 }

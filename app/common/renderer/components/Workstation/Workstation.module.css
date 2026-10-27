@@ -419,11 +419,37 @@
   }
 }
 
-.toolArea {
+/* the open tool, with the agent's chat beside it when it is open */
+.body {
   flex: 1;
   min-height: 0;
   display: flex;
+}
+
+.toolArea {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
+}
+
+.agentButton {
+  position: relative;
+}
+
+.agentDot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--vi-accent-fg);
+}
+
+.agentDotAsk {
+  background: var(--vi-warn-fg);
 }
 
 /* a tool's own controls, under the tabs */
