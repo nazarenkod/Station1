@@ -23,7 +23,7 @@ import {useSelector} from 'react-redux';
 
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {exchangePick} from '../../lib/agent/picks.js';
-import {setPick} from '../../lib/agent/selection.js';
+import {clearFocus, setPick, useFocus} from '../../lib/agent/selection.js';
 import {proxyView} from '../../lib/settings/views.js';
 import {backend} from '../../polyfills.js';
 import EmptyState from '../Workstation/EmptyState.jsx';
@@ -315,6 +315,14 @@ const ProxyTool = () => {
   }, [firstPause]);
 
   const exchange = selected ? proxy.byId.get(selected) : null;
+  // the evidence of a goal opens here
+  const focus = useFocus();
+  useEffect(() => {
+    if (focus?.kind === 'request') {
+      setSelected(focus.id);
+      clearFocus();
+    }
+  }, [focus]);
   // the request picked here goes with the next message to the agent
   useEffect(() => {
     setPick('request', exchange ? exchangePick(exchange) : null);

@@ -1,6 +1,7 @@
 import {
   IconBan,
   IconBrain,
+  IconTarget,
   IconChevronDown,
   IconCopy,
   IconDots,
@@ -16,9 +17,11 @@ import {Alert, App, Button, Dropdown, Input, Modal, Segmented, Select, Switch, T
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
+import {endpointOf} from '../../../shared/findings/traffic-rules.js';
 import {parseHeaderLines, ruleMatches} from '../../../shared/proxy/mock-rules.js';
 import {askAbout} from '../../lib/agent/agent-store.js';
 import {exchangePick} from '../../lib/agent/picks.js';
+import {openGoalForm} from '../../lib/goals/goal-form.js';
 import {backend} from '../../polyfills.js';
 import {formatDuration, formatSize, headerLines, prettyBody, statusTone, toCurl} from './exchange-utils.js';
 import {proxyState, resumePause, saveProxyConfig, useProxy} from './proxy-store.js';
@@ -357,6 +360,22 @@ const ExchangeDetail = ({exchange, pause, mockRuleNames, onClose}) => {
               : exchange.status || 'ERR'}
         </span>
         <div className={styles.spacer} />
+        <Tooltip title={t('goalMake')}>
+          <Button
+            type="text"
+            size="small"
+            aria-label={t('goalMake')}
+            icon={<IconTarget size={16} />}
+            onClick={() =>
+              openGoalForm({
+                type: 'request',
+                source: 'manual',
+                title: `${exchange.method} ${endpointOf(exchange.url).path}`,
+                params: {method: exchange.method, path: `*${new URL(exchange.url).pathname}`},
+              })
+            }
+          />
+        </Tooltip>
         <Tooltip title={t('agentAskAbout')}>
           <Button
             type="text"

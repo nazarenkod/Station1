@@ -1,5 +1,6 @@
 import {z} from 'zod';
 
+import {cleanGoal, FIELD_OPS, FIELD_PLACES, GOAL_TYPES, goalProblem} from '../../shared/agent/goals.js';
 import {TASK_PARTS, taskForAgent} from '../../shared/task/for-agent.js';
 
 // The task tools of the agent: the context of the task that is on, by parts,
@@ -32,6 +33,7 @@ const item = z.object({
  * @param {ReturnType<import('../task/store.js').createTaskStore>} deps.store
  * @param {(conversation: string) => number} deps.turnOf
  * @param {(change: {profileId: string, key: string}) => void} deps.onChanged
+ * @param {(proposal: object) => void} [deps.proposeGoal] a goal card for the person
  */
 export function taskTools(deps) {
   const context = async () => {
@@ -95,6 +97,44 @@ export function taskTools(deps) {
         ]
           .filter(Boolean)
           .join('\n');
+      },
+    },
+    {
+      name: 'goal_propose',
+      readOnly: false,
+      autoAllow: true,
+      description:
+        'Proposes a goal of the session: a check the station then counts by itself on live traffic, logs and screens. The engineer accepts it or not. type: request (method, path pattern), field (method, path, where, field JSON path or name, op exists|equals|matches|absent, value), status (method, path, status like "200" or "4xx"), log (pattern regex, level, tag, mode seen|notSeen), screen (screen title, state), noFlags (method, path: no errors there), manual. title: short, in the engineer’s language. itemId: the impact checklist item it checks.',
+      input: {
+        title: z.string(),
+        type: z.enum(GOAL_TYPES),
+        method: z.string().optional(),
+        path: z.string().optional().describe('URL pattern, * for anything: "*/v2/transfers"'),
+        where: z.enum(FIELD_PLACES).optional(),
+        field: z.string().optional(),
+        op: z.enum(FIELD_OPS).optional(),
+        value: z.string().optional(),
+        status: z.string().optional(),
+        pattern: z.string().optional(),
+        level: z.enum(['V', 'D', 'I', 'W', 'E', 'F']).optional(),
+        tag: z.string().optional(),
+        mode: z.enum(['seen', 'notSeen']).optional(),
+        screen: z.string().optional(),
+        state: z.string().optional(),
+        expectOn: z.string().optional().describe('The screen where it should happen'),
+        why: z.string().optional(),
+        source: z.enum(['task', 'mr', 'code', 'impact']).optional(),
+        itemId: z.string().optional(),
+      },
+      run: async ({title, type, expectOn, why, source, itemId, ...params}, {conversation}) => {
+        const {key} = await context();
+        const goal = cleanGoal({title, type, expectOn, why, source: source ?? 'agent', itemId, params});
+        const problem = goalProblem(goal);
+        if (problem) {
+          return `Not proposed: ${problem} is missing or not valid for a ${type} goal.`;
+        }
+        deps.proposeGoal?.({conversation, goal, key});
+        return 'Proposed to the engineer; it counts only if they accept it.';
       },
     },
   ];

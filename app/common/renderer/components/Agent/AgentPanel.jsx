@@ -44,6 +44,7 @@ import {useProfiles} from '../../lib/settings/profiles-store.js';
 import {useTask} from '../../lib/task/task-store.js';
 import {backend} from '../../polyfills.js';
 import {useScreenHistory} from '../A11yTool/screen-history.js';
+import GoalCard from '../Goals/GoalCard.jsx';
 import AgentText from './AgentText.jsx';
 import MemoryCard from './MemoryCard.jsx';
 
@@ -492,6 +493,9 @@ const AgentPanel = () => {
               </div>
             </div>
           ))}
+        {agent.goalProposals.map((proposal) => (
+          <GoalCard key={proposal.id} proposal={proposal} />
+        ))}
         {agent.proposals.map((proposal) => (
           <MemoryCard key={proposal.id} proposal={proposal} />
         ))}

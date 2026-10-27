@@ -1,6 +1,7 @@
 import {
   IconArrowDown,
   IconBrain,
+  IconTarget,
   IconCopy,
   IconDeviceFloppy,
   IconDeviceMobile,
@@ -27,7 +28,8 @@ import {LOG_LEVELS} from '../../../shared/findings/log-rules.js';
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {askAbout} from '../../lib/agent/agent-store.js';
 import {logPick} from '../../lib/agent/picks.js';
-import {setPick} from '../../lib/agent/selection.js';
+import {clearFocus, setPick, useFocus} from '../../lib/agent/selection.js';
+import {openGoalForm} from '../../lib/goals/goal-form.js';
 import {logsView} from '../../lib/settings/views.js';
 import {backend} from '../../polyfills.js';
 import {SeverityTag} from '../Findings/FindingsList.jsx';
@@ -448,6 +450,14 @@ const LogsTool = () => {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [logs.version, effectiveScope]);
 
+  // the evidence of a goal opens here
+  const focus = useFocus();
+  useEffect(() => {
+    if (focus?.kind === 'log') {
+      setSelected(Number(focus.id));
+      clearFocus();
+    }
+  }, [focus]);
   // the line picked here goes with the next message to the agent
   useEffect(() => {
     const entry = selected === null ? null : logs.entries.find((one) => one.seq === selected);
@@ -741,6 +751,28 @@ const LogsTool = () => {
                 <Button size="small" icon={<IconPlus size={14} />} onClick={() => ruleFromLine(selectedEntry)}>
                   {t('logsRuleFromLine')}
                 </Button>
+                <Tooltip title={t('goalMake')}>
+                  <Button
+                    size="small"
+                    aria-label={t('goalMake')}
+                    icon={<IconTarget size={14} />}
+                    onClick={() =>
+                      openGoalForm({
+                        type: 'log',
+                        source: 'manual',
+                        title: String(selectedEntry.message).split('\n')[0].slice(0, 80),
+                        params: {
+                          pattern: String(selectedEntry.message)
+                            .split('\n')[0]
+                            .slice(0, 60)
+                            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+                          tag: selectedEntry.tag,
+                          mode: 'seen',
+                        },
+                      })
+                    }
+                  />
+                </Tooltip>
                 <Tooltip title={t('agentAskAbout')}>
                   <Button
                     size="small"

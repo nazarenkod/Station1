@@ -29,6 +29,8 @@ let state = {
   draft: null,
   // notes the agent proposed or the person started, waiting for «Save»
   proposals: [],
+  // goals the agent proposed, waiting for «Add»
+  goalProposals: [],
   // notes the agent read in the turn that runs, then by the turn's line
   usedNow: [],
   turnNotes: {},
@@ -112,6 +114,11 @@ export function startAgent() {
       publish({
         usedNow: [...state.usedNow, ...notes.filter((note) => !state.usedNow.some((one) => one.id === note.id))],
       });
+    }
+  });
+  backend.agent.onGoalProposal(({sessionId, goal}) => {
+    if (!sessionId || sessionId === state.sessionId) {
+      publish({open: true, goalProposals: [...state.goalProposals, {id: `goal-${++proposalId}`, goal}]});
     }
   });
   backend.agent.onMemoryProposal(({sessionId, ...proposal}) => {
@@ -329,3 +336,5 @@ export async function saveProposal(id, note, options = {}) {
   });
   return result;
 }
+
+export const dismissGoalProposal = (id) => publish({goalProposals: state.goalProposals.filter((one) => one.id !== id)});

@@ -77,6 +77,9 @@ window.electronIPC = {
     feedback: async (profileId, key, itemId, kind, reason) =>
       await ipcRenderer.invoke('task:feedback', profileId, key, itemId, kind, reason),
     forget: async (profileId, key) => await ipcRenderer.invoke('task:forget', profileId, key),
+    setGoals: async (profileId, key, goals) => await ipcRenderer.invoke('task:setGoals', profileId, key, goals),
+    saveRun: async (profileId, key, run) => await ipcRenderer.invoke('task:saveRun', profileId, key, run),
+    comment: async (key, body) => await ipcRenderer.invoke('task:comment', key, body),
     onChanged: subscribe('task:changed'),
   },
   memory: {
@@ -118,6 +121,7 @@ window.electronIPC = {
     onAsk: subscribe('agent:ask'),
     onMemoryUsed: subscribe('agent:memoryUsed'),
     onMemoryProposal: subscribe('agent:memoryProposal'),
+    onGoalProposal: subscribe('agent:goalProposal'),
   },
   source: {
     pickFolder: async () => await ipcRenderer.invoke('source:pickFolder'),

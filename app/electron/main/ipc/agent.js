@@ -152,6 +152,8 @@ export function setupAgentIPC({station, proxy, logs, tasks}) {
       store: tasks.store,
       turnOf: (conversation) => service?.turnOf(conversation) ?? 0,
       onChanged: tasks.changed,
+      proposeGoal: ({conversation, ...proposal}) =>
+        broadcast('agent:goalProposal', {sessionId: service?.sessionOf(conversation), ...proposal}),
     }),
   ];
 

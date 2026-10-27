@@ -30,3 +30,27 @@ export function setPick(kind, pick) {
 
 export const usePicks = () => useSyncExternalStore(subscribe, () => picks);
 export const currentPicks = () => picks;
+
+// a request or a line to show, asked from elsewhere (the evidence of a goal); the tool takes it and clears it
+let focus = null;
+const focusListeners = new Set();
+
+export function focusOn(kind, id) {
+  focus = {kind, id, at: Date.now()};
+  for (const listener of focusListeners) {
+    listener();
+  }
+}
+
+export const useFocus = () =>
+  useSyncExternalStore(
+    (listener) => {
+      focusListeners.add(listener);
+      return () => focusListeners.delete(listener);
+    },
+    () => focus,
+  );
+
+export const clearFocus = () => {
+  focus = null;
+};

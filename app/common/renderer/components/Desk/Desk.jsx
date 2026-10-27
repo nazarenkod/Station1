@@ -17,6 +17,7 @@ import {useNavigate} from 'react-router';
 
 import {SEVERITIES, severityRank} from '../../../shared/findings/findings.js';
 import {Stagger, StaggerItem} from '../AppShell/motion.jsx';
+import GoalsPanel from '../Goals/GoalsPanel.jsx';
 import {useLogs} from '../Logs/logs-store.js';
 import {useProxy} from '../Proxy/proxy-store.js';
 import DevicesPanel from './DevicesPanel.jsx';
@@ -276,6 +277,7 @@ const Desk = () => {
         {!expanded && (
           <StaggerItem>
             <TaskPanel />
+            <GoalsPanel />
           </StaggerItem>
         )}
         {!expanded && (

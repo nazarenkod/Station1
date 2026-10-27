@@ -1,0 +1,126 @@
+/* goals of the session: the form, the panel on the desk, the strip over the tools */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--vi-text-2);
+  font-size: var(--vi-text-sm);
+}
+
+.mono {
+  font-family: var(--vi-font-mono);
+}
+
+.warn {
+  color: var(--vi-warn-fg);
+  font-size: var(--vi-text-sm);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-weight: 600;
+}
+
+.counts {
+  color: var(--vi-text-3);
+  font-size: var(--vi-text-sm);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  padding: 4px 0;
+  border-top: 1px solid var(--vi-hairline);
+}
+
+.mark {
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.summary,
+.dim {
+  color: var(--vi-text-3);
+  font-size: var(--vi-text-sm);
+}
+
+.evidence {
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  color: var(--vi-accent-fg);
+  font-size: var(--vi-text-sm);
+  cursor: pointer;
+}
+
+.failed {
+  color: var(--vi-danger-fg);
+}
+
+.actions {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.report {
+  width: 100%;
+  min-height: 260px;
+  font-family: var(--vi-font-mono);
+  font-size: var(--vi-text-sm);
+}
+
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--vi-hairline);
+  background: var(--vi-accent-bg);
+  color: var(--vi-accent-fg);
+  font-size: var(--vi-text-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.stripFailed {
+  color: var(--vi-danger-fg);
+}
+
+.reportActions {
+  margin-top: 12px;
+}

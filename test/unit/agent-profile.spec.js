@@ -37,6 +37,7 @@ describe('the agent’s instructions', () => {
       'never edit, create or delete files',
       'memory_search',
       'impact_report',
+      'goal_propose',
     ]) {
       expect(DEFAULT_STATION_INSTRUCTIONS).toContain(rule);
     }

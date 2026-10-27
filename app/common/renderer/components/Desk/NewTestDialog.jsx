@@ -6,6 +6,7 @@ import {useDispatch, useSelector} from 'react-redux';
 
 import {A11Y_SCAN_CLEARED} from '../../actions/A11y.js';
 import {SET_BUILD} from '../../actions/Builds.js';
+import {newGoalRun} from '../../lib/goals/goals-store.js';
 import {clearScreenHistory} from '../A11yTool/screen-history.js';
 import {clearLogs, useLogs} from '../Logs/logs-store.js';
 import {clearTraffic, useProxy} from '../Proxy/proxy-store.js';
@@ -61,6 +62,8 @@ const NewTestDialog = ({open, onClose, onDone}) => {
     if (picked.build && build.status !== 'idle') {
       dispatch({type: SET_BUILD, current: {status: 'idle'}});
     }
+    // the goals of the task count again from here
+    newGoalRun();
     onDone?.(dayjs().format('HH:mm'));
     onClose();
   };

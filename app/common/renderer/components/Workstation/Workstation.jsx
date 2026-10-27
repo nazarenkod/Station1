@@ -9,18 +9,21 @@ import {activeDevice, initWorkstation, isDeviceRunning, setProjectApps} from '..
 import {followProfile, startAgent, toggleAgent} from '../../lib/agent/agent-store.js';
 import {startAgentBridge} from '../../lib/agent/bridge.js';
 import {setPick} from '../../lib/agent/selection.js';
+import {counts, followGoals, startGoals, useGoals} from '../../lib/goals/goals-store.js';
 import {profileForApp, startProfiles, switchProfile, useProfiles} from '../../lib/settings/profiles-store.js';
 import {followTaskProfile, startTasks, useTask} from '../../lib/task/task-store.js';
 import {loadSessionFileIfOpened} from '../../polyfills.js';
 import AgentPanel from '../Agent/AgentPanel.jsx';
 import {PageTransition} from '../AppShell/motion.jsx';
 import {startPipelineWatches} from '../Builds/pipeline-watch.js';
+import GoalForm from '../Goals/GoalForm.jsx';
 import {logsState, startLogs} from '../Logs/logs-store.js';
 import SessionExpiryModal from '../SessionInspector/SessionExpiryModal.jsx';
 import {useInspectorActions} from '../SessionInspector/use-inspector.js';
 import {toolOf} from './tools.js';
 import WorkstationHeader from './WorkstationHeader.jsx';
 
+import goalStyles from '../Goals/Goals.module.css';
 import styles from './Workstation.module.css';
 
 /**
@@ -99,6 +102,30 @@ const ProfileFollower = () => {
 };
 
 /**
+ * How the goals of the session stand, over every tool but the desk, where
+ * they are shown whole.
+ */
+const GoalsStrip = () => {
+  const {t} = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const goals = useGoals();
+  if (!goals.goals.length || location.pathname === '/') {
+    return null;
+  }
+  const sum = counts();
+  return (
+    <button
+      className={`${goalStyles.strip} ${sum.failed ? goalStyles.stripFailed : ''}`}
+      data-version={goals.version}
+      onClick={() => navigate('/')}
+    >
+      {t('goalsStrip', {passed: sum.passed, total: sum.total, failed: sum.failed})}
+    </button>
+  );
+};
+
+/**
  * Keeps the agent with the person: the open tab goes into the next message,
  * ⌘J opens and closes the chat, another profile has its own conversation.
  */
@@ -128,6 +155,10 @@ const AgentFollower = () => {
   useEffect(() => {
     followProfile();
   }, [profiles.activeId, task.current]);
+  // the goals follow the task
+  useEffect(() => {
+    followGoals(task);
+  }, [task]);
   return null;
 };
 
@@ -152,6 +183,7 @@ const Workstation = () => {
     startAgent();
     startAgentBridge(store);
     startTasks();
+    startGoals(store);
     // a session file or a shared session link opens straight in the Inspector
     (async () => {
       const hasSessionLink = new URL(window.location.href).searchParams.has('state');
@@ -164,6 +196,7 @@ const Workstation = () => {
   return (
     <div className={styles.workstation}>
       <WorkstationHeader />
+      <GoalsStrip />
       <div className={styles.body}>
         <div className={styles.toolArea}>
           <AnimatePresence mode="wait">
@@ -173,6 +206,7 @@ const Workstation = () => {
         <AgentPanel />
       </div>
       <AgentFollower />
+      <GoalForm />
       <SessionKeepAlive />
       <LogsFollower />
       <ProfileFollower />

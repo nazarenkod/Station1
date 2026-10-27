@@ -8,6 +8,7 @@ import {impactChanges, impactStale, validateImpact} from '../../shared/task/impa
 // the station's folder.
 
 const RECENT = 10;
+const MAX_RUNS = 20;
 
 const safe = (text) => String(text).replace(/[^\w.-]/g, '_');
 
@@ -122,6 +123,22 @@ export function createTaskStore({dir, get, set, settingKey}) {
 
     async setNotes(profileId, key, notes) {
       return await update(profileId, key, (data) => ({...data, notes}));
+    },
+
+    /** The goals of a task's sessions: accepted ones, kept with the task. */
+    async setGoals(profileId, key, goals) {
+      return await update(profileId, key, (data) => ({...data, goals}));
+    },
+
+    /**
+     * Keeps a run of the goals: the one that runs is replaced as it goes, a
+     * finished one stays among the last twenty.
+     */
+    async saveRun(profileId, key, run) {
+      return await update(profileId, key, (data) => {
+        const runs = (data.goalRuns ?? []).filter((one) => one.id !== run.id);
+        return {...data, goalRuns: [run, ...runs].slice(0, MAX_RUNS)};
+      });
     },
 
     async check(profileId, key, itemId, checked) {

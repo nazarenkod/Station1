@@ -17,6 +17,7 @@ import {useNavigate} from 'react-router';
 import {formatCredits} from '../../../shared/agent/credits.js';
 import {SECTIONS} from '../../../shared/task/impact.js';
 import {addProposal, askOnTask} from '../../lib/agent/agent-store.js';
+import {openGoalForm} from '../../lib/goals/goal-form.js';
 import {
   chooseTask,
   forgetCurrentTask,
@@ -140,6 +141,15 @@ const Checklist = ({data, language}) => {
                 {item.important && <span className={styles.important}>!</span>}
                 <span className={`${styles.itemText} ${data.checks?.[item.id] ? styles.done : ''}`}>{item.text}</span>
                 {fresh.has(item.id) && impact.changes && <Tag className={styles.tag}>{t('taskImpactNew')}</Tag>}
+                <Tooltip title={t('goalMake')}>
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<IconTarget size={14} />}
+                    aria-label={t('goalMake')}
+                    onClick={() => openGoalForm({title: item.text, source: 'impact', itemId: item.id, type: 'manual'})}
+                  />
+                </Tooltip>
                 <Popover content={<Evidence item={item} />} trigger="click" placement="left">
                   <Button size="small" type="link">
                     {t('taskWhy')}

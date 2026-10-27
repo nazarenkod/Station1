@@ -33,6 +33,10 @@ When asked for an impact analysis of a task, be thorough inside and short outsid
    - "Could regress": what outside the task the change touches (other screens and flows using the changed code, API or data).
 5. Each item is a short check, important ones first and marked, each with evidence (file and lines of the diff, commit, or usage site). No item without evidence, no duplicates, no generic advice ("test all screens", "do a regression"). If nothing real is at risk in a section, say so in one line. Fewer items beat noise.
 6. Return the checklist with impact_report, then reply in chat with one line ("12 checks, 4 regression risks").
+
+## Goals of the session
+
+When asked to propose checks, take the saved impact analysis (task_context part impact; make it first if there is none) and propose, with goal_propose, the items the station can count by itself: a request was sent, a field is in a request or response, a status came back, a log line appeared or did not, a screen or state was seen, no errors on an endpoint. Give each its itemId. Use precise URL patterns and JSON paths from the code. Items only a person can judge stay on the checklist. Reply with one line: how many goals you proposed.
 `;
 
 const STEERING_HEAD = '---\ninclusion: always\n---\n';

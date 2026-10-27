@@ -101,6 +101,25 @@ export function setupTaskIPC({station}) {
   ipcMain.handle('task:feedback', (_evt, profileId, key, itemId, kind, reason) =>
     store.feedback(profileId, key, itemId, kind, reason),
   );
+  ipcMain.handle('task:setGoals', async (_evt, profileId, key, goals) => {
+    const data = await store.setGoals(profileId, key, goals);
+    changed({profileId, key});
+    return data;
+  });
+  ipcMain.handle('task:saveRun', (_evt, profileId, key, run) => store.saveRun(profileId, key, run));
+  ipcMain.handle('task:comment', async (_evt, key, body) => {
+    const config = (await settings.get(JIRA_CONFIG)) ?? {};
+    const token = await jiraToken.read();
+    if (!config.url || !token) {
+      return {ok: false, error: 'jiraNotSetUp'};
+    }
+    try {
+      await new JiraClient({url: config.url, email: config.email, token}).comment(key, body);
+      return {ok: true};
+    } catch (error) {
+      return {ok: false, error: 'failed', detail: String(error.message).slice(0, 300)};
+    }
+  });
   ipcMain.handle('task:forget', async (_evt, profileId, key) => {
     await store.forget(profileId, key);
     await settings.set(AGENT_SESSIONS, forgetTask((await settings.get(AGENT_SESSIONS)) ?? {}, profileId, key));

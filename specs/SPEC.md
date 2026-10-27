@@ -334,7 +334,7 @@
 | Памʼять агента: уроки й поправки користувача | [agent.memory](agent.memory/spec.md) | implemented |
 | Код застосунку в проєкті: локальний репозиторій, сабмодулі, гілки `develop` і `main` | [project.source](project.source/spec.md) | implemented |
 | Задача: Jira, повʼязані задачі, Confluence, MR із коментарів → контекст задачі й імпакт-аналіз | [task.context](task.context/spec.md) | implemented |
-| Цілі сесії: перевірки з задачі й коду, які станція рахує наживо | [agent.goals](agent.goals/spec.md) | approved |
+| Цілі сесії: перевірки з задачі й коду, які станція рахує наживо | [agent.goals](agent.goals/spec.md) | implemented |
 
 Порядок робіт: project.source → agent.core з інструментами читання → task.context → agent.memory → інструменти змін → agent.goals. Кожен крок корисний сам.
 

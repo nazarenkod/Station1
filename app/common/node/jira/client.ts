@@ -138,6 +138,11 @@ export class JiraClient {
     return this.request<T>(path);
   }
 
+  /** A comment on a task, sent only when the person presses the button. */
+  async comment(key: string, body: string): Promise<void> {
+    await this.request(`/rest/api/2/issue/${encodeURIComponent(key)}/comment`, this.json('POST', {body}));
+  }
+
   get site(): string {
     return this.base;
   }
