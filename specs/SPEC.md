@@ -96,7 +96,7 @@
 
 | Частина | Спека | Стан |
 |---|---|---|
-| Виявлення пристроїв, пріоритет, застосунок для кожного пристрою | [device.connect](device.connect/spec.md) | implemented |
+| Виявлення пристроїв, пріоритет, застосунок проєкту на пристрої | [device.connect](device.connect/spec.md) | implemented |
 | Вбудований Appium, старт сесії, підпис WebDriverAgent | [session.appium](session.appium/spec.md) | implemented |
 | Збірки з файлу, аналіз маніфесту, встановлення | [builds.install](builds.install/spec.md) | implemented |
 | Збірки з пайплайнів GitLab за посиланням | [builds.gitlab](builds.gitlab/spec.md) | implemented |

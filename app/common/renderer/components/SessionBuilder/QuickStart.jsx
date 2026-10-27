@@ -10,7 +10,7 @@ import {IOS_SIGNING} from '../../../shared/setting-defs.js';
 import {activeDevice, isDeviceRunning, selectDevice} from '../../actions/Workstation.js';
 import {backend, getSetting} from '../../polyfills.js';
 import {getRandomId} from '../../utils/other.js';
-import {appsProblemText, appVersionLabel} from '../Workstation/AppPicker.jsx';
+import {appsProblemText, appVersionLabel} from '../Workstation/app-labels.js';
 import {deviceSubtitle} from '../Workstation/DevicePicker.jsx';
 
 import styles from './SessionBuilder.module.css';

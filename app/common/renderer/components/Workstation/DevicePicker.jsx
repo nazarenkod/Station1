@@ -9,8 +9,17 @@ import {backend} from '../../polyfills.js';
 
 import styles from './Workstation.module.css';
 
+// the adb serial of a connected Android device is what tests and adb -s take
+const ADB_KINDS = ['android-device', 'android-emulator'];
+
 export const deviceSubtitle = (device, t) =>
-  [`${device.platformName} ${device.platformVersion}`.trim(), t(`wsKind_${device.kind}`)].filter(Boolean).join(' · ');
+  [
+    `${device.platformName} ${device.platformVersion}`.trim(),
+    t(`wsKind_${device.kind}`),
+    ADB_KINDS.includes(device.kind) ? device.id : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
 const canBoot = (device) => device.state === 'stopped' && ['android-avd', 'ios-simulator'].includes(device.kind);
 

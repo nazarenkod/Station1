@@ -629,12 +629,12 @@
   margin-top: 8px;
 }
 
-.menuError {
+.menuHint {
   margin: 6px 4px;
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 12px;
   line-height: 1.5;
-  background: var(--vi-warn-bg);
-  color: var(--vi-warn-fg);
+  background: var(--vi-hover);
+  color: var(--vi-text-2);
 }

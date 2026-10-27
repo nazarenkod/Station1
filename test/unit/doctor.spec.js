@@ -2,6 +2,7 @@ import {describe, expect, it} from 'vitest';
 
 import {appiumArgs} from '../../app/common/node/doctor/appium-server.js';
 import {
+  androidDeviceName,
   capabilitiesFor,
   DEVICE_KIND,
   parseAdbDevices,
@@ -34,6 +35,17 @@ describe('doctor: devices', function () {
       {serial: 'emulator-5554', state: 'device', model: 'sdk gphone64 arm64'},
       {serial: 'R58M1234ABC', state: 'unauthorized', model: ''},
     ]);
+  });
+
+  it('names Android devices the way people know them', function () {
+    const emulator = {serial: 'emulator-5554', model: 'sdk gphone64 arm64'};
+    expect(androidDeviceName({...emulator, avdName: 'Pixel_7_API_34'})).toBe('Pixel 7 API 34');
+    expect(androidDeviceName(emulator)).toBe('sdk gphone64 arm64');
+    expect(androidDeviceName({serial: 'R58M', model: 'SM-G991B', manufacturer: 'samsung'})).toBe('Samsung SM-G991B');
+    expect(androidDeviceName({serial: 'R58M', model: 'Pixel 7', manufacturer: 'Google'})).toBe('Google Pixel 7');
+    expect(androidDeviceName({serial: 'R58M', model: 'Redmi Note 12', manufacturer: 'Redmi'})).toBe('Redmi Note 12');
+    expect(androidDeviceName({serial: 'R58M', model: '2209116AG', marketName: 'Redmi Note 12'})).toBe('Redmi Note 12');
+    expect(androidDeviceName({serial: 'R58M'})).toBe('R58M');
   });
 
   it('reads the emulator ini files', function () {

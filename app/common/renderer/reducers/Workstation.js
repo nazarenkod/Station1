@@ -7,6 +7,7 @@ import {
   SET_WORKSTATION_DEVICES,
   SET_WORKSTATION_DEVICES_LOADING,
   SET_WORKSTATION_MY_BUGS,
+  SET_WORKSTATION_PROJECT_APPS,
 } from '../actions/Workstation.js';
 
 // what every tool of the workstation shares: the device, the app and the services around them
@@ -20,9 +21,8 @@ const INITIAL_STATE = {
   // why the apps of the device could not be read (an Xcode too old for the iPhone, a locked phone)
   appsError: null,
   app: null,
-  recentApps: [],
-  // the app last used on each device, by device id
-  appByDevice: {},
+  // the apps of the project that is on, the app is one of them
+  projectApps: [],
   appium: {status: 'stopped'},
   myBugs: {status: 'idle', issues: []},
 };
@@ -34,8 +34,6 @@ export default function workstation(state = INITIAL_STATE, action) {
         ...state,
         deviceId: action.deviceId,
         app: action.app,
-        recentApps: action.recentApps,
-        appByDevice: action.appByDevice ?? {},
       };
     case SET_WORKSTATION_DEVICES_LOADING:
       // a background poll does not spin the refresh buttons
@@ -43,22 +41,13 @@ export default function workstation(state = INITIAL_STATE, action) {
     case SET_WORKSTATION_DEVICES:
       return {...state, devices: action.devices, devicesLoaded: true, devicesLoading: false, devicesPolling: false};
     case SET_WORKSTATION_DEVICE:
-      return {
-        ...state,
-        deviceId: action.deviceId,
-        appByDevice: action.appByDevice ?? state.appByDevice,
-        apps: [],
-        appsError: null,
-      };
+      return {...state, deviceId: action.deviceId, apps: [], appsError: null};
     case SET_WORKSTATION_APPS:
       return {...state, apps: action.apps, appsLoading: action.loading, appsError: action.error ?? null};
     case SET_WORKSTATION_APP:
-      return {
-        ...state,
-        app: action.app,
-        recentApps: action.recentApps,
-        appByDevice: action.appByDevice ?? state.appByDevice,
-      };
+      return {...state, app: action.app};
+    case SET_WORKSTATION_PROJECT_APPS:
+      return {...state, projectApps: action.projectApps};
     case SET_WORKSTATION_APPIUM:
       return {...state, appium: action.appium ?? {status: 'stopped'}};
     case SET_WORKSTATION_MY_BUGS:

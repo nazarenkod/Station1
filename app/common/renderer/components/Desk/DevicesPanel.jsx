@@ -6,7 +6,7 @@ import {useDispatch, useSelector} from 'react-redux';
 
 import {isDeviceRunning, refreshDevices, selectDevice} from '../../actions/Workstation.js';
 import {backend} from '../../polyfills.js';
-import {appsProblemText} from '../Workstation/AppPicker.jsx';
+import {appsProblemText} from '../Workstation/app-labels.js';
 import {deviceSubtitle} from '../Workstation/DevicePicker.jsx';
 import {needsFix, PanelFoot, RowCard, VISIBLE_ROWS} from './DoctorPanel.jsx';
 
@@ -103,7 +103,7 @@ const DevicesPanel = () => {
         device={active}
         active
         status={status}
-        note={problem ? t('deskDeviceNeedsFix') : deviceSubtitle(active, t)}
+        note={problem ? `${deviceSubtitle(active, t)} · ${t('deskDeviceNeedsFix')}` : deviceSubtitle(active, t)}
         card={{
           name: active.name,
           value: deviceSubtitle(active, t),

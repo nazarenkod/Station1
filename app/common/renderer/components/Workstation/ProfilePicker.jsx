@@ -11,7 +11,8 @@ import {NameDialog} from '../Settings/ProfilesSettings.jsx';
 import styles from './Workstation.module.css';
 
 /**
- * The project profile the tools work by: its rules, filters and choices.
+ * The project profile the tools work by: its apps, rules, filters and choices.
+ * The station works with the project app the device has.
  */
 const ProfilePicker = () => {
   const {t} = useTranslation();
@@ -45,6 +46,7 @@ const ProfilePicker = () => {
           </span>
         </button>
       ))}
+      {active && active.apps.length === 0 && <div className={styles.menuHint}>{t('wsProjectNoApps')}</div>}
       <div className={styles.menuFooter}>
         <Button
           size="small"

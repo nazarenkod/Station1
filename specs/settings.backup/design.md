@@ -13,7 +13,7 @@
 - `app/electron/main/ipc/settings.js` — IPC `settings:profiles`, `settings:switchProfile`, `settings:addProfile`, `settings:renameProfile`, `settings:setProfileApps`, `settings:removeProfile`, `settings:profileForApp`, `settings:export` (діалог збереження), `settings:pickImport` (діалог відкриття й зведення), `settings:applyImport`, `settings:backups`, `settings:restore`; подія `settings:changed` зі списком змінених ключів. Під час запуску — щоденна копія.
 - `app/common/renderer/lib/settings/profiles-store.js` — профілі для екранів і перечитування налаштувань інструментами після `settings:changed`: проксі (`reloadProxyConfig`), логи (`loadSavedRules`), доступність (`loadA11ySettings`), збірки (`loadBuildSources`), фільтри, мова; тема — у `ThemeProvider.jsx`.
 - `app/common/renderer/lib/settings/saved-view.js`, `views.js` — фільтри проксі й логів у налаштуваннях (`PROXY_VIEW`, `LOGS_VIEW`), запис через 400 мс після зміни; перед перемиканням чи експортом — одразу.
-- Інтерфейс: `app/common/renderer/components/Workstation/ProfilePicker.jsx` (шапка), `Workstation.jsx` (`ProfileFollower`: застосунок → профіль), `app/common/renderer/components/Settings/ProfilesSettings.jsx` (розділ «Профілі»), `StationTransfer.jsx` (експорт, імпорт, копії в «Загальні»).
+- Інтерфейс: `app/common/renderer/components/Workstation/ProfilePicker.jsx` (шапка), `Workstation.jsx` (`ProfileFollower`: застосунок збірки → профіль; `ProjectAppsFollower`: застосунки профілю → застосунок станції), `app/common/renderer/components/Settings/ProfilesSettings.jsx` (розділ «Профілі»), `StationTransfer.jsx` (експорт, імпорт, копії в «Загальні»).
 
 ## Модель даних
 

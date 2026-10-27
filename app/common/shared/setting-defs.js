@@ -76,7 +76,7 @@ export const DEFAULT_SETTINGS = {
   [AI_CONFIG]: null,
   [JIRA_MEMORY]: {},
   [GITLAB_CONFIG]: null,
-  [WORKSTATION]: {deviceId: null, app: null, recentApps: []},
+  [WORKSTATION]: {deviceId: null, app: null},
   [BUILDS_HISTORY]: [],
   [BUILD_JOBS]: {},
   [PIPELINE_WATCHES]: [],

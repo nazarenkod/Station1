@@ -148,6 +148,26 @@ export function parseDevicectlDevices(json) {
     }));
 }
 
+const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * A name a person knows the Android device by: the AVD of an emulator
+ * (Pixel_7_API_34 -> "Pixel 7 API 34"), the marketing name of a phone, else
+ * its maker and model ("Samsung SM-G991B"); the serial when nothing is known.
+ */
+export function androidDeviceName({serial, model = '', avdName = '', manufacturer = '', marketName = ''}) {
+  if (avdName) {
+    return avdName.replace(/_/g, ' ');
+  }
+  if (marketName) {
+    return marketName;
+  }
+  if (model && manufacturer && !model.toLowerCase().startsWith(manufacturer.toLowerCase())) {
+    return `${capitalize(manufacturer)} ${model}`;
+  }
+  return model || serial;
+}
+
 async function adbShellProp(serial, prop) {
   const result = await runTool('adb', ['-s', serial, 'shell', 'getprop', prop], {timeout: 5000});
   return result.ok ? result.stdout.trim() : '';
@@ -160,20 +180,24 @@ async function listAndroid() {
     connected.map(async ({serial, state, model}) => {
       const isEmulator = serial.startsWith('emulator-');
       const ready = state === 'device';
-      const [platformVersion, avdName] = ready
-        ? await Promise.all([
-            adbShellProp(serial, 'ro.build.version.release'),
-            isEmulator
-              ? runTool('adb', ['-s', serial, 'emu', 'avd', 'name'], {timeout: 5000}).then((r) =>
-                  r.ok ? r.stdout.split('\n')[0].trim() : '',
-                )
-              : '',
-          ])
-        : ['', ''];
+      const prop = (name) => (ready ? adbShellProp(serial, name) : '');
+      const [platformVersion, consoleAvd, propAvd, manufacturer, marketName] = await Promise.all([
+        prop('ro.build.version.release'),
+        // the console answers only with its auth token in place; Android 12+ says it in a property too
+        isEmulator && ready
+          ? runTool('adb', ['-s', serial, 'emu', 'avd', 'name'], {timeout: 5000}).then((r) =>
+              r.ok && !/^KO\b/.test(r.stdout) ? r.stdout.split('\n')[0].trim() : '',
+            )
+          : '',
+        isEmulator ? prop('ro.boot.qemu.avd_name') : '',
+        isEmulator ? '' : prop('ro.product.manufacturer'),
+        isEmulator ? '' : prop('ro.product.marketname'),
+      ]);
+      const avdName = consoleAvd || propAvd;
       return {
         kind: isEmulator ? DEVICE_KIND.ANDROID_EMULATOR : DEVICE_KIND.ANDROID_DEVICE,
         id: serial,
-        name: avdName || model || serial,
+        name: androidDeviceName({serial, model, avdName, manufacturer, marketName}),
         avdName,
         platformName: 'Android',
         platformVersion,

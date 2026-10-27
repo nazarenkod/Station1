@@ -5,7 +5,6 @@ import {useLocation, useNavigate} from 'react-router';
 
 import {PRODUCT_NAME} from '../../../shared/product.js';
 import logo from '../../assets/images/vision-logo.svg';
-import AppPicker from './AppPicker.jsx';
 import DevicePicker from './DevicePicker.jsx';
 import ProfilePicker from './ProfilePicker.jsx';
 import SessionChip from './SessionChip.jsx';
@@ -14,8 +13,9 @@ import ToolTabs from './ToolTabs.jsx';
 import styles from './Workstation.module.css';
 
 /**
- * The window's title bar in one row: the brand, the tools, the project
- * profile, the device and app every tool shares, the session, and the settings.
+ * The window's title bar in one row: the brand, the tools, the project (its
+ * profile names the app) and the device every tool shares, the session, and
+ * the settings.
  */
 const WorkstationHeader = () => {
   const {t} = useTranslation();
@@ -34,8 +34,6 @@ const WorkstationHeader = () => {
         <ProfilePicker />
         <span className={styles.contextDivider} />
         <DevicePicker />
-        <span className={styles.contextDivider} />
-        <AppPicker />
       </div>
       <SessionChip />
       <Tooltip title={t('wsSettings')}>

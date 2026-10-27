@@ -7,11 +7,10 @@ export const SET_WORKSTATION_DEVICES_LOADING = 'SET_WORKSTATION_DEVICES_LOADING'
 export const SET_WORKSTATION_DEVICE = 'SET_WORKSTATION_DEVICE';
 export const SET_WORKSTATION_APPS = 'SET_WORKSTATION_APPS';
 export const SET_WORKSTATION_APP = 'SET_WORKSTATION_APP';
+export const SET_WORKSTATION_PROJECT_APPS = 'SET_WORKSTATION_PROJECT_APPS';
 export const SET_WORKSTATION_APPIUM = 'SET_WORKSTATION_APPIUM';
 export const SET_WORKSTATION_MY_BUGS = 'SET_WORKSTATION_MY_BUGS';
 export const RESTORE_WORKSTATION = 'RESTORE_WORKSTATION';
-
-const MAX_RECENT_APPS = 8;
 
 /**
  * A device the tools can work with right now: connected and booted.
@@ -22,33 +21,31 @@ export const activeDevice = (workstation) =>
   workstation.devices.find((device) => device.id === workstation.deviceId) ?? null;
 
 async function persist(getState) {
-  const {deviceId, app, recentApps, appByDevice} = getState().workstation;
-  await setSetting(WORKSTATION, {deviceId, app, recentApps, appByDevice});
+  const {deviceId, app} = getState().workstation;
+  await setSetting(WORKSTATION, {deviceId, app});
 }
 
-// the home screen is on screen, not an app to work with
-const isLauncher = (appId) => /launcher|springboard/i.test(appId ?? '');
-
 /**
- * The app to work with on a device just picked, from what it has installed:
- * the one last used on this device, else the current one, else the most
- * recent one there, else the one on screen. Null when none of them is
- * installed: an app of another device (an iOS bundle on an Android emulator)
- * would only make the session fail.
+ * The app to work with, from the apps of the project (package names and
+ * bundle ids, in the project's order): the current one while it is a project
+ * app the device has, else the first project app the device has, else the
+ * current project app or the first one, shown as not installed (to install a
+ * build of it, say). None when the project has no apps. When the apps of the
+ * device are unknown (installed is null) the current project app stays.
  */
-export function appForDevice({installed, remembered, current, recentApps, onScreen}) {
-  const has = (app) => app && installed.some((entry) => entry.id === app.id);
-  const recent = recentApps.find(has);
-  if (has(remembered)) {
-    return remembered;
+export function appForProject({projectApps, installed, current}) {
+  if (!projectApps.length) {
+    return null;
   }
-  if (has(current)) {
-    return current;
+  const isProjectApp = !!current && projectApps.includes(current.id);
+  if (!installed) {
+    return isProjectApp ? current.id : projectApps[0];
   }
-  if (recent) {
-    return recent;
+  const has = (id) => installed.some((entry) => entry.id === id);
+  if (isProjectApp && has(current.id)) {
+    return current.id;
   }
-  return onScreen && !isLauncher(onScreen) ? {id: onScreen} : null;
+  return projectApps.find(has) ?? (isProjectApp ? current.id : projectApps[0]);
 }
 
 /**
@@ -62,8 +59,6 @@ export function initWorkstation() {
       type: RESTORE_WORKSTATION,
       deviceId: saved.deviceId ?? null,
       app: saved.app ?? null,
-      recentApps: saved.recentApps ?? [],
-      appByDevice: saved.appByDevice ?? {},
     });
     if (!backend.doctor) {
       return;
@@ -166,8 +161,7 @@ export function selectDevice(deviceId) {
 /**
  * The apps installed on the active device, and the app to work with there:
  * one the device does not have (left from another device, or from the last
- * run) gives way to one it has, unless it was picked for this very device
- * (to install it, say).
+ * run) gives way to a project app it has.
  */
 export function refreshApps() {
   return async (dispatch, getState) => {
@@ -182,27 +176,19 @@ export function refreshApps() {
       loading: true,
       error: getState().workstation.appsError,
     });
-    const [listed, onScreen] = await Promise.all([
-      backend.device.apps(device).catch((error) => ({apps: [], error: {reason: 'failed', message: error.message}})),
-      backend.device.foreground(device).catch(() => null),
-    ]);
+    const listed = await backend.device
+      .apps(device)
+      .catch((error) => ({apps: [], error: {reason: 'failed', message: error.message}}));
     dispatch({type: SET_WORKSTATION_APPS, apps: listed.apps, loading: false, error: listed.error});
 
-    const {app, appByDevice, recentApps} = getState().workstation;
+    const {app, projectApps} = getState().workstation;
     // what an unreadable list says about the app is nothing: keep it
     const readable = !listed.error && listed.apps.length > 0;
     const installed = !!app && listed.apps.some((entry) => entry.id === app.id);
-    const pickedHere = device.id in appByDevice && (appByDevice[device.id]?.id ?? null) === (app?.id ?? null);
-    if (readable && !installed && !pickedHere) {
-      const next = appForDevice({
-        installed: listed.apps,
-        remembered: appByDevice[device.id],
-        current: app,
-        recentApps,
-        onScreen,
-      });
-      if (next?.id !== app?.id) {
-        await dispatch(selectApp(next?.id ?? null, next?.name ? next : null));
+    if (readable && !installed) {
+      const next = appForProject({projectApps, installed: listed.apps, current: app});
+      if (next !== (app?.id ?? null)) {
+        await dispatch(selectApp(next));
         return;
       }
     }
@@ -210,23 +196,37 @@ export function refreshApps() {
   };
 }
 
+/**
+ * The apps of the project that is on, set in its profile: the station works
+ * with the one the device has.
+ */
+export function setProjectApps(projectApps) {
+  return async (dispatch, getState) => {
+    dispatch({type: SET_WORKSTATION_PROJECT_APPS, projectApps});
+    const {app, apps, appsError} = getState().workstation;
+    const installed = apps.length > 0 && !appsError ? apps : null;
+    const next = appForProject({projectApps, installed, current: app});
+    if (next !== (app?.id ?? null)) {
+      await dispatch(selectApp(next));
+    }
+  };
+}
+
+/**
+ * Makes an app the one every tool works with: a project app, or the app of a
+ * build just installed.
+ */
 export function selectApp(appId, known = null) {
   return async (dispatch, getState) => {
     const id = appId?.trim();
-    const {apps, recentApps, deviceId, appByDevice} = getState().workstation;
     if (!id) {
-      // no app is a choice too: this device keeps it until another app is picked
-      const cleared = deviceId ? {...appByDevice, [deviceId]: null} : appByDevice;
-      dispatch({type: SET_WORKSTATION_APP, app: null, recentApps, appByDevice: cleared});
+      dispatch({type: SET_WORKSTATION_APP, app: null});
       await persist(getState);
       return;
     }
-    const listed = known ?? apps.find((app) => app.id === id);
+    const listed = known ?? getState().workstation.apps.find((app) => app.id === id);
     const app = {id, name: listed?.name ?? id, version: listed?.version ?? '', build: listed?.build ?? ''};
-    const recent = [app, ...recentApps.filter((entry) => entry.id !== id)].slice(0, MAX_RECENT_APPS);
-    // the app is remembered with the device it is used on, for when that device comes back
-    const remembered = deviceId ? {...appByDevice, [deviceId]: app} : appByDevice;
-    dispatch({type: SET_WORKSTATION_APP, app, recentApps: recent, appByDevice: remembered});
+    dispatch({type: SET_WORKSTATION_APP, app});
     await persist(getState);
     await dispatch(refreshAppVersion());
   };
@@ -238,7 +238,7 @@ export function selectApp(appId, known = null) {
  */
 export function refreshAppVersion() {
   return async (dispatch, getState) => {
-    const {app, recentApps} = getState().workstation;
+    const {app} = getState().workstation;
     const device = activeDevice(getState().workstation);
     if (!app || !backend.device || !isDeviceRunning(device)) {
       return;
@@ -248,7 +248,7 @@ export function refreshAppVersion() {
     const updated = installed
       ? {...app, installed: true, version: installed.version || app.version, build: installed.build || app.build}
       : {...app, installed: false, version: '', build: ''};
-    dispatch({type: SET_WORKSTATION_APP, app: updated, recentApps});
+    dispatch({type: SET_WORKSTATION_APP, app: updated});
   };
 }
 

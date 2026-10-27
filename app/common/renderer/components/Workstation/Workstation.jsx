@@ -5,8 +5,8 @@ import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector, useStore} from 'react-redux';
 import {useLocation, useNavigate, useOutlet} from 'react-router';
 
-import {activeDevice, initWorkstation, isDeviceRunning} from '../../actions/Workstation.js';
-import {profileForApp, startProfiles, switchProfile} from '../../lib/settings/profiles-store.js';
+import {activeDevice, initWorkstation, isDeviceRunning, setProjectApps} from '../../actions/Workstation.js';
+import {profileForApp, startProfiles, switchProfile, useProfiles} from '../../lib/settings/profiles-store.js';
 import {loadSessionFileIfOpened} from '../../polyfills.js';
 import {PageTransition} from '../AppShell/motion.jsx';
 import {startPipelineWatches} from '../Builds/pipeline-watch.js';
@@ -51,8 +51,26 @@ const LogsFollower = () => {
 };
 
 /**
- * An app picked in the title bar that belongs to another project turns that
- * project's profile on.
+ * The app comes from the project that is on: a switched project, or apps
+ * changed in its profile, pick the app again.
+ */
+const ProjectAppsFollower = () => {
+  const dispatch = useDispatch();
+  const profiles = useProfiles();
+  const active = profiles.list.find((profile) => profile.id === profiles.activeId);
+  // a string, so the same apps in a new list do not pick again
+  const apps = profiles.loaded ? JSON.stringify(active?.apps ?? []) : null;
+  useEffect(() => {
+    if (apps !== null) {
+      dispatch(setProjectApps(JSON.parse(apps)));
+    }
+  }, [apps, dispatch]);
+  return null;
+};
+
+/**
+ * The app of a build installed from another project turns that project's
+ * profile on.
  */
 const ProfileFollower = () => {
   const {t} = useTranslation();
@@ -111,6 +129,7 @@ const Workstation = () => {
       <SessionKeepAlive />
       <LogsFollower />
       <ProfileFollower />
+      <ProjectAppsFollower />
     </div>
   );
 };
