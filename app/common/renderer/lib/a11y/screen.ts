@@ -57,3 +57,60 @@ export function identifyScreen(
   const ids = [...new Set(tree.nodes.map((node) => node.resourceId).filter(Boolean))].sort().join('|');
   return {title: null, source: 'structure', key: `layout:${hash(ids || tree.nodes.map((n) => n.className).join('|'))}`};
 }
+
+export interface ScreenState {
+  // the same elements on the same screen give the same id
+  id: string;
+  // the title of a dialog or alert on screen, when there is one
+  title: string | null;
+}
+
+// parts of the screen that change on their own: not a new state of the screen
+const TRANSIENT_CLASSES = new Set(['XCUIElementTypeKeyboard', 'XCUIElementTypeStatusBar']);
+const DIALOG_CLASSES = new Set(['XCUIElementTypeAlert', 'XCUIElementTypeSheet']);
+// what scrolls: its rows count whether they are in view or not, so scrolling is not a new state
+const SCROLLING_CLASSES = new Set([
+  'XCUIElementTypeTable',
+  'XCUIElementTypeCollectionView',
+  'XCUIElementTypeScrollView',
+  'androidx.recyclerview.widget.RecyclerView',
+  'android.widget.ListView',
+  'android.widget.GridView',
+  'android.widget.ScrollView',
+  'android.widget.HorizontalScrollView',
+  'androidx.core.widget.NestedScrollView',
+  'androidx.viewpager.widget.ViewPager',
+]);
+
+/**
+ * Which state of its screen this is: a dialog, an error banner, an empty or
+ * a full list give another state, while texts (inputs, sums, dates), the
+ * keyboard, the status bar and scrolling do not. The state is told by the ids
+ * of the visible elements, and of all the rows of a list whether scrolled into
+ * view or not; an id equal to the element's text or label is a
+ * text (iOS names an element by its label without an identifier) and is left
+ * out. Without any id the element types tell it.
+ */
+export function screenState(tree: UiTree): ScreenState {
+  const transient = new Set<number>();
+  const scrolled = new Set<number>();
+  for (const node of tree.nodes) {
+    const parent = node.parent;
+    if (TRANSIENT_CLASSES.has(node.className) || (parent !== null && transient.has(parent))) {
+      transient.add(node.index);
+    }
+    if (parent !== null && (scrolled.has(parent) || SCROLLING_CLASSES.has(tree.nodes[parent]?.className))) {
+      scrolled.add(node.index);
+    }
+  }
+  const nodes = tree.nodes.filter((node) => (node.visible || scrolled.has(node.index)) && !transient.has(node.index));
+  const isId = (node: (typeof nodes)[number]) =>
+    !!node.resourceId && node.resourceId !== node.text && node.resourceId !== node.label;
+  const ids = nodes.filter(isId).map((node) => node.resourceId);
+  const parts = ids.length ? ids : nodes.map((node) => node.className);
+
+  const dialog = nodes.find((node) => DIALOG_CLASSES.has(node.className));
+  const alertTitle = nodes.find((node) => /(^|[:/])alertTitle$/.test(node.resourceId));
+  const title = (dialog && (dialog.label || dialog.resourceId)) || alertTitle?.text || null;
+  return {id: hash([...new Set(parts)].sort().join('|')), title: title ? title.trim() : null};
+}

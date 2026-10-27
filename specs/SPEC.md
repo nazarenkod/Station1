@@ -160,6 +160,7 @@
 | Частина | Спека | Стан |
 |---|---|---|
 | Інспектор: екран, дерево, локатори, стеження за пристроєм, екрани сесії | [inspector.screen](inspector.screen/spec.md) | implemented |
+| Швидке стеження, шлях сесії, стани екранів | [inspector.flow](inspector.flow/spec.md) | implemented |
 | Вбудований Appium | [session.appium](session.appium/spec.md) | implemented |
 
 Заплановано (спек немає):

@@ -1,6 +1,8 @@
 import {describe, expect, it} from 'vitest';
 
 import {
+  clearScreenHistory,
+  noteAction,
   recordScreen,
   screenHistory,
   stopViewing,
@@ -8,10 +10,11 @@ import {
 } from '../../app/common/renderer/components/A11yTool/screen-history.js';
 import {signatureDistance} from '../../app/common/renderer/components/A11yTool/screen-signature.js';
 
-const visit = (key, sessionId = 's1') =>
+const visit = (key, sessionId = 's1', now = undefined) =>
   recordScreen({
     sessionId,
-    screen: {key, title: key, source: 'title-tag'},
+    now,
+    screen: {key, title: key, source: 'title-tag', state: {id: 'main', title: null}},
     sourceXML: `<${key}/>`,
     screenshot: null,
     score: 90,
@@ -24,13 +27,13 @@ describe('session screens', function () {
     await visit('login');
     await visit('home');
     await visit('login');
-    const {screens, currentKey, transitions} = screenHistory();
+    const {screens, currentKey, path} = screenHistory();
     expect(screens.map((s) => [s.key, s.visits])).toEqual([
       ['login', 2],
       ['home', 1],
     ]);
     expect(currentKey).toBe('login');
-    expect(transitions).toBe(2);
+    expect(path.map((step) => step.key)).toEqual(['login', 'home', 'login']);
   });
 
   it('does not count a past screen shown again, and starts over with a new session', async function () {
@@ -40,6 +43,22 @@ describe('session screens', function () {
     stopViewing();
     await visit('cards', 's2');
     expect(screenHistory().screens.map((s) => s.key)).toEqual(['cards']);
+  });
+});
+
+describe('session path', function () {
+  it('says which action of the Inspector led to a step, and starts over on a new test', async function () {
+    await visit('cards', 's3', 1000);
+    noteAction('getPageSource', [], 1500);
+    noteAction('elementClick', [], 2000);
+    await visit('card', 's3', 3000);
+    expect(screenHistory().path.map((step) => [step.key, step.action])).toEqual([
+      ['cards', null],
+      ['card', 'tap'],
+    ]);
+    clearScreenHistory();
+    expect(screenHistory().screens).toEqual([]);
+    expect(screenHistory().path).toEqual([]);
   });
 });
 

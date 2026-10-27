@@ -1,6 +1,7 @@
 import sanitize from 'sanitize-filename';
 
 import {SAVED_CLIENT_FRAMEWORK, SET_SAVED_GESTURES} from '../../shared/setting-defs.js';
+import {noteAction} from '../components/A11yTool/screen-history.js';
 import {COMMAND_EXECUTE_SCRIPT, COMMAND_UPDATE_SETTINGS} from '../constants/commands.js';
 import {DRIVERS} from '../constants/common.js';
 import {APP_MODE, NATIVE_APP, UNKNOWN_ERROR} from '../constants/session-inspector.js';
@@ -229,6 +230,8 @@ export function applyClientMethod(params) {
       params.methodName !== 'gesture' &&
       getState().inspector.isRecording;
     dispatch({type: METHOD_CALL_REQUESTED});
+    // the screens of the session follow what the Inspector does on the device
+    noteAction(params.methodName, params.args);
     const callAction = callClientMethod(params);
     const {
       contexts,

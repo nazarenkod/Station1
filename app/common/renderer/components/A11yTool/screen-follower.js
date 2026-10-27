@@ -2,15 +2,17 @@ import {useEffect, useRef, useState} from 'react';
 import {useDispatch, useStore} from 'react-redux';
 
 import {refreshA11yScreen} from '../../actions/A11y.js';
+import {followDelay} from './screen-flow.js';
+import {screenHistory} from './screen-history.js';
 import {CHANGED, screenSignature, signatureDistance} from './screen-signature.js';
 
-const INTERVAL_MS = 2000;
-
 /**
- * Follows the device while the A11y tool is open: every two seconds a
- * screenshot is compared with the one checked last, and once the screen has
- * changed and stopped moving, the new screen is read and checked. Nothing is
- * read while the page is hidden, a command runs, or a past screen is shown.
+ * Follows the device while the Inspector is open: a screenshot is compared
+ * with the one checked last, every half a second right after the Inspector
+ * acted on the device and every 1.5 s otherwise. Once the screen has changed
+ * and stopped moving (two looks alike), the new screen is read and checked.
+ * Nothing is read while the page is hidden, a command runs, or a past screen
+ * is shown.
  */
 export function useScreenFollower({enabled, paused}) {
   const store = useStore();
@@ -59,8 +61,19 @@ export function useScreenFollower({enabled, paused}) {
       }
     };
 
-    const timer = setInterval(tick, INTERVAL_MS);
-    return () => clearInterval(timer);
+    let timer = null;
+    let stopped = false;
+    const loop = async () => {
+      await tick();
+      if (!stopped) {
+        timer = setTimeout(loop, followDelay({lastActionAt: screenHistory().lastAction?.at, now: Date.now()}));
+      }
+    };
+    timer = setTimeout(loop, followDelay({lastActionAt: screenHistory().lastAction?.at, now: Date.now()}));
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
   }, [enabled, paused, store, dispatch]);
 
   return state;

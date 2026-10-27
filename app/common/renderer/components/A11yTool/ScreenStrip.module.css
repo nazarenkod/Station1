@@ -167,6 +167,111 @@
   color: var(--ant-color-text-tertiary);
 }
 
+.statesCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ant-color-text-tertiary);
+}
+
+/* the states of the screen opened in the strip */
+.states {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0 2px 4px;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.stateCard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 10px;
+  border: 1px solid var(--vi-hairline);
+  background: var(--ant-color-bg-container);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.stateCard.screenActive {
+  border-color: var(--vi-violet);
+  background: var(--vi-gradient-soft);
+}
+
+.stateCard .screenThumb {
+  width: 20px;
+  height: 40px;
+}
+
+/* the path of the session, one line */
+.path {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0 2px 4px;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pathStep {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pathMore {
+  color: var(--ant-color-text-tertiary);
+}
+
+.pathArrow {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 4px;
+  color: var(--ant-color-text-tertiary);
+  line-height: 1;
+}
+
+.pathAction {
+  font-size: 10px;
+}
+
+.pathSpot {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pathSpot:hover:not(:disabled) {
+  border-color: var(--vi-hairline);
+}
+
+.pathSpot:disabled {
+  cursor: default;
+  color: var(--ant-color-text-tertiary);
+}
+
+.pathHere {
+  border-color: var(--vi-violet);
+  font-weight: 600;
+}
+
+.pathState {
+  color: var(--ant-color-text-secondary);
+}
+
 .viewing {
   border-radius: 12px;
 }

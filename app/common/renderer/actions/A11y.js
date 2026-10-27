@@ -15,7 +15,7 @@ import {
 import {JIRA_LOOKUP_TTL_MS} from '../lib/a11y/jira-problems';
 import {markerQuery, problemMarkers} from '../lib/a11y/problems';
 import {scanScreen} from '../lib/a11y/rules';
-import {identifyScreen} from '../lib/a11y/screen';
+import {identifyScreen, screenState} from '../lib/a11y/screen';
 import {parseUiTree} from '../lib/a11y/ui-tree';
 import {backend, getSetting, setSetting} from '../polyfills.js';
 import {log} from '../utils/logger.js';
@@ -130,7 +130,11 @@ export function runA11yScan({force = false} = {}) {
         activity: device.activity ?? undefined,
       });
       const scan = scanScreen(tree, image ?? undefined, config);
-      const screen = identifyScreen(tree, {titleSelectors: config.problems.screenTitle, activity: device.activity});
+      const screen = {
+        ...identifyScreen(tree, {titleSelectors: config.problems.screenTitle, activity: device.activity}),
+        // which state of the screen this is, for the screens of the session
+        state: screenState(tree),
+      };
       dispatch({
         type: A11Y_SCAN_DONE,
         scan: {...scan, scale: tree.scale, imageWidth: image?.width ?? 0, imageHeight: image?.height ?? 0},
@@ -163,9 +167,10 @@ export function refreshA11yScreen() {
 
 /**
  * A screen seen earlier in the session, shown and checked again from what
- * was kept of it, while the device may show another one.
+ * was kept of it (the full screenshot, or a reduced one for an older state),
+ * while the device may show another one.
  */
-export function showStoredA11yScreen({sourceXML, screenshot}) {
+export function showStoredA11yScreen({sourceXML, screenshot, reduced}) {
   return (dispatch, getState) => {
     const {inspector} = getState();
     dispatch({
@@ -174,7 +179,7 @@ export function showStoredA11yScreen({sourceXML, screenshot}) {
       currentContext: inspector.currentContext,
       sourceJSON: xmlToJSON(sourceXML),
       sourceXML,
-      screenshot,
+      screenshot: screenshot ?? reduced ?? null,
       windowSize: inspector.windowSize,
     });
   };
