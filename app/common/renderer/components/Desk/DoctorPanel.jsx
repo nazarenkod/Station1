@@ -10,11 +10,9 @@ import {backend} from '../../polyfills.js';
 import {useLogs} from '../Logs/logs-store.js';
 import {useProxy} from '../Proxy/proxy-store.js';
 import {fixForCheck} from './doctor-fixes.js';
+import {loadDoctor, serverStatusOf, useDoctor} from './doctor-store.js';
 
 import styles from './Desk.module.css';
-
-// the environment check runs shell commands: once per app run, again on request
-let cachedReport = null;
 
 // the short name of each check of the doctor, for its row
 const CHECK_NAME = {
@@ -166,37 +164,14 @@ const DoctorPanel = () => {
   const appium = useSelector((state) => state.workstation.appium);
   const proxy = useProxy();
   const logs = useLogs();
-  const [report, setReport] = useState(cachedReport);
-  const [loading, setLoading] = useState(false);
+  const {report, loading} = useDoctor();
   const [fixing, setFixing] = useState(null);
   const [open, setOpen] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!backend.doctor) {
-      return;
-    }
-    setLoading(true);
-    try {
-      const [environment, jira, gitlab] = await Promise.all([
-        backend.doctor.environment(),
-        backend.jira?.hasToken().catch(() => false) ?? false,
-        backend.gitlab?.hasToken().catch(() => false) ?? false,
-      ]);
-      cachedReport = {...environment, integrations: {jira, gitlab}};
-      setReport(cachedReport);
-    } catch (error) {
-      // a failed check shows as a row, not as a list that never loads
-      setReport({checks: [{id: 'doctorFailed', status: 'error', params: {detail: error?.message ?? String(error)}}]});
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(() => loadDoctor({again: true}), []);
 
   useEffect(() => {
-    if (!cachedReport) {
-      load();
-    }
-  }, [load]);
+    loadDoctor();
+  }, []);
 
   if (!backend.doctor) {
     return null;
@@ -250,12 +225,7 @@ const DoctorPanel = () => {
     </Button>
   );
 
-  const serverStatus =
-    appium?.status === 'running' || appium?.status === 'starting'
-      ? 'ok'
-      : appium?.status === 'failed'
-        ? 'error'
-        : 'warn';
+  const serverStatus = serverStatusOf(appium);
 
   const rows = [
     ...(report?.checks ?? []).map((check, i) => {

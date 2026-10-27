@@ -363,6 +363,10 @@
   --tool-color: var(--vi-tool-builds);
 }
 
+.tool_station {
+  --tool-color: var(--vi-teal-fg);
+}
+
 /* narrower windows: drop the secondary words first, the tools never */
 @media (max-width: 1599px) {
   .pickerSub {

@@ -653,3 +653,10 @@
   font-family: var(--vi-font-mono);
   color: var(--vi-text-2);
 }
+
+.pageTitle {
+  margin: 0 0 4px;
+  font-size: var(--vi-text-xl);
+  font-weight: 600;
+  letter-spacing: var(--vi-tracking-tight);
+}

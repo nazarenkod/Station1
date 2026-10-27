@@ -16,6 +16,7 @@ import {loadSessionFileIfOpened} from '../../polyfills.js';
 import AgentPanel from '../Agent/AgentPanel.jsx';
 import {PageTransition} from '../AppShell/motion.jsx';
 import {startPipelineWatches} from '../Builds/pipeline-watch.js';
+import {loadDoctor} from '../Desk/doctor-store.js';
 import GoalForm from '../Goals/GoalForm.jsx';
 import {logsState, startLogs} from '../Logs/logs-store.js';
 import SessionExpiryModal from '../SessionInspector/SessionExpiryModal.jsx';
@@ -184,6 +185,8 @@ const Workstation = () => {
     startAgentBridge(store);
     startTasks();
     startGoals(store);
+    // the doctor runs once at start, so the station's tab can say there is something to fix
+    loadDoctor();
     // a session file or a shared session link opens straight in the Inspector
     (async () => {
       const hasSessionLink = new URL(window.location.href).searchParams.has('state');

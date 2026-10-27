@@ -19,7 +19,8 @@
 - `app/common/shared/task/for-agent.js` — контекст для агента частинами: `outline` (за замовчуванням), `task`, `linked`, `pages`, `mrs`, `commits`, `impact`.
 - `app/common/node/agent/task-tools.js` — інструменти агента `task_context` (читає) і `impact_report` (зберігає чек-лист; `autoAllow`, бо не змінює роботу станції).
 - `app/electron/main/ipc/task.js` — IPC `task:*`, доступ до Jira (`JiraClient.get`, `site`), GitLab (`GitLabService`) і головного репозиторію профілю; подія `task:changed`.
-- Вікно: `renderer/lib/task/task-store.js`; `components/Desk/TaskPanel.jsx` (поле, карта, деталі, чек-лист); чип задачі в шапці (`WorkstationHeader.jsx`, ховається у вузькому вікні); чип `task` у довідці агента; розмова агента йде за задачею (`AgentFollower`, `openConversation({taskKey})`).
+- `app/common/shared/task/jira-wiki.js` — розмітка Jira (v2) як блоки для картки: заголовки, списки, код, посилання `[текст|url]`, жирне; кольори, підкреслення й картинки прибрано, текст лишено.
+- Вікно: `renderer/lib/task/task-store.js`; `components/Desk/TaskPanel.jsx` — без задачі: картка «Над якою задачею працюєте?» з полем і останніми; із задачею: шапка (ключ, статус кольором `statusCategory`, назва, виконавець і версії), дві дії, меню «⋯» («Змінити задачу» — те саме поле у вікні, «Підсумувати уроки», «Відкрити в Jira», «Забути задачу»), контекст вкладками antd `Tabs`, чек-лист; чип задачі в шапці (`WorkstationHeader.jsx`, ховається у вузькому вікні); чип `task` у довідці агента; розмова агента йде за задачею (`AgentFollower`, `openConversation({taskKey})`).
 
 ## Модель даних
 

@@ -19,6 +19,8 @@ const brief = (issue) => ({
   summary: issue.fields?.summary ?? '',
   type: issue.fields?.issuetype?.name ?? null,
   status: issue.fields?.status?.name ?? null,
+  // new, indeterminate or done: the card colours the status by it
+  statusCategory: issue.fields?.status?.statusCategory?.key ?? null,
 });
 
 function issueOf(raw, {full = true} = {}) {

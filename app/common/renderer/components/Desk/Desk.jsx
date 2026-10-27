@@ -20,8 +20,6 @@ import {Stagger, StaggerItem} from '../AppShell/motion.jsx';
 import GoalsPanel from '../Goals/GoalsPanel.jsx';
 import {useLogs} from '../Logs/logs-store.js';
 import {useProxy} from '../Proxy/proxy-store.js';
-import DevicesPanel from './DevicesPanel.jsx';
-import DoctorPanel from './DoctorPanel.jsx';
 import NewTestDialog from './NewTestDialog.jsx';
 import TaskPanel from './TaskPanel.jsx';
 
@@ -264,9 +262,9 @@ const Problems = ({analysis, expanded, onToggleExpanded}) => {
 };
 
 /**
- * The workstation's home: the environment and the devices side by side, each
- * a fixed five rows, and below them the analytics of the current test, which
- * can take the whole desk.
+ * The workstation's home is the work on the task: the task, the goals of the
+ * session, and the problems of the current test, which can take the whole
+ * desk. The environment and the devices are on the «Station» tab.
  */
 const Desk = () => {
   const analysis = useSessionAnalysis();
@@ -277,13 +275,11 @@ const Desk = () => {
         {!expanded && (
           <StaggerItem>
             <TaskPanel />
-            <GoalsPanel />
           </StaggerItem>
         )}
         {!expanded && (
-          <StaggerItem className={styles.top}>
-            <DoctorPanel />
-            <DevicesPanel />
+          <StaggerItem>
+            <GoalsPanel />
           </StaggerItem>
         )}
         <StaggerItem className={styles.analytics}>

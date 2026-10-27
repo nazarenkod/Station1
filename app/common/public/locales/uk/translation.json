@@ -1993,5 +1993,22 @@
   "goalReportCopied": "Звіт скопійовано",
   "goalReportSend": "Коментарем у {{key}}",
   "goalReportSent": "Звіт додано коментарем у {{key}}",
-  "goalReportFailed": "Не вдалося надіслати звіт у Jira."
+  "goalReportFailed": "Не вдалося надіслати звіт у Jira.",
+  "wsTool_station": "Станція",
+  "stationPageText": "Чи готовий цей Mac до тестування і які пристрої він бачить.",
+  "taskEmptyTitle": "Над якою задачею працюєте?",
+  "taskEmptyText": "Станція збере задачу, повʼязані задачі, сторінки Confluence і MR, а агент зробить імпакт-аналіз.",
+  "taskRecent": "Останні:",
+  "taskChange": "Змінити задачу",
+  "taskOpenJira": "Відкрити в Jira",
+  "taskMore": "Ще дії",
+  "taskTab_description": "Опис",
+  "taskTab_linked": "Повʼязані · {{count}}",
+  "taskTab_pages": "Confluence · {{count}}",
+  "taskTab_mrs": "MR · {{count}}",
+  "taskTab_commits": "Коміти · {{count}}",
+  "taskTab_problems": "Не завантажено · {{count}}",
+  "taskNoDescription": "У задачі немає опису.",
+  "taskGitlabOff": "GitLab не підключено: MR показано посиланнями, без змін і файлів.",
+  "taskConnectGitlab": "Підключити GitLab"
 }

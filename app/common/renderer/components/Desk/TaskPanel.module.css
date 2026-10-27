@@ -2,15 +2,90 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
+  gap: var(--vi-space-3);
+  padding: 18px 20px;
 }
 
+/* no task yet: one question and the field to answer it */
+.empty {
+  align-items: center;
+  text-align: center;
+  padding: 28px 20px;
+  gap: 6px;
+}
+
+.emptyIcon {
+  color: var(--vi-violet);
+}
+
+.emptyTitle {
+  margin: 4px 0 0;
+  font-size: var(--vi-text-lg);
+  font-weight: 600;
+  letter-spacing: var(--vi-tracking-tight);
+}
+
+.picker {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.pickerRow {
+  display: flex;
+  gap: 8px;
+}
+
+.recent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.recentTag {
+  margin: 0;
+  cursor: pointer;
+  font-family: var(--vi-font-mono);
+}
+
+.dimIcon {
+  color: var(--vi-text-3);
+}
+
+/* the task: its key and status, its title, who and for which release */
 .head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.headMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.headLine {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
+}
+
+.headLine :global(.ant-tag) {
+  margin: 0;
+}
+
+.headActions {
+  display: flex;
+  gap: 2px;
+  flex: none;
 }
 
 .icon {
@@ -22,34 +97,152 @@
   border: 0;
   background: none;
   padding: 0;
+  font-family: var(--vi-font-mono);
   font-weight: 600;
   color: var(--vi-accent-fg);
   cursor: pointer;
   flex: none;
 }
 
-.summary {
-  flex: 1;
-  min-width: 0;
+.title {
+  margin: 0;
+  font-size: var(--vi-text-lg);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: var(--vi-tracking-tight);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--vi-text-2);
 }
 
-.input {
-  width: 260px;
-  flex: none;
+.meta {
+  color: var(--vi-text-3);
+  font-size: var(--vi-text-sm);
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
-.spacer {
+/* the context, a tab each */
+.tabs :global(.ant-tabs-nav) {
+  margin-bottom: 8px;
+}
+
+.tabs :global(.ant-tabs-content-holder) {
+  max-height: 280px;
+  overflow: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--vi-hairline);
+  font-size: var(--vi-text-sm);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.rowMain {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rowText {
+  min-width: 0;
+}
+
+.rowAside {
+  flex: none;
+}
+
+.rowAside :global(.ant-tag) {
+  margin: 0;
+}
+
+.relation {
+  color: var(--vi-text-3);
+  font-size: var(--vi-text-xs);
+  text-transform: lowercase;
+}
+
+.mono {
+  font-family: var(--vi-font-mono);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  border-radius: var(--vi-radius-md);
+  background: var(--vi-warn-bg);
+  color: var(--vi-warn-fg);
+  font-size: var(--vi-text-sm);
+}
+
+/* a Jira description: its markup as text */
+.wiki {
+  font-size: var(--vi-text-sm);
+  line-height: 1.55;
+  color: var(--vi-text-2);
+}
+
+.wiki p {
+  margin: 0 0 6px;
+}
+
+.wikiHeading {
+  font-weight: 600;
+  color: var(--vi-text);
+}
+
+.wikiItem {
+  padding-left: 14px;
+  position: relative;
+}
+
+.wikiItem::before {
+  content: '•';
+  position: absolute;
+  left: 2px;
+  color: var(--vi-text-3);
+}
+
+.wikiItem[data-level='2'] {
+  padding-left: 28px;
+}
+
+.wikiItem[data-level='3'] {
+  padding-left: 42px;
+}
+
+.wikiCode {
+  margin: 0 0 6px;
+  padding: 8px;
+  border-radius: var(--vi-radius-md);
+  background: var(--vi-hover);
+  font-family: var(--vi-font-mono);
+  font-size: var(--vi-text-xs);
+  white-space: pre-wrap;
+}
+
+.wikiRule {
+  border: 0;
+  border-top: 1px solid var(--vi-hairline);
 }
 
 .error,
@@ -62,6 +255,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -70,36 +264,6 @@
   font-family: var(--vi-font-mono);
   font-size: var(--vi-text-xs);
   color: var(--vi-text-3);
-}
-
-.details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 10px 20px;
-  padding-top: 6px;
-  border-top: 1px solid var(--vi-hairline);
-  font-size: var(--vi-text-sm);
-}
-
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.sectionTitle {
-  font-weight: 600;
-  color: var(--vi-text-2);
-  font-size: var(--vi-text-sm);
-}
-
-.description {
-  margin: 0;
-  color: var(--vi-text-3);
-  white-space: pre-wrap;
-  max-height: 120px;
-  overflow: auto;
 }
 
 .dim {
@@ -113,6 +277,25 @@
   color: var(--vi-accent-fg);
   cursor: pointer;
   text-align: left;
+  font: inherit;
+}
+
+.link svg {
+  vertical-align: -1px;
+}
+
+/* a section of the impact checklist */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sectionTitle {
+  font-weight: 600;
+  color: var(--vi-text-2);
+  font-size: var(--vi-text-sm);
 }
 
 .impact {

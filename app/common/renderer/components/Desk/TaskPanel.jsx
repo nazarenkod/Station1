@@ -1,21 +1,25 @@
 import {
+  IconBookmark,
   IconBrain,
-  IconChevronDown,
-  IconChevronUp,
+  IconDots,
   IconExternalLink,
+  IconListCheck,
   IconRefresh,
+  IconSearch,
+  IconSwitchHorizontal,
   IconTarget,
   IconThumbDown,
   IconThumbUp,
   IconTrash,
 } from '@tabler/icons-react';
-import {AutoComplete, Button, Checkbox, Input, Popover, Spin, Tag, Tooltip} from 'antd';
+import {Button, Checkbox, Dropdown, Input, Modal, Popover, Spin, Tabs, Tag, Tooltip} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useNavigate} from 'react-router';
 
 import {formatCredits} from '../../../shared/agent/credits.js';
 import {SECTIONS} from '../../../shared/task/impact.js';
+import {wikiBlocks} from '../../../shared/task/jira-wiki.js';
 import {addProposal, askOnTask} from '../../lib/agent/agent-store.js';
 import {openGoalForm} from '../../lib/goals/goal-form.js';
 import {
@@ -178,162 +182,209 @@ const Checklist = ({data, language}) => {
   );
 };
 
-const Details = ({context}) => {
-  const {t} = useTranslation();
+// a status coloured by its Jira category: to do, in progress, done
+const STATUS_COLOR = {new: 'default', indeterminate: 'processing', done: 'success'};
+
+/** A description or comment of Jira: its markup as headings, lists, links and code. */
+const JiraText = ({text}) => {
+  const blocks = wikiBlocks(text);
+  const inline = (parts) =>
+    parts.map((part) =>
+      part.url ? (
+        <Link key={part.at} url={part.url}>
+          {part.text}
+        </Link>
+      ) : part.bold ? (
+        <b key={part.at}>{part.text}</b>
+      ) : (
+        <span key={part.at}>{part.text}</span>
+      ),
+    );
   return (
-    <div className={styles.details}>
-      <div className={styles.section}>
-        <span className={styles.sectionTitle}>{t('taskSection_task')}</span>
-        <span>
-          {[context.task.type, context.task.status, context.task.assignee, context.task.fixVersions?.join(', ')]
-            .filter(Boolean)
-            .join(' · ')}
-        </span>
-        {context.task.description && <p className={styles.description}>{context.task.description.slice(0, 600)}</p>}
-      </div>
-      {context.linked.length > 0 && (
-        <div className={styles.section}>
-          <span className={styles.sectionTitle}>{t('taskSection_linked')}</span>
-          {context.linked.map((one) => (
-            <span key={one.key}>
-              <span className={styles.dim}>{one.relation}</span> <b>{one.key}</b> {one.summary}{' '}
-              <span className={styles.dim}>· {one.status}</span>
-            </span>
-          ))}
-        </div>
-      )}
-      {context.pages.length > 0 && (
-        <div className={styles.section}>
-          <span className={styles.sectionTitle}>{t('taskSection_pages')}</span>
-          {context.pages.map((page) => (
-            <span key={page.id ?? page.url}>
-              <Link url={page.url}>{page.title ?? page.url}</Link>
-              {page.skipped && <span className={styles.dim}> — {t(`taskSkipped_${page.skipped}`)}</span>}
-            </span>
-          ))}
-        </div>
-      )}
-      <div className={styles.section}>
-        <span className={styles.sectionTitle}>{t('taskSection_mrs')}</span>
-        {!context.mrs.length && <span className={styles.dim}>{t('taskNoMrs')}</span>}
-        {context.mrs.map((mr) => (
-          <span key={mr.url}>
-            <Link url={mr.url}>{mr.title ?? `!${mr.iid}`}</Link>
-            {mr.skipped ? (
-              <span className={styles.dim}> — {t(`taskSkipped_${mr.skipped}`)}</span>
-            ) : (
-              <span className={styles.dim}>
-                {' '}
-                · {mr.state} · {mr.sourceBranch} → {mr.targetBranch} · {t('taskFiles', {count: mr.files.length})}
-              </span>
-            )}
-          </span>
-        ))}
-      </div>
-      {context.commits.length > 0 && (
-        <div className={styles.section}>
-          <span className={styles.sectionTitle}>{t('taskSection_commits', {count: context.commits.length})}</span>
-          {context.commits.slice(0, 5).map((commit) => (
-            <span key={commit.sha} className={styles.dim}>
-              <code>{commit.sha.slice(0, 8)}</code> {commit.subject}
-            </span>
-          ))}
-        </div>
-      )}
-      {context.problems.length > 0 && (
-        <div className={styles.section}>
-          <span className={styles.sectionTitle}>{t('taskSection_problems')}</span>
-          {context.problems.map((one) => (
-            <span key={one.source} className={styles.warn}>
-              {one.source}: {t(`taskProblem_${one.error}`)}
-            </span>
-          ))}
-        </div>
-      )}
+    <div className={styles.wiki}>
+      {blocks.map((block, index) => {
+        const key = `${block.type}-${index}`;
+        if (block.type === 'heading') {
+          return (
+            <p key={key} className={styles.wikiHeading}>
+              {inline(block.parts)}
+            </p>
+          );
+        }
+        if (block.type === 'item') {
+          return (
+            <p key={key} className={styles.wikiItem} data-level={Math.min(block.level, 3)}>
+              {inline(block.parts)}
+            </p>
+          );
+        }
+        if (block.type === 'code') {
+          return (
+            <pre key={key} className={styles.wikiCode}>
+              {block.text}
+            </pre>
+          );
+        }
+        if (block.type === 'rule') {
+          return <hr key={key} className={styles.wikiRule} />;
+        }
+        return <p key={key}>{inline(block.parts)}</p>;
+      })}
     </div>
   );
 };
 
-/**
- * The task the person works on: picked by key or link, its context from
- * Jira, Confluence and GitLab, and the impact analysis as a checklist.
- */
-const TaskPanel = () => {
-  const {t, i18n} = useTranslation();
+const Row = ({children, aside}) => (
+  <div className={styles.row}>
+    <div className={styles.rowMain}>{children}</div>
+    {aside && <div className={styles.rowAside}>{aside}</div>}
+  </div>
+);
+
+/** The context of the task, a tab each: what it says, what it links to, what changed. */
+const ContextTabs = ({context}) => {
+  const {t} = useTranslation();
+  const navigate = useNavigate();
+  const gitlabOff = context.mrs.some((mr) => mr.skipped === 'gitlabNotSetUp');
+  const items = [
+    {
+      key: 'description',
+      label: t('taskTab_description'),
+      children: context.task.description ? (
+        <JiraText text={context.task.description} />
+      ) : (
+        <span className={styles.dim}>{t('taskNoDescription')}</span>
+      ),
+    },
+    context.linked.length > 0 && {
+      key: 'linked',
+      label: t('taskTab_linked', {count: context.linked.length}),
+      children: context.linked.map((one) => (
+        <Row key={one.key} aside={<Tag color={STATUS_COLOR[one.statusCategory] ?? 'default'}>{one.status}</Tag>}>
+          <span className={styles.relation}>{one.relation}</span>
+          <b className={styles.mono}>{one.key}</b>
+          <span className={styles.rowText}>{one.summary}</span>
+        </Row>
+      )),
+    },
+    context.pages.length > 0 && {
+      key: 'pages',
+      label: t('taskTab_pages', {count: context.pages.length}),
+      children: context.pages.map((page) => (
+        <Row key={page.id ?? page.url} aside={page.space && <span className={styles.dim}>{page.space}</span>}>
+          <Link url={page.url}>{page.title ?? page.url}</Link>
+          {page.skipped && <span className={styles.dim}>{t(`taskSkipped_${page.skipped}`)}</span>}
+        </Row>
+      )),
+    },
+    {
+      key: 'mrs',
+      label: t('taskTab_mrs', {count: context.mrs.length}),
+      children: (
+        <>
+          {gitlabOff && (
+            <div className={styles.notice}>
+              {t('taskGitlabOff')}
+              <Button
+                size="small"
+                type="link"
+                onClick={() => navigate('/settings', {state: {section: 'integrations'}})}
+              >
+                {t('taskConnectGitlab')}
+              </Button>
+            </div>
+          )}
+          {!context.mrs.length && <span className={styles.dim}>{t('taskNoMrs')}</span>}
+          {context.mrs.map((mr) => (
+            <Row
+              key={mr.url}
+              aside={
+                mr.skipped ? null : (
+                  <Tag color={mr.state === 'merged' ? 'success' : mr.state === 'opened' ? 'processing' : 'default'}>
+                    {mr.state}
+                  </Tag>
+                )
+              }
+            >
+              <Link url={mr.url}>!{mr.iid}</Link>
+              <span className={styles.rowText}>{mr.title ?? mr.project}</span>
+              {!mr.skipped && (
+                <span className={styles.dim}>
+                  {mr.sourceBranch} → {mr.targetBranch} · {t('taskFiles', {count: mr.files.length})}
+                </span>
+              )}
+              {mr.skipped && mr.skipped !== 'gitlabNotSetUp' && (
+                <span className={styles.dim}>{t(`taskSkipped_${mr.skipped}`)}</span>
+              )}
+            </Row>
+          ))}
+        </>
+      ),
+    },
+    context.commits.length > 0 && {
+      key: 'commits',
+      label: t('taskTab_commits', {count: context.commits.length}),
+      children: context.commits.map((commit) => (
+        <Row key={commit.sha}>
+          <code className={styles.mono}>{commit.sha.slice(0, 8)}</code>
+          <span className={styles.rowText}>{commit.subject}</span>
+        </Row>
+      )),
+    },
+    context.problems.length > 0 && {
+      key: 'problems',
+      label: t('taskTab_problems', {count: context.problems.length}),
+      children: context.problems.map((one) => (
+        <Row key={one.source}>
+          <span className={styles.mono}>{one.source}</span>
+          <span className={styles.warn}>{t(`taskProblem_${one.error}`)}</span>
+        </Row>
+      )),
+    },
+  ].filter(Boolean);
+  return <Tabs size="small" items={items} className={styles.tabs} />;
+};
+
+/** Picking a task: by key or link, or one of the recent ones. */
+const TaskPicker = ({onPicked, autoFocus = false}) => {
+  const {t} = useTranslation();
   const navigate = useNavigate();
   const task = useTask();
   const [input, setInput] = useState('');
-  const [open, setOpen] = useState(false);
-  const language = i18n.language?.slice(0, 2) ?? 'uk';
-  const context = task.data?.context;
-
   const pick = async (value) => {
-    if (await chooseTask(value)) {
+    if (value.trim() && (await chooseTask(value))) {
       setInput('');
+      onPicked?.();
     }
   };
-
-  const summary = context
-    ? [
-        context.task.summary,
-        context.task.status,
-        t('taskCountLinked', {count: context.linked.length}),
-        t('taskCountPages', {count: context.pages.length}),
-        t('taskCountMrs', {count: context.mrs.length}),
-      ].join(' · ')
-    : null;
-
+  const recent = task.recent.filter((key) => key !== task.current);
   return (
-    <section className={`vi-panel ${styles.panel}`} aria-label={t('taskTitle')}>
-      <div className={styles.head}>
-        <IconTarget size={18} className={styles.icon} />
-        {task.current ? (
-          <>
-            <button type="button" className={styles.key} onClick={() => context && openLink(context.url)}>
-              {task.current}
-            </button>
-            <span className={styles.summary}>{task.loading ? t('taskLoading') : summary}</span>
-            {task.loading && <Spin size="small" />}
-            <Tooltip title={t('taskRefresh')}>
-              <Button
-                type="text"
-                size="small"
-                icon={<IconRefresh size={16} />}
-                onClick={refreshTask}
-                aria-label={t('taskRefresh')}
-              />
-            </Tooltip>
-            {context && (
-              <Button
-                type="text"
-                size="small"
-                icon={open ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
-                onClick={() => setOpen(!open)}
-                aria-label={t('taskDetails')}
-              />
-            )}
-          </>
-        ) : (
-          <span className={styles.summary}>{t('taskNone')}</span>
-        )}
-        <AutoComplete
+    <div className={styles.picker}>
+      <div className={styles.pickerRow}>
+        <Input
+          size="large"
           value={input}
-          onChange={setInput}
-          onSelect={pick}
-          options={task.recent.filter((key) => key !== task.current).map((key) => ({value: key, label: key}))}
-          className={styles.input}
-        >
-          <Input
-            placeholder={t('taskPlaceholder')}
-            onPressEnter={() => input.trim() && pick(input)}
-            allowClear
-            size="small"
-          />
-        </AutoComplete>
-        <Button size="small" onClick={() => input.trim() && pick(input)} disabled={!input.trim()}>
+          autoFocus={autoFocus}
+          onChange={(e) => setInput(e.target.value)}
+          onPressEnter={() => pick(input)}
+          placeholder={t('taskPlaceholder')}
+          prefix={<IconSearch size={16} className={styles.dimIcon} />}
+          allowClear
+        />
+        <Button size="large" type="primary" onClick={() => pick(input)} disabled={!input.trim()}>
           {t('taskPick')}
         </Button>
       </div>
+      {recent.length > 0 && (
+        <div className={styles.recent}>
+          <span className={styles.dim}>{t('taskRecent')}</span>
+          {recent.map((key) => (
+            <Tag key={key} className={styles.recentTag} onClick={() => pick(key)}>
+              {key}
+            </Tag>
+          ))}
+        </div>
+      )}
       {task.error && (
         <div className={styles.error}>
           {t(`taskError_${task.error.error}`, {defaultValue: t('taskError_failed')})}
@@ -345,33 +396,107 @@ const TaskPanel = () => {
           {task.error.detail && <code className={styles.detail}>{task.error.detail}</code>}
         </div>
       )}
+    </div>
+  );
+};
+
+/**
+ * The task the person works on. Without one: what to pick. With one: the
+ * task itself, its two main actions, its context in tabs, the impact
+ * checklist; the rarer actions wait in the menu.
+ */
+const TaskPanel = () => {
+  const {t, i18n} = useTranslation();
+  const task = useTask();
+  const [changing, setChanging] = useState(false);
+  const language = i18n.language?.slice(0, 2) ?? 'uk';
+  const context = task.data?.context;
+
+  if (!task.current) {
+    return (
+      <section className={`vi-panel ${styles.panel} ${styles.empty}`} aria-label={t('taskTitle')}>
+        <IconTarget size={28} className={styles.emptyIcon} />
+        <h2 className={styles.emptyTitle}>{t('taskEmptyTitle')}</h2>
+        <p className={styles.dim}>{t('taskEmptyText')}</p>
+        <TaskPicker autoFocus />
+      </section>
+    );
+  }
+
+  const issue = context?.task;
+  const meta = issue ? [issue.type, issue.assignee, ...(issue.fixVersions ?? [])].filter(Boolean) : [];
+  const menu = [
+    {key: 'change', label: t('taskChange'), icon: <IconSwitchHorizontal size={15} />},
+    {key: 'lessons', label: t('memorySummarize'), icon: <IconBookmark size={15} />, disabled: !context},
+    {key: 'open', label: t('taskOpenJira'), icon: <IconExternalLink size={15} />, disabled: !context},
+    {type: 'divider'},
+    {key: 'forget', label: t('taskForget'), icon: <IconTrash size={15} />, danger: true},
+  ];
+  const onMenu = ({key}) => {
+    if (key === 'change') {
+      setChanging(true);
+    } else if (key === 'lessons') {
+      askOnTask(t('memorySummarizePrompt', {key: task.current}));
+    } else if (key === 'open') {
+      openLink(context.url);
+    } else if (key === 'forget') {
+      forgetCurrentTask();
+    }
+  };
+
+  return (
+    <section className={`vi-panel ${styles.panel}`} aria-label={t('taskTitle')}>
+      <div className={styles.head}>
+        <div className={styles.headMain}>
+          <div className={styles.headLine}>
+            <IconTarget size={18} className={styles.icon} />
+            <button type="button" className={styles.key} onClick={() => context && openLink(context.url)}>
+              {task.current}
+            </button>
+            {issue?.status && <Tag color={STATUS_COLOR[issue.statusCategory] ?? 'processing'}>{issue.status}</Tag>}
+            {task.loading && <Spin size="small" />}
+          </div>
+          <h2 className={styles.title}>{issue?.summary ?? (task.loading ? t('taskLoading') : task.current)}</h2>
+          {meta.length > 0 && <div className={styles.meta}>{meta.join(' · ')}</div>}
+        </div>
+        <div className={styles.headActions}>
+          <Tooltip title={t('taskRefresh')}>
+            <Button type="text" icon={<IconRefresh size={17} />} onClick={refreshTask} aria-label={t('taskRefresh')} />
+          </Tooltip>
+          <Dropdown menu={{items: menu, onClick: onMenu}} trigger={['click']} placement="bottomRight">
+            <Button type="text" icon={<IconDots size={17} />} aria-label={t('taskMore')} />
+          </Dropdown>
+        </div>
+      </div>
+
+      {task.error && !context && (
+        <div className={styles.error}>
+          {t(`taskError_${task.error.error}`, {defaultValue: t('taskError_failed')})}
+          {task.error.detail && <code className={styles.detail}>{task.error.detail}</code>}
+        </div>
+      )}
+
       {context && (
         <div className={styles.actions}>
           <Button
-            size="small"
-            icon={<IconBrain size={14} />}
-            onClick={() => askOnTask(t('taskAskPrompt', {key: task.current}))}
-          >
-            {t('taskAsk')}
-          </Button>
-          <Button
-            size="small"
             type={task.data?.impact && !task.data.impact.stale ? 'default' : 'primary'}
+            icon={<IconListCheck size={16} />}
             onClick={() => askOnTask(t('taskImpactPrompt', {key: task.current}), {deep: true})}
           >
             {task.data?.impact ? t('taskImpactAgain') : t('taskImpactRun')}
           </Button>
-          <Button size="small" onClick={() => askOnTask(t('memorySummarizePrompt', {key: task.current}))}>
-            {t('memorySummarize')}
-          </Button>
-          <span className={styles.spacer} />
-          <Button size="small" type="text" danger icon={<IconTrash size={14} />} onClick={forgetCurrentTask}>
-            {t('taskForget')}
+          <Button icon={<IconBrain size={16} />} onClick={() => askOnTask(t('taskAskPrompt', {key: task.current}))}>
+            {t('taskAsk')}
           </Button>
         </div>
       )}
-      {open && context && <Details context={context} />}
+
+      {context && <ContextTabs context={context} />}
       {task.data?.impact && <Checklist data={task.data} language={language} />}
+
+      <Modal open={changing} title={t('taskChange')} footer={null} onCancel={() => setChanging(false)} destroyOnHidden>
+        <TaskPicker autoFocus onPicked={() => setChanging(false)} />
+      </Modal>
     </section>
   );
 };

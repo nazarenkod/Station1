@@ -1987,5 +1987,22 @@
   "goalReportCopied": "Report copied",
   "goalReportSend": "As a comment on {{key}}",
   "goalReportSent": "Report added as a comment on {{key}}",
-  "goalReportFailed": "Could not send the report to Jira."
+  "goalReportFailed": "Could not send the report to Jira.",
+  "wsTool_station": "Station",
+  "stationPageText": "Whether this Mac is ready to test and which devices it sees.",
+  "taskEmptyTitle": "Which task are you working on?",
+  "taskEmptyText": "The station gathers the task, linked tasks, Confluence pages and MRs, and the agent makes the impact analysis.",
+  "taskRecent": "Recent:",
+  "taskChange": "Change task",
+  "taskOpenJira": "Open in Jira",
+  "taskMore": "More actions",
+  "taskTab_description": "Description",
+  "taskTab_linked": "Linked · {{count}}",
+  "taskTab_pages": "Confluence · {{count}}",
+  "taskTab_mrs": "MR · {{count}}",
+  "taskTab_commits": "Commits · {{count}}",
+  "taskTab_problems": "Not loaded · {{count}}",
+  "taskNoDescription": "The task has no description.",
+  "taskGitlabOff": "GitLab is not connected: MRs are shown as links, without changes and files.",
+  "taskConnectGitlab": "Connect GitLab"
 }

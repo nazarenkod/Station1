@@ -9,6 +9,7 @@ import {MemoryRouter, Route, Routes} from 'react-router';
 import OpenA11y from './components/A11yTool/OpenA11y.jsx';
 import BuildsTool from './components/Builds/BuildsTool.jsx';
 import Desk from './components/Desk/Desk.jsx';
+import StationPage from './components/Desk/StationPage.jsx';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.jsx';
 import LogsTool from './components/Logs/LogsTool.jsx';
 import ProxyTool from './components/Proxy/ProxyTool.jsx';
@@ -50,6 +51,7 @@ createRoot(container).render(
                 <Route path="/proxy" element={<ProxyTool />} />
                 <Route path="/logs" element={<LogsTool />} />
                 <Route path="/builds" element={<BuildsTool />} />
+                <Route path="/station" element={<StationPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
             </Routes>

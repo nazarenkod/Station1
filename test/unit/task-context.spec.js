@@ -9,6 +9,7 @@ import {collectTaskContext} from '../../app/common/node/task/context.js';
 import {createTaskStore} from '../../app/common/node/task/store.js';
 import {taskForAgent} from '../../app/common/shared/task/for-agent.js';
 import {impactChanges, impactStale, itemId, validateImpact} from '../../app/common/shared/task/impact.js';
+import {inlineParts, wikiBlocks} from '../../app/common/shared/task/jira-wiki.js';
 import {diffStats, findLinks, parseTaskKey, storageToText} from '../../app/common/shared/task/task-text.js';
 
 const JIRA = 'https://acme.atlassian.net';
@@ -128,6 +129,40 @@ const fakeGitlab = {
     throw Object.assign(new Error('GitLab answered: not found'), {status: 404});
   },
 };
+
+describe('a Jira description on the card', () => {
+  it('turns links, bold, colours and underline into text and links', () => {
+    const parts = inlineParts(
+      'Екран ([+Стан 1.+|https://www.figma.com/design/Y9/Gamification?node-id=442] *Активний* {color:#f00}розіграш{color})',
+    );
+    expect(parts.map(({text, url, bold}) => [text, url ?? null, !!bold])).toEqual([
+      ['Екран (', null, false],
+      ['Стан 1.', 'https://www.figma.com/design/Y9/Gamification?node-id=442', false],
+      [' ', null, false],
+      ['Активний', null, true],
+      [' розіграш)', null, false],
+    ]);
+    expect(inlineParts('див. https://git.acme.io/a/b/-/merge_requests/12')[1]).toMatchObject({
+      text: 'git.acme.io/…/12',
+    });
+  });
+
+  it('keeps headings, list items and code as blocks', () => {
+    expect(
+      wikiBlocks('h2. Критерії\n* перше\n** вкладене\n{code}val x = 1{code}\n----\nтекст').map((block) => [
+        block.type,
+        block.level ?? null,
+      ]),
+    ).toEqual([
+      ['heading', 2],
+      ['item', 1],
+      ['item', 2],
+      ['code', null],
+      ['rule', null],
+      ['text', null],
+    ]);
+  });
+});
 
 describe('gathering the context of a task', () => {
   const issues = {

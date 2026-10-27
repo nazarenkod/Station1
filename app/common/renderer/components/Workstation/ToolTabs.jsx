@@ -3,6 +3,7 @@ import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
 import {Link, useLocation} from 'react-router';
 
+import {doctorProblems, useDoctor} from '../Desk/doctor-store.js';
 import {toolOf, TOOLS} from './tools.js';
 
 import styles from './Workstation.module.css';
@@ -19,10 +20,13 @@ const ToolTabs = () => {
   const a11yOpen = useSelector(
     (state) => state.inspector.a11yScan?.violations?.filter((v) => v.severity !== 'info').length ?? 0,
   );
+  const {report} = useDoctor();
+  const appium = useSelector((state) => state.workstation.appium);
   const current = toolOf(pathname)?.key;
 
-  // the problems the accessibility check found on this screen, on the Inspector it lives in
-  const badges = {inspector: a11yOpen || null};
+  // the problems the accessibility check found on this screen, on the Inspector it lives in;
+  // what the doctor wants fixed on this Mac, on the station
+  const badges = {inspector: a11yOpen || null, station: (report && doctorProblems(report, appium)) || null};
 
   return (
     <nav className={styles.tabs} aria-label={t('wsToolsLabel')}>
