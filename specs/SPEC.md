@@ -292,7 +292,7 @@
 5. **Злиття.** `spec.md`, `design.md`, код і тести — одним комітом. Статус `implemented`, таблиця розділу тут оновлена, `tasks.md` видалено.
 6. **Еволюція.** Зміна поведінки змінює `spec.md`, зміна реалізації — `design.md`, у тому самому коміті.
 
-**Борг тестів зараз:** 46 критеріїв без тесту, переважно інтерфейс (station.shell, project.platforms, station.debug-log, settings.integrations), налаштування пристрою під проксі (proxy.device-setup) й встановлення на Mac (dist.mac).
+**Борг тестів зараз:** 47 критеріїв без тесту, переважно інтерфейс (station.shell, project.platforms, project.dependencies, station.debug-log, settings.integrations), налаштування пристрою під проксі (proxy.device-setup) й встановлення на Mac (dist.mac).
 
 <a id="agent"></a>
 
@@ -337,6 +337,7 @@
 | Інструменти станції для агента (MCP): дані сесії в межах бюджету, правила, підміни, фільтри, налаштування, відкат | [agent.station-mcp](agent.station-mcp/spec.md) | implemented |
 | Памʼять агента: уроки й поправки користувача | [agent.memory](agent.memory/spec.md) | implemented |
 | Код застосунку в проєкті: локальний репозиторій, сабмодулі, гілки `develop` і `main` | [project.source](project.source/spec.md) | implemented |
+| Залежності репозиторію: сабмодулі, Swift-пакети, поди, модулі Gradle; свої — агенту з мапою коду, сторонні — ні | [project.dependencies](project.dependencies/spec.md) | implemented |
 | Задача: Jira, повʼязані задачі, Confluence, MR із коментарів → контекст задачі й імпакт-аналіз | [task.context](task.context/spec.md) | implemented |
 | Цілі сесії: перевірки з задачі й коду, які станція рахує наживо | [agent.goals](agent.goals/spec.md) | implemented |
 | Керування застосунком: Оператор діє на пристрої через appium-mcp на сесії інспектора, лише за командою («Керувати застосунком», «Протестувати»), дозволи за групами з проєкту, «Стоп», заборони, кожна дія на екранах сесії | [agent.hands](agent.hands/spec.md) | implemented |

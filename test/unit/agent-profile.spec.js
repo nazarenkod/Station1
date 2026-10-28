@@ -23,6 +23,13 @@ describe('the agent’s instructions', () => {
     expect(order.every((at, index) => at >= 0 && (index === 0 || at > order[index - 1]))).toBe(true);
   });
 
+  it('carry the map of the code after the project, with no section when there is no code', () => {
+    const text = composeSteering({project: 'Банк', code: '- p24-ios (repository): /code/p24'});
+    expect(text.indexOf('# Where the app’s code is')).toBeGreaterThan(text.indexOf('# About this project'));
+    expect(text).toContain('- p24-ios (repository): /code/p24');
+    expect(composeSteering({code: ''})).not.toContain('Where the app’s code is');
+  });
+
   it('take the station’s own text in place of the defaults, and skip empty layers', () => {
     const text = composeSteering({station: '# Мої правила', project: '  ', personal: ''});
     expect(text).toContain('# Мої правила');

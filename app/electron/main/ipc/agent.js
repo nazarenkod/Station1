@@ -36,8 +36,9 @@ import {
   DEFAULT_SETTINGS,
   SOURCE_PATHS,
 } from '../../../common/shared/setting-defs.js';
+import {agentWorkspace} from '../../../common/shared/settings/dependencies.js';
 import {platformKey} from '../../../common/shared/settings/platforms.js';
-import {agentWorkspace, branchToRemember, sourceFor} from '../../../common/shared/settings/source.js';
+import {branchToRemember, sourceFor} from '../../../common/shared/settings/source.js';
 import {encryptedSecret} from '../secrets.js';
 
 const BRIDGE_TIMEOUT_MS = 8000;

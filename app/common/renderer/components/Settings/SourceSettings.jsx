@@ -2,7 +2,6 @@ import {
   IconAlertTriangle,
   IconArrowBackUp,
   IconBrandGit,
-  IconChevronRight,
   IconCloudDownload,
   IconFolderOpen,
   IconGitBranch,
@@ -10,14 +9,13 @@ import {
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react';
-import {App, Button, Input, Modal, Popconfirm, Select, Spin, Tag, Tooltip, Typography} from 'antd';
+import {App, Button, Input, Modal, Popconfirm, Select, Spin, Tooltip, Typography} from 'antd';
 import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {
   branchTone,
   changeRepo,
-  moduleTree,
   newRepo,
   repoWarnings,
   setBranches,
@@ -26,6 +24,7 @@ import {
 } from '../../../shared/settings/source.js';
 import {setProfilePlatforms, setProfileSource} from '../../lib/settings/profiles-store.js';
 import {backend} from '../../polyfills.js';
+import DependencyList from './DependencyList.jsx';
 
 import styles from './SettingsPage.module.css';
 
@@ -133,93 +132,6 @@ const SwitchDialog = ({open, profileId, repo, source, onClose, onDone}) => {
         </div>
       )}
     </Modal>
-  );
-};
-
-/**
- * The submodules of a repository, folded into one line with how many there
- * are; open, a tree where a submodule of a submodule sits under it. Each may
- * come from a folder of its own instead of the copy inside: the button shows
- * on the row under the pointer, or always once a folder is set.
- */
-const ModuleTree = ({profileId, repo, info, onRefresh}) => {
-  const {t} = useTranslation();
-  const [open, setOpen] = useState(false);
-  const tree = moduleTree(info.state.submodules);
-  const own = info.modules ?? {};
-  const off = tree.filter((module) => !module.initialized && !own[module.path]).length;
-
-  const pickFolder = async (modulePath) => {
-    const folder = await backend.source.pickFolder();
-    if (folder) {
-      await backend.source.setModulePath(profileId, repo.id, modulePath, folder);
-      onRefresh();
-    }
-  };
-  const clearFolder = async (modulePath) => {
-    await backend.source.setModulePath(profileId, repo.id, modulePath, null);
-    onRefresh();
-  };
-
-  return (
-    <div className={styles.sourceModules}>
-      <button
-        type="button"
-        className={styles.sourceModulesToggle}
-        aria-expanded={open}
-        onClick={() => setOpen((was) => !was)}
-      >
-        <IconChevronRight size={14} className={open ? styles.sourceModulesOpen : ''} />
-        {t('settingsSourceSubmodulesCount', {count: tree.length})}
-        {off > 0 && <span className={styles.sourceWarn}>{t('settingsSourceSubmodulesOff', {count: off})}</span>}
-      </button>
-      {open &&
-        tree.map((module) => {
-          const name = module.parent ? module.path.slice(module.parent.length + 1) : module.path;
-          return (
-            <div
-              key={module.path}
-              className={`${styles.sourceModule} ${module.depth ? styles.sourceModuleNested : ''}`}
-              style={{'--depth': module.depth}}
-            >
-              <span className={`${styles.mono} ${styles.sourceModuleName}`} title={module.url || module.path}>
-                {name}
-              </span>
-              {!module.initialized && !own[module.path] && (
-                <Tooltip title={t('settingsSourceSubmoduleOff')}>
-                  <Tag className={styles.sourceModuleOff}>{t('settingsSourceSubmoduleOffShort')}</Tag>
-                </Tooltip>
-              )}
-              <span className={styles.spacer} />
-              {own[module.path] ? (
-                <Tag
-                  closable
-                  onClose={(e) => {
-                    e.preventDefault();
-                    clearFolder(module.path);
-                  }}
-                  title={own[module.path]}
-                  className={styles.mono}
-                >
-                  {own[module.path].split('/').slice(-2).join('/')}
-                </Tag>
-              ) : (
-                <Tooltip title={t('settingsSourceModuleFolderHint')}>
-                  <Button
-                    size="small"
-                    type="text"
-                    icon={<IconFolderOpen size={14} />}
-                    className={styles.sourceModuleFolder}
-                    onClick={() => pickFolder(module.path)}
-                  >
-                    {t('settingsSourceModuleFolder')}
-                  </Button>
-                </Tooltip>
-              )}
-            </div>
-          );
-        })}
-    </div>
   );
 };
 
@@ -429,9 +341,7 @@ const RepoRow = ({profileId, repo, main, info, source, onChange, onMove, onRefre
         </div>
       )}
       <RepoWarnings warnings={warnings} />
-      {ready && state.submodules.length > 0 && (
-        <ModuleTree profileId={profileId} repo={repo} info={info} onRefresh={onRefresh} />
-      )}
+      {ready && <DependencyList profileId={profileId} repo={repo} info={info} onRefresh={onRefresh} />}
       <SwitchDialog
         open={switching}
         profileId={profileId}

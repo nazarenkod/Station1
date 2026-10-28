@@ -5,8 +5,8 @@ import path from 'node:path';
 
 import {afterAll, beforeAll, describe, expect, it, vi} from 'vitest';
 
+import {agentWorkspace} from '../../app/common/shared/settings/dependencies.js';
 import {
-  agentWorkspace,
   branchTone,
   branchToRemember,
   changeRepo,
@@ -132,9 +132,9 @@ describe('git output', () => {
   it('tells a checked-out submodule from one never initialized', () => {
     const text = ' 1a2b3c libs/design (heads/main)\n-4d5e6f libs/analytics\n+7a8b9c libs/core (v1-2-g7a8b9c)\n';
     expect(parseSubmoduleStatus(text)).toEqual([
-      {path: 'libs/design', initialized: true},
-      {path: 'libs/analytics', initialized: false},
-      {path: 'libs/core', initialized: true},
+      {path: 'libs/design', commit: '1a2b3c', initialized: true},
+      {path: 'libs/analytics', commit: '4d5e6f', initialized: false},
+      {path: 'libs/core', commit: '7a8b9c', initialized: true},
     ]);
   });
 
@@ -211,14 +211,14 @@ describe('agentWorkspace', () => {
       api: {ok: true, root: '/code/api', submodules: []},
       lost: {ok: false, error: 'missing'},
     };
-    expect(agentWorkspace(source, paths, states)).toEqual({
+    expect(agentWorkspace(source, paths, states)).toMatchObject({
       cwd: '/code/app',
       additionalDirectories: ['/code/app/libs/design', '/code/api'],
     });
   });
 
   it('has no folder when no repository is on this Mac', () => {
-    expect(agentWorkspace(source, {}, {})).toEqual({cwd: null, additionalDirectories: []});
+    expect(agentWorkspace(source, {}, {})).toMatchObject({cwd: null, additionalDirectories: []});
   });
 
   // ap24v6 (Android) and the iOS app both take ap24f, which has submodules of its own
@@ -250,11 +250,11 @@ describe('agentWorkspace', () => {
   };
 
   it('opens the code of the device platform with all its submodules, not the other platform', () => {
-    expect(agentWorkspace(sourceFor(mobile, 'android'), mobilePaths, mobileStates)).toEqual({
+    expect(agentWorkspace(sourceFor(mobile, 'android'), mobilePaths, mobileStates)).toMatchObject({
       cwd: '/code/and',
       additionalDirectories: ['/code/and/ap24f', '/code/core-kit', '/code/and/tapandpay'],
     });
-    expect(agentWorkspace(sourceFor(mobile, 'ios'), mobilePaths, mobileStates)).toEqual({
+    expect(agentWorkspace(sourceFor(mobile, 'ios'), mobilePaths, mobileStates)).toMatchObject({
       cwd: '/code/ios',
       additionalDirectories: ['/code/ios/Shared/ap24f'],
     });

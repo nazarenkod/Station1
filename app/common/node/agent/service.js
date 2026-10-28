@@ -23,6 +23,7 @@ import {
   AGENT_SESSIONS,
   DEFAULT_SETTINGS,
 } from '../../shared/setting-defs.js';
+import {codeMap} from '../../shared/settings/dependencies.js';
 import {kiroProblem} from './kiro.js';
 
 // The station's agent as one service: which conversation a profile and a
@@ -37,7 +38,7 @@ import {kiroProblem} from './kiro.js';
  * @param {ReturnType<import('./credits-store.js').createCreditsStore>} deps.credits
  * @param {(key: string) => Promise<any>} deps.get
  * @param {(key: string, value: any) => Promise<void>} deps.set
- * @param {(profileId: string) => Promise<{cwd: string | null, additionalDirectories: string[]}>} deps.workspace the code of a profile
+ * @param {(profileId: string) => Promise<{cwd: string | null, additionalDirectories: string[], map?: object[]}>} deps.workspace the code of a profile and its map
  * @param {(serverId: string) => Promise<Record<string, string>>} deps.secrets the hidden fields of an MCP server
  * @param {string} deps.home the station's own folder for the agent
  * @param {(channel: string, payload: object) => void} deps.send to the window
@@ -97,8 +98,8 @@ export function createAgentService(deps) {
 
   deps.kiro.on('mcpStatus', (sessionId, servers) => deps.send('agent:mcpStatus', {sessionId, servers}));
 
-  /** The steering document in the station's folder, written when it changed. */
-  const writeSteering = async () => {
+  /** The steering document in the station's folder, written when it changed; `code` is the map of the code. */
+  const writeSteering = async (code = '') => {
     const config = await setting(AGENT_CONFIG);
     const project = await setting(AGENT_PROJECT);
     const text = composeSteering({
@@ -107,6 +108,7 @@ export function createAgentService(deps) {
       personal: config.personalInstructions,
       pinned: deps.pinnedNotes ? await deps.pinnedNotes() : [],
       playbook: deps.playbookSummary ? await deps.playbookSummary().catch(() => '') : '',
+      code,
     });
     const file = path.join(deps.home, '.kiro', 'steering', 'station.md');
     const before = await readFile(file, 'utf8').catch(() => null);
@@ -118,7 +120,9 @@ export function createAgentService(deps) {
 
   /** What a conversation opens: its folders and its servers, the station's own first. */
   const sessionInputs = async (profileId, conversation, off = new Set(), {hands: withHands = false} = {}) => {
-    await writeSteering();
+    const code = await deps.workspace(profileId);
+    // the map of the code goes with the instructions: the folders alone make the agent search all of them
+    await writeSteering(codeMap(code.map ?? []));
     const {port, token} = await deps.mcp.start();
     const config = await setting(AGENT_CONFIG);
     const project = await setting(AGENT_PROJECT);
@@ -129,7 +133,6 @@ export function createAgentService(deps) {
         secrets[server.id] = await deps.secrets(server.id);
       }
     }
-    const code = await deps.workspace(profileId);
     // the hands go only when asked for (their tools cost context every turn) and once installed;
     // their tools follow the project's permissions of this moment
     const hands = withHands ? await deps.hands?.server(conversation, {port, token}).catch(() => null) : null;

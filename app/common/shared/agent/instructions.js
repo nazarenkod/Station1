@@ -63,14 +63,17 @@ const section = (title, body) => (String(body ?? '').trim() ? `\n\n# ${title}\n\
 
 /**
  * The steering document Kiro reads: the station's instructions, then the
- * project's and its playbook, then the person's, then the pinned notes of
- * the memory.
+ * project's, the map of its code and its playbook, then the person's, then
+ * the pinned notes of the memory.
  */
-export function composeSteering({station, project, personal, pinned = [], playbook = ''} = {}) {
+export function composeSteering({station, project, personal, pinned = [], playbook = '', code = ''} = {}) {
   const stationText = String(station ?? '').trim() || DEFAULT_STATION_INSTRUCTIONS.trim();
   const notes = pinned.length ? pinned.map((note) => `- ${note}`).join('\n') : '';
+  const codeText = String(code ?? '').trim()
+    ? `Look for the code in the module it belongs to, not in every folder at once.\n\n${String(code).trim()}`
+    : '';
   return `${STEERING_HEAD}${stationText}${section('About this project', project)}${section(
-    'The app’s playbook',
-    playbook,
-  )}${section('The engineer’s own instructions', personal)}${section('Pinned notes from memory', notes)}\n`;
+    'Where the app’s code is',
+    codeText,
+  )}${section('The app’s playbook', playbook)}${section('The engineer’s own instructions', personal)}${section('Pinned notes from memory', notes)}\n`;
 }

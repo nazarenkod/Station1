@@ -4,7 +4,7 @@
 
 ## Де в коді й точка розширення
 
-- `app/common/shared/settings/source.js` — чисті функції. `projectSource(source, platforms)` чистить код профілю: гілки кожної платформи й репозиторії з платформою (`android`, `ios`, `multi`, `shared`); `sourceFor(source, platform)` дає код однієї платформи як `{devBranch, releaseBranch, repos}` (її репозиторії першими, головний — перший, далі спільні) для `inspectRepo`, `repoWarnings` і `agentWorkspace`; `sourceOfRepo` — гілки, з якими звіряється репозиторій. Є розбір `.gitmodules`, `git submodule status`, `git status --porcelain`, адреси `origin` без логіна й токена, зведення стану репозиторію (`repoWarnings`) і теки для агента (`agentWorkspace`: робоча тека й додаткові).
+- `app/common/shared/settings/source.js` — чисті функції. `projectSource(source, platforms)` чистить код профілю: гілки кожної платформи й репозиторії з платформою (`android`, `ios`, `multi`, `shared`); `sourceFor(source, platform)` дає код однієї платформи як `{devBranch, releaseBranch, repos}` (її репозиторії першими, головний — перший, далі спільні) для `inspectRepo`, `repoWarnings` і `agentWorkspace`; `sourceOfRepo` — гілки, з якими звіряється репозиторій. Є розбір `.gitmodules`, `git submodule status`, `git status --porcelain`, адреси `origin` без логіна й токена, зведення стану репозиторію (`repoWarnings`). Теки для агента — `agentWorkspace` у `app/common/shared/settings/dependencies.js` ([project.dependencies](../project.dependencies/design.md)).
 - `app/common/node/source/repo.js` — git на диску через `run` з `doctor/exec.js`: `inspectRepo`, `listBranches`, `changesToDiscard`, `fetchRepo`, `switchBranch`, `pullRepo`. Git ніколи не питає пароль (`GIT_TERMINAL_PROMPT=0`), кожна команда йде в журнал станції.
 - `app/common/shared/settings/profiles.js` — `setProfileSource()`; копія профілю бере його код, новий профіль — гілки за замовчуванням.
 - `app/common/node/settings/station-settings.js` — `setProfileSource`, `outline` віддає `source`; шляхи профілю копіюються з копією й видаляються з профілем.
@@ -20,7 +20,7 @@
 
 ## API, CLI, MCP
 
-Немає. Агенту теки дає `agentWorkspace()` ([agent.core](../agent.core/spec.md), критерій 9).
+Немає. Агенту теки й мапу коду дає `agentWorkspace()` з `dependencies.js` ([agent.core](../agent.core/spec.md), критерій 9).
 
 ## Що зберігає
 

@@ -199,7 +199,7 @@ export function parseSubmoduleStatus(text) {
     .split(/\r?\n/)
     .map((line) => /^([ +\-U])([0-9a-f]+)\s+(\S+)/.exec(line))
     .filter(Boolean)
-    .map(([, mark, , path]) => ({path, initialized: mark !== '-'}));
+    .map(([, mark, commit, path]) => ({path, commit, initialized: mark !== '-'}));
 }
 
 const STATUS_KINDS = {M: 'modified', A: 'added', D: 'deleted', R: 'renamed', C: 'added', U: 'conflict', T: 'modified'};
@@ -312,45 +312,6 @@ export function repoWarnings(state, source) {
     warnings.push({kind: 'noBranch', branch: source.releaseBranch});
   }
   return warnings;
-}
-
-/**
- * The folders an operator conversation opens: the repositories of the code
- * it is given (one platform's, from sourceFor) and their checked-out
- * submodules (or the folders set for them). The first repository is where it
- * works. A submodule two repositories share (the same address) comes once. A
- * repository without a folder or not found is left out.
- * @param {{repos: object[]}} source the code of a platform
- * @param {Record<string, {path: string, modules?: Record<string, string>}>} paths the folders of this profile
- * @param {Record<string, object>} states the state of each repository by id
- * @returns {{cwd: string | null, additionalDirectories: string[]}}
- */
-export function agentWorkspace(source, paths = {}, states = {}) {
-  const folders = [];
-  const seen = new Set();
-  for (const repo of source.repos ?? []) {
-    const state = states[repo.id];
-    const root = state?.ok ? state.root : null;
-    if (!root || !paths[repo.id]?.path) {
-      continue;
-    }
-    folders.push(root);
-    const own = paths[repo.id]?.modules ?? {};
-    const tree = moduleTree(state.submodules ?? []);
-    for (const module of tree) {
-      if (!(module.initialized || own[module.path])) {
-        continue;
-      }
-      const same = module.url || `${repo.id}:${module.path}`;
-      if (seen.has(same)) {
-        continue;
-      }
-      seen.add(same);
-      folders.push(moduleFolder(root, module.path, own, tree));
-    }
-  }
-  const unique = [...new Set(folders)];
-  return {cwd: unique[0] ?? null, additionalDirectories: unique.slice(1)};
 }
 
 /**

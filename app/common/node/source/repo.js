@@ -1,6 +1,17 @@
-import {stat} from 'node:fs/promises';
+import {readFile, stat} from 'node:fs/promises';
 import path from 'node:path';
 
+import {
+  dependencyKey,
+  joinPath,
+  mergeDependencies,
+  parseGradleSettings,
+  parsePackageResolved,
+  parsePackageSwift,
+  parsePbxPackages,
+  parsePodfileLock,
+  submoduleDependency,
+} from '../../shared/settings/dependencies.js';
 import {parseStatus, parseSubmoduleStatus, safeRemote} from '../../shared/settings/source.js';
 import {run, shellEnv} from '../doctor/exec.js';
 
@@ -56,9 +67,148 @@ async function submodules(root) {
   return parseSubmoduleStatus(status.stdout).map((module) => ({
     name: byPath[module.path]?.name ?? path.basename(module.path),
     path: module.path,
+    commit: module.commit,
     url: safeRemote(byPath[module.path]?.url ?? ''),
     initialized: module.initialized,
   }));
+}
+
+// the files that name a repository's dependencies; builds, caches and vendored code are not looked into
+const DEPENDENCY_FILES = [
+  ':(glob)**/Package.resolved',
+  ':(glob)**/project.pbxproj',
+  'Package.swift',
+  ':(glob)**/Podfile.lock',
+  ':(glob)**/settings.gradle',
+  ':(glob)**/settings.gradle.kts',
+];
+const NOT_LOOKED_INTO = /(^|\/)(Pods|node_modules|\.build|Carthage|build|DerivedData|SourcePackages)\//;
+const MAX_DEPTH = 6;
+
+const exists = async (folder) => {
+  try {
+    return (await stat(folder)).isDirectory();
+  } catch {
+    return false;
+  }
+};
+const read = (file) => readFile(file, 'utf8').catch(() => null);
+const packageName = (url) =>
+  path
+    .basename(String(url).replace(/\/+$/, ''))
+    .replace(/\.git$/i, '')
+    .toLowerCase();
+
+/**
+ * The dependencies of a repository that may bring code: its submodules, the
+ * Swift packages of its Xcode projects and `Package.swift`, its pods and the
+ * Gradle modules it takes from elsewhere. Each says whether its code is on
+ * this Mac where the project expects it (`present`, `folder`).
+ */
+export async function listDependencies(root, modules = []) {
+  const listed = await git(root, [
+    'ls-files',
+    '-z',
+    '--cached',
+    '--others',
+    '--exclude-standard',
+    '--',
+    ...DEPENDENCY_FILES,
+  ]);
+  const files = [...new Set(String(listed.ok ? listed.stdout : '').split('\0'))].filter(
+    (file) => file && !NOT_LOOKED_INTO.test(file) && file.split('/').length <= MAX_DEPTH,
+  );
+  const abs = (file) => path.join(root, file);
+  const found = modules.map((module) => submoduleDependency(module));
+
+  const remoteSpm = (pin) => ({
+    kind: 'spm',
+    key: dependencyKey('spm', pin.name ?? packageName(pin.url)),
+    name: pin.name ?? packageName(pin.url),
+    url: safeRemote(pin.url),
+    version: pin.version ?? null,
+    local: false,
+    present: false,
+    folder: null,
+  });
+  const local = async (kind, name, folder) => ({
+    kind,
+    key: dependencyKey(kind, name),
+    name,
+    url: null,
+    version: null,
+    local: true,
+    folder,
+    present: await exists(folder),
+  });
+
+  // the pins first: they say the version a project really builds with
+  const resolved = new Set(files.filter((file) => file.endsWith('Package.resolved')));
+  for (const file of files.filter((one) => one.endsWith('.xcodeproj/project.pbxproj'))) {
+    const project = path.dirname(file);
+    const base = path.basename(project, '.xcodeproj');
+    // Package.resolved is often ignored by git, yet Xcode keeps it beside the project
+    for (const pins of [
+      `${project}/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`,
+      `${path.join(path.dirname(project), `${base}.xcworkspace`)}/xcshareddata/swiftpm/Package.resolved`,
+    ]) {
+      resolved.add(path.normalize(pins));
+    }
+  }
+  for (const file of resolved) {
+    const text = await read(abs(file));
+    if (text) {
+      found.push(...parsePackageResolved(text).map((pin) => remoteSpm({...pin, name: pin.name.toLowerCase()})));
+    }
+  }
+  for (const file of files.filter((one) => one.endsWith('.xcodeproj/project.pbxproj'))) {
+    const packages = parsePbxPackages(await read(abs(file)));
+    const dir = abs(path.dirname(path.dirname(file)));
+    found.push(...packages.remote.map((pin) => remoteSpm(pin)));
+    for (const one of packages.local) {
+      found.push(await local('spm', path.basename(one.path), joinPath(dir, one.path)));
+    }
+  }
+  if (files.includes('Package.swift')) {
+    const packages = parsePackageSwift(await read(abs('Package.swift')));
+    found.push(...packages.remote.map((pin) => remoteSpm(pin)));
+    for (const one of packages.local) {
+      found.push(await local('spm', path.basename(one.path), joinPath(root, one.path)));
+    }
+  }
+  for (const file of files.filter((one) => path.basename(one) === 'Podfile.lock')) {
+    const dir = abs(path.dirname(file));
+    for (const pod of parsePodfileLock(await read(abs(file)))) {
+      if (pod.path) {
+        found.push(await local('pod', pod.name, joinPath(dir, pod.path)));
+        continue;
+      }
+      // a pod installed lives in Pods, its code there whatever its source
+      const folder = path.join(dir, 'Pods', pod.name);
+      found.push({
+        kind: 'pod',
+        key: dependencyKey('pod', pod.name),
+        name: pod.name,
+        url: pod.url ? safeRemote(pod.url) : null,
+        specRepo: pod.specRepo ? safeRemote(pod.specRepo) : null,
+        version: pod.version,
+        local: false,
+        folder,
+        present: await exists(folder),
+      });
+    }
+  }
+  for (const file of files.filter((one) => /(^|\/)settings\.gradle(\.kts)?$/.test(one))) {
+    const dir = abs(path.dirname(file));
+    for (const module of parseGradleSettings(await read(abs(file)))) {
+      const folder = joinPath(dir, module.path);
+      // a module inside the repository is part of it, not a dependency
+      if (!folder.startsWith(`${root}/`)) {
+        found.push(await local('gradle', module.name, folder));
+      }
+    }
+  }
+  return mergeDependencies(found);
 }
 
 /** The top folder of the repository a folder is in, or null. */
@@ -94,7 +244,7 @@ export async function changesToDiscard(root, modules) {
 
 /**
  * What a repository folder is now: its root, branch, origin, the last fetch,
- * changes, submodules, and whether the profile's branches exist there.
+ * changes, submodules and the other dependencies, and whether the profile's branches exist there.
  */
 export async function inspectRepo(folder, {devBranch, releaseBranch} = {}) {
   try {
@@ -138,6 +288,7 @@ export async function inspectRepo(folder, {devBranch, releaseBranch} = {}) {
     lastFetch,
     changes,
     submodules: modules,
+    dependencies: await listDependencies(root, modules),
     hasDev,
     hasRelease,
   };
