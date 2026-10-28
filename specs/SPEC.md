@@ -99,7 +99,7 @@
 | Частина | Спека | Стан |
 |---|---|---|
 | Виявлення пристроїв, пріоритет, застосунок проєкту на пристрої | [device.connect](device.connect/spec.md) | implemented |
-| Вбудований Appium, старт сесії, підпис WebDriverAgent | [session.appium](session.appium/spec.md) | implemented |
+| Вбудований Appium, старт сесії, підʼєднання до наявної сесії, підпис WebDriverAgent | [session.appium](session.appium/spec.md) | implemented; критерії 6 і 12 (підʼєднання) — draft |
 | Збірки з файлу, аналіз маніфесту, встановлення | [builds.install](builds.install/spec.md) | implemented |
 | Збірки з пайплайнів GitLab за посиланням | [builds.gitlab](builds.gitlab/spec.md) | implemented |
 | Дані застосунку: налаштування, бази SQLite, файли пісочниці — дивитися, шукати, бачити зміни, змінювати з відкатом | [device.app-data](device.app-data/spec.md) | implemented |
@@ -339,8 +339,8 @@
 | Код застосунку в проєкті: локальний репозиторій, сабмодулі, гілки `develop` і `main` | [project.source](project.source/spec.md) | implemented |
 | Задача: Jira, повʼязані задачі, Confluence, MR із коментарів → контекст задачі й імпакт-аналіз | [task.context](task.context/spec.md) | implemented |
 | Цілі сесії: перевірки з задачі й коду, які станція рахує наживо | [agent.goals](agent.goals/spec.md) | implemented |
-| Руки агента: дії на пристрої через вбудований appium-mcp на сесії станції, дозвіл на розмову, «Стоп», заборони, кожна дія на екранах сесії | [agent.hands](agent.hands/spec.md) | draft |
-| Плейбук застосунку: акаунти з секретами, вхід без моделі (`app_login`, OTP), заборони, скидання, відомі екрани | [project.playbook](project.playbook/spec.md) | draft |
+| Руки агента: дії на пристрої через вбудований appium-mcp на сесії інспектора, дозволи за групами з проєкту, «Стоп», заборони, кожна дія на екранах сесії | [agent.hands](agent.hands/spec.md) | draft |
+| Плейбук застосунку: акаунти з секретами й призначенням, вхід без моделі (`app_login`), дозволи агента, заборони, скидання | [project.playbook](project.playbook/spec.md) | draft |
 
 Порядок робіт: project.source → agent.core з інструментами читання → task.context → agent.memory → інструменти змін → agent.goals. Кожен крок корисний сам.
 
