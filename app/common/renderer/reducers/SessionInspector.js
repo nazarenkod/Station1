@@ -97,6 +97,8 @@ import {omit} from '../utils/common.js';
 const INITIAL_STATE = {
   savedGestures: [],
   driver: null,
+  // joined a session someone else started
+  attached: false,
   keepAliveInterval: null,
   showKeepAlivePrompt: false,
   userWaitTimeout: null,
@@ -368,6 +370,7 @@ export default function inspector(state = INITIAL_STATE, action) {
         featureCaps: action.featureCaps,
         appMode: action.appMode,
         isUsingMjpegMode: action.isUsingMjpegMode,
+        attached: !!action.attached,
       };
     }
 

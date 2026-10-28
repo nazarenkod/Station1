@@ -2388,5 +2388,10 @@
   "finding_perf-regression-app-memoryMax_fix": "Open Performance → Screens, compare with the reference and attach the run's CSV to the bug.",
   "perfNoRef_none_one": "No reference yet. Make {{count}} run of a build and press Make reference in Builds.",
   "perfNoRef_none_other": "No reference yet. Make {{count}} runs of one build and press Make reference in Builds.",
-  "perfPoints": "{{points}} pp"
+  "perfPoints": "{{points}} pp",
+  "quickLiveSessionAsk": "A session of another app is already running on the device",
+  "quickLiveSessionHint": "Someone else started a session for “{{app}}”: a test run, an agent or a closed window. Join it or start a new one? A new one ends it if it runs on the station's Appium.",
+  "quickLiveSessionJoin": "Join",
+  "quickLiveSessionNew": "Start a new one",
+  "quickLiveSessionJoined": "Joined the session already running. Closing the Inspector will not end it."
 }

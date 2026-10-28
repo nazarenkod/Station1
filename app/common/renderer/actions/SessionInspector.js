@@ -342,7 +342,8 @@ export function quitSession({reason, manualQuit = true, detachOnly = false} = {}
   return async (dispatch, getState) => {
     const killAction = killKeepAliveLoop();
     killAction(dispatch, getState);
-    if (!detachOnly) {
+    // the station ends only the sessions it started; one it joined goes on
+    if (!detachOnly && !getState().inspector.attached) {
       const applyAction = applyClientMethod({methodName: 'deleteSession'});
       await applyAction(dispatch, getState);
     }
@@ -403,7 +404,7 @@ export function toggleShowBoilerplate() {
   };
 }
 
-export function setSessionDetails({serverDetails, driver, sessionCaps, appMode, isUsingMjpegMode}) {
+export function setSessionDetails({serverDetails, driver, sessionCaps, appMode, isUsingMjpegMode, attached = false}) {
   return (dispatch) => {
     // Extract several capabilities from the finalised set of caps
     // that may be relevant for enabling specific Inspector features
@@ -423,6 +424,7 @@ export function setSessionDetails({serverDetails, driver, sessionCaps, appMode, 
       featureCaps,
       appMode,
       isUsingMjpegMode,
+      attached,
     });
   };
 }

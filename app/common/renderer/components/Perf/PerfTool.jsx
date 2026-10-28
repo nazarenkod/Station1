@@ -17,6 +17,7 @@ import {useNavigate} from 'react-router';
 import {screenSegments, segmentAt, summarize} from '../../../shared/perf/series.js';
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {startQuickSession} from '../../lib/session/quick-session.js';
+import {useJoinSession} from '../../lib/session/use-join-session.js';
 import {useProfiles} from '../../lib/settings/profiles-store.js';
 import {adviceText, useProjectAdvice} from '../../lib/settings/project-advice.js';
 import {usePerfConfig} from '../../lib/settings/views.js';
@@ -142,6 +143,7 @@ const PerfTool = () => {
   const device = activeDevice(workstation);
   const app = workstation.app;
   const perf = usePerf();
+  const {decide, joined} = useJoinSession();
   const advice = useProjectAdvice();
   const [range, setRange] = useState('recent');
   const [hoverAt, setHoverAt] = useState(null);
@@ -206,7 +208,8 @@ const PerfTool = () => {
     }
     // the screens come from a session: start one as "Start session" would
     setSession({state: 'starting'});
-    const result = await startQuickSession({dispatch, device, app, appium: workstation.appium});
+    const result = await startQuickSession({dispatch, device, app, appium: workstation.appium, decide});
+    joined(result);
     setSession(
       result.error || result.refused
         ? {state: 'failed', error: result.error ? t(result.error.key, result.error.params) : null}

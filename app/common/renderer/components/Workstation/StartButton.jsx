@@ -10,6 +10,7 @@ import {canStart} from '../../../shared/start-problems.js';
 import {activeDevice, noteSessionDevice} from '../../actions/Workstation.js';
 import {startEverything} from '../../lib/session/start-all.js';
 import {setTestPaused, startProblemText, useStartProblems, useTestRun} from '../../lib/session/test-run.js';
+import {useJoinSession} from '../../lib/session/use-join-session.js';
 import {backend, getSetting, setSetting} from '../../polyfills.js';
 import NewTestDialog from '../Desk/NewTestDialog.jsx';
 
@@ -49,6 +50,7 @@ const StartButton = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const {message} = App.useApp();
+  const {decide, joined} = useJoinSession();
   const workstation = useSelector((state) => state.workstation);
   const hasSession = useSelector((state) => !!state.inspector.driver);
   const device = activeDevice(workstation);
@@ -118,11 +120,13 @@ const StartButton = () => {
         device,
         app: workstation.app,
         appium: workstation.appium,
+        decide,
         onStage: setStage,
       });
       if (result.error) {
         message.error(t(result.error.key, result.error.params));
       } else if (!result.refused) {
+        joined(result);
         dispatch(noteSessionDevice(device.id));
         navigate('/inspector');
       }

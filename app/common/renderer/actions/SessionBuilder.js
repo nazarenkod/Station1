@@ -443,6 +443,8 @@ export function newSession(originalCaps, attachSessId = null) {
       sessionCaps,
       appMode,
       isUsingMjpegMode: mjpegScreenshotUrl !== null,
+      // a session someone else started: closing the Inspector leaves it running
+      attached: !!attachSessId,
     });
     action(dispatch);
     return true;

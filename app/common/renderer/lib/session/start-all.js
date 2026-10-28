@@ -12,7 +12,7 @@ import {startQuickSession} from './quick-session.js';
  * app. The session goes last: the log and the measurement see the app from
  * its start. Returns what `startQuickSession` does.
  */
-export async function startEverything({dispatch, device, app, appium, onStage = () => {}}) {
+export async function startEverything({dispatch, device, app, appium, decide, onStage = () => {}}) {
   const tools = {...DEFAULT_SETTINGS[TEST_START], ...((await getSetting(TEST_START)) ?? {})};
   onStage('tools');
   await Promise.all([
@@ -23,5 +23,5 @@ export async function startEverything({dispatch, device, app, appium, onStage = 
       ? startPerf(device, app.id, {markScreen: false}).catch(() => null)
       : null,
   ]);
-  return await startQuickSession({dispatch, device, app, appium, onStage});
+  return await startQuickSession({dispatch, device, app, appium, decide, onStage});
 }

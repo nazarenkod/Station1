@@ -17,6 +17,7 @@ import {platformKey, platformOfDevice} from '../../../shared/settings/platforms.
 import {activeDevice, isDeviceRunning, noteSessionDevice, selectDevice} from '../../actions/Workstation.js';
 import {DEFAULT_PORT, startQuickSession} from '../../lib/session/quick-session.js';
 import {startProblemText, useStartProblems} from '../../lib/session/test-run.js';
+import {useJoinSession} from '../../lib/session/use-join-session.js';
 import {useProfiles} from '../../lib/settings/profiles-store.js';
 import {appsProblemText, appVersionLabel} from '../Workstation/app-labels.js';
 import {deviceSubtitle} from '../Workstation/DevicePicker.jsx';
@@ -46,6 +47,7 @@ const QuickStart = ({loadNewSession, onAdvanced}) => {
   const navigate = useNavigate();
   // what «Start session» would stumble on, each on the row it is about
   const problems = useStartProblems();
+  const {decide, joined} = useJoinSession();
   const profiles = useProfiles();
 
   const serverRunning = appium?.status === 'running';
@@ -62,11 +64,13 @@ const QuickStart = ({loadNewSession, onAdvanced}) => {
         appium,
         keepData,
         open: loadNewSession,
+        decide,
         onStage: setBusy,
       });
       if (result.error) {
         setError({text: t(result.error.key, result.error.params), settings: result.error.settings});
       } else if (!result.refused) {
+        joined(result);
         dispatch(noteSessionDevice(device.id));
       }
     } finally {

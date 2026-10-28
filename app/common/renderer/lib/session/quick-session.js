@@ -21,28 +21,57 @@ async function iosSigning() {
   return {caps: wdaSigningCapabilities({teamId: team.teamId, bundleId: saved.bundleId})};
 }
 
+// the app a session was started for, as Appium lists its capabilities
+const sessionApp = (caps = {}) =>
+  caps['appium:appPackage'] ?? caps.appPackage ?? caps['appium:bundleId'] ?? caps.bundleId ?? null;
+
 /**
- * Ends the sessions our own Appium server still holds on this device: left by
- * a window closed or reloaded mid-session, they keep WebDriverAgent or
- * UiAutomator2 busy and the new session hangs on it.
+ * The sessions an Appium server on this Mac holds on this device: left by a
+ * window closed or reloaded mid-session, or started by a test run or another
+ * agent. A server without the list, or one that does not answer, has none.
+ * @returns {Promise<{id: string, app: string | null}[]>}
+ */
+export async function sessionsOnDevice(port, udid) {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/appium/sessions`, {signal: AbortSignal.timeout(5000)});
+    const listed = await response.json();
+    return (listed.value ?? [])
+      .filter((session) => (session.capabilities?.udid ?? session.capabilities?.['appium:udid']) === udid)
+      .map((session) => ({id: session.id, app: sessionApp(session.capabilities)}));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * What to do with the sessions on the device: join the one of the same app,
+ * or ask about one of another app. Without an app, a session without one is
+ * the same.
+ * @returns {{kind: 'same' | 'other', session: {id: string, app: string | null}} | null}
+ */
+export function liveSessionChoice(sessions, appId) {
+  if (!sessions?.length) {
+    return null;
+  }
+  const same = sessions.find((session) => (session.app ?? null) === (appId ?? null));
+  return same ? {kind: 'same', session: same} : {kind: 'other', session: sessions[0]};
+}
+
+/**
+ * Ends the sessions our own Appium server still holds on this device: they
+ * keep WebDriverAgent or UiAutomator2 busy and the new session hangs on it.
  */
 export async function endSessionsOnDevice(port, udid) {
-  const base = `http://127.0.0.1:${port}`;
-  try {
-    const listed = await (await fetch(`${base}/appium/sessions`, {signal: AbortSignal.timeout(5000)})).json();
-    const stale = (listed.value ?? []).filter((session) => session.capabilities?.udid === udid);
-    await Promise.all(
-      stale.map((session) =>
-        fetch(`${base}/session/${session.id}`, {method: 'DELETE', signal: AbortSignal.timeout(30000)}).catch(
-          () => null,
-        ),
-      ),
-    );
-    return stale.length;
-  } catch {
-    // an older server without the list, or one that does not answer: start as before
-    return 0;
-  }
+  const stale = await sessionsOnDevice(port, udid);
+  await Promise.all(
+    stale.map((session) =>
+      fetch(`http://127.0.0.1:${port}/session/${session.id}`, {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(30000),
+      }).catch(() => null),
+    ),
+  );
+  return stale.length;
 }
 
 /**
@@ -77,8 +106,11 @@ export const toCapList = (caps) =>
  * Appium server (started if it is not running), capabilities written for
  * you. `open` starts the session from the capability list (the Session
  * Builder also goes to the Inspector); `onStage` says what is going on.
- * Returns `{error}` with a text key and its values when it could not start;
- * a session that Appium refused is shown by `newSession` itself.
+ * A live session of the same app on the device is joined instead of a new
+ * one; for one of another app `decide` says whether to join it ('attach')
+ * or start anew. Returns `{error}` with a text key and its values when it
+ * could not start, `{attached: true}` when it joined; a session that Appium
+ * refused is shown by `newSession` itself.
  */
 export async function startQuickSession({
   dispatch,
@@ -87,11 +119,12 @@ export async function startQuickSession({
   appium,
   keepData = true,
   open = null,
+  decide = async () => 'new',
   onStage = () => {},
 }) {
   // the session actions pull in the whole builder: loaded only when a session starts
   const {applyLocalServer, newSession} = await import('../../actions/SessionBuilder.js');
-  open ??= async (caps) => await dispatch(newSession(caps));
+  open ??= async (caps, attachTo = null) => await dispatch(newSession(caps, attachTo));
   // Appium would only fail to find the app's activity or bundle: say what is wrong instead
   if (app?.installed === false) {
     return {error: {key: 'quickAppMissing', params: {app: app.id, device: device.name}}};
@@ -121,9 +154,19 @@ export async function startQuickSession({
   }
   await dispatch(applyLocalServer({hostname: '127.0.0.1', port, path: ''}));
   onStage('session');
-  // only on our own server: one we found running may be in the middle of someone's test run
   const udid = device.capabilities?.['appium:udid'];
-  if (udid && !appium?.external) {
+  const live = udid ? await sessionsOnDevice(port, udid) : [];
+  const choice = liveSessionChoice(live, app?.id);
+  const join =
+    choice?.kind === 'same' || (choice?.kind === 'other' && (await decide(choice.session)) === 'attach')
+      ? choice.session
+      : null;
+  if (join) {
+    const joined = await open(null, join.id);
+    return joined === false ? {error: null, refused: true} : {attached: true};
+  }
+  // only on our own server: one we found running may be in the middle of someone's test run
+  if (live.length && !appium?.external) {
     await endSessionsOnDevice(port, udid);
   }
   const started = await open(toCapList(quickCapabilities(device, app, {keepData, signing})));
