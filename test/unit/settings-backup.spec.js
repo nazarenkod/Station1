@@ -82,6 +82,7 @@ describe('export', () => {
       'jira',
       'agent',
       'appData',
+      'perf',
     ]);
   });
 

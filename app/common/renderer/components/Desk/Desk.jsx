@@ -16,10 +16,13 @@ import {useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
 import {SEVERITIES, severityRank} from '../../../shared/findings/findings.js';
+import {perfSettings} from '../../../shared/perf/baseline.js';
 import {perfFindings} from '../../../shared/perf/perf-rules.js';
+import {usePerfConfig} from '../../lib/settings/views.js';
 import {Stagger, StaggerItem} from '../AppShell/motion.jsx';
 import GoalsPanel from '../Goals/GoalsPanel.jsx';
 import {useLogs} from '../Logs/logs-store.js';
+import {lastBuildFindings, usePerfHistory} from '../Perf/perf-history.js';
 import {usePerf} from '../Perf/perf-store.js';
 import {useProxy} from '../Proxy/proxy-store.js';
 import NewTestDialog from './NewTestDialog.jsx';
@@ -41,6 +44,8 @@ const useSessionAnalysis = () => {
   const proxy = useProxy();
   const logs = useLogs();
   const perf = usePerf();
+  const perfHistory = usePerfHistory();
+  const perfSaved = usePerfConfig();
   const scan = useSelector((state) => state.inspector.a11yScan);
   const screen = useSelector((state) => state.inspector.a11yScreen);
   const build = useSelector((state) => state.builds.current);
@@ -55,13 +60,18 @@ const useSessionAnalysis = () => {
       ...(build.status === 'ready' ? build.findings.map((f) => ({...f, tool: 'builds'})) : []),
       // what the last measurement showed stays until a new one starts
       ...(perf.samples.length
-        ? perfFindings({
-            samples: perf.samples,
-            markers: perf.markers,
-            appId: perf.appId,
-            endAt: perf.samples.at(-1).at + 1000,
-          })
+        ? perfFindings(
+            {
+              samples: perf.samples,
+              markers: perf.markers,
+              appId: perf.appId,
+              endAt: perf.samples.at(-1).at + 1000,
+            },
+            perfSettings(perfSaved).rules,
+          )
         : []),
+      // the app's last build against its reference
+      ...lastBuildFindings(perfHistory, perfSaved),
     ].map((finding) => ({
       id: finding.id,
       tool: finding.tool,
@@ -99,7 +109,7 @@ const useSessionAnalysis = () => {
     };
     // the stores change in place: their versions say when
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, proxy.version, logs.version, perf.version, scan, screen, build]);
+  }, [t, proxy.version, logs.version, perf.version, perfHistory, perfSaved, scan, screen, build]);
 };
 
 const TOOLS = ['proxy', 'logs', 'perf', 'a11y', 'builds'];
@@ -133,7 +143,8 @@ const Problems = ({analysis, expanded, onToggleExpanded}) => {
   const {message} = App.useApp();
   const {rows} = analysis;
   const coverage = coverageText(analysis, t);
-  const hadSession = hasSession || !!coverage;
+  // the anomalies of the last build stay in sight after a restart, with no test running
+  const hadSession = hasSession || !!coverage || rows.length > 0;
 
   const bySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, rows.filter((row) => row.severity === s).length]));
   const byTool = Object.fromEntries(TOOLS.map((key) => [key, rows.filter((row) => row.tool === key).length]));

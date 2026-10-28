@@ -20,11 +20,24 @@ let state = {
   samples: [],
   markers: [],
   status: {state: 'idle'},
+  // a kept run shown instead of the live one, by its id
+  viewing: null,
 };
 const listeners = new Set();
 let unsubscribe = null;
 let unsubscribeScreens = null;
 let lastScreenId = null;
+// who wants to know a run was kept (the history of runs)
+const keptListeners = new Set();
+export const onRunKept = (listener) => {
+  keptListeners.add(listener);
+  return () => keptListeners.delete(listener);
+};
+const noteKept = (run) => {
+  for (const listener of keptListeners) {
+    listener(run);
+  }
+};
 
 function publish(patch = {}) {
   state = {...state, ...patch, version: state.version + 1};
@@ -110,6 +123,7 @@ export async function startPerf(device, appId, {markScreen = true} = {}) {
     android: /android/i.test(device.platformName ?? ''),
     startedAt: Date.now(),
     status: {state: 'starting'},
+    viewing: null,
   });
   if (markScreen) {
     noteScreen();
@@ -127,6 +141,13 @@ export async function startPerf(device, appId, {markScreen = true} = {}) {
  * from now and marks the screen it is on again.
  */
 export function clearPerf() {
+  // what was measured until now is kept as a run of its own
+  if (state.running && backend.perf?.cut) {
+    backend.perf
+      .cut([...state.markers])
+      .then(({kept}) => kept && noteKept(kept))
+      .catch(() => null);
+  }
   state.samples.length = 0;
   state.markers.length = 0;
   lastScreenId = null;
@@ -141,7 +162,40 @@ export async function stopPerf() {
     return;
   }
   publish({running: false, status: {...state.status, state: 'stopped'}});
-  await backend.perf?.stop();
+  const kept = await backend.perf?.stop([...state.markers]).catch(() => null);
+  if (kept) {
+    noteKept(kept);
+  }
+}
+
+/** Puts away the kept run shown, back to an empty measurement. */
+export function closeRun() {
+  if (state.running || !state.viewing) {
+    return;
+  }
+  state.samples.length = 0;
+  state.markers.length = 0;
+  publish({viewing: null, status: {state: 'idle'}, startedAt: null});
+}
+
+/**
+ * Shows a kept run in place of the live one, while nothing is measured.
+ */
+export function showRun(run, {samples, markers}) {
+  if (state.running) {
+    return;
+  }
+  state.samples.length = 0;
+  state.samples.push(...samples);
+  state.markers.length = 0;
+  state.markers.push(...markers);
+  publish({
+    appId: run.appId,
+    android: run.platform === 'android',
+    startedAt: run.startedAt,
+    status: {state: 'stopped', build: run.build.kind, version: run.build.version, number: run.build.number},
+    viewing: run.id,
+  });
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   BUILD_JOBS,
   LOG_RULES_CONFIG,
   LOGS_VIEW,
+  PERF_CONFIG,
   PREFERRED_LANGUAGE,
   PROXY_CONFIG,
   PROXY_VIEW,
@@ -17,7 +18,7 @@ import {loadSavedRules} from '../../components/Logs/logs-store.js';
 import {reloadProxyConfig} from '../../components/Proxy/proxy-store.js';
 import i18n from '../../i18next.js';
 import {backend, getSetting, updateLanguage} from '../../polyfills.js';
-import {appDataPins, logsView, proxyView} from './views.js';
+import {appDataPins, logsView, perfConfig, proxyView} from './views.js';
 
 /**
  * The project profiles as the screens see them: names, apps and which one is
@@ -69,6 +70,9 @@ async function reloadTools(keys, reduxStore) {
   if (has(APP_DATA_PINS)) {
     work.push(appDataPins.reload());
   }
+  if (has(PERF_CONFIG)) {
+    work.push(perfConfig.reload());
+  }
   if (has(PREFERRED_LANGUAGE)) {
     const language = await getSetting(PREFERRED_LANGUAGE);
     if (language && language !== i18n.language) {
@@ -95,7 +99,7 @@ export async function startProfiles(reduxStore) {
 }
 
 // a filter changed a moment ago is written before the main process reads the settings
-const flushViews = () => Promise.all([proxyView.flush(), logsView.flush(), appDataPins.flush()]);
+const flushViews = () => Promise.all([proxyView.flush(), logsView.flush(), appDataPins.flush(), perfConfig.flush()]);
 
 export async function switchProfile(id) {
   if (id === state.activeId) {

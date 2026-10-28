@@ -210,8 +210,14 @@ window.electronIPC = {
   perf: {
     setPaused: async (paused) => await ipcRenderer.invoke('perf:setPaused', paused),
     start: async (device, appId) => await ipcRenderer.invoke('perf:start', device, appId),
-    stop: async () => await ipcRenderer.invoke('perf:stop'),
+    stop: async (markers) => await ipcRenderer.invoke('perf:stop', markers),
+    cut: async (markers) => await ipcRenderer.invoke('perf:cut', markers),
     snapshot: async () => await ipcRenderer.invoke('perf:snapshot'),
+    history: async (appId) => await ipcRenderer.invoke('perf:history', appId),
+    run: async (appId, id) => await ipcRenderer.invoke('perf:run', appId, id),
+    deleteRun: async (appId, id) => await ipcRenderer.invoke('perf:deleteRun', appId, id),
+    setBaseline: async (appId, runId, settings) => await ipcRenderer.invoke('perf:setBaseline', appId, runId, settings),
+    export: async (data) => await ipcRenderer.invoke('perf:export', data),
     onBatch: subscribe('perf:batch'),
   },
   journal: {

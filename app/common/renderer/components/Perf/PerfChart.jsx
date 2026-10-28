@@ -24,7 +24,7 @@ export function useWidth() {
 }
 
 // a round top for the scale, so the gridlines fall on readable numbers; counts keep a whole middle line
-function niceTop(value, whole) {
+export function niceTop(value, whole) {
   if (!(value > 0)) {
     return whole ? 2 : 1;
   }

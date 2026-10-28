@@ -14,6 +14,7 @@ import {
   JIRA_MEMORY,
   LOG_RULES_CONFIG,
   LOGS_VIEW,
+  PERF_CONFIG,
   PREFERRED_LANGUAGE,
   PREFERRED_THEME,
   PROXY_CONFIG,
@@ -49,6 +50,7 @@ export const GROUP_KEYS = [
   JIRA_MEMORY,
   LOG_RULES_CONFIG,
   LOGS_VIEW,
+  PERF_CONFIG,
   PREFERRED_LANGUAGE,
   PREFERRED_THEME,
   PROXY_CONFIG,
@@ -102,7 +104,7 @@ export function cleanPins(value) {
 }
 const copy = (value) => (value === undefined ? undefined : structuredClone(value));
 
-export const PROFILE_GROUPS = ['proxy', 'logs', 'filters', 'a11y', 'builds', 'jira', 'agent', 'appData'];
+export const PROFILE_GROUPS = ['proxy', 'logs', 'filters', 'a11y', 'builds', 'jira', 'agent', 'appData', 'perf'];
 export const STATION_GROUPS = ['general', 'integrations', 'devices', 'inspector', 'agentStation'];
 
 /**
@@ -194,6 +196,13 @@ export const GROUPS = {
     read: (all) => get(all, APP_DATA_PINS),
     write: (value) => ({[APP_DATA_PINS]: cleanPins(value)}),
     valid: (value) => isObject(value) && Object.values(value).every(Array.isArray),
+  },
+  perf: {
+    scope: 'profile',
+    // the tolerances, the runs of a reference and the thresholds; the runs themselves stay on this Mac
+    read: (all) => get(all, PERF_CONFIG),
+    write: (value) => ({[PERF_CONFIG]: isObject(value) ? copy(value) : DEFAULT_SETTINGS[PERF_CONFIG]}),
+    valid: (value) => isObject(value) && isObjectOrNull(value.tolerances) && isObjectOrNull(value.rules),
   },
   general: {
     scope: 'station',

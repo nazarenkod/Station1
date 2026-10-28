@@ -25,6 +25,7 @@ import {startPipelineWatches} from '../Builds/pipeline-watch.js';
 import {loadDoctor} from '../Desk/doctor-store.js';
 import GoalForm from '../Goals/GoalForm.jsx';
 import {logsState, startLogs} from '../Logs/logs-store.js';
+import {loadPerfHistory} from '../Perf/perf-history.js';
 import {followSelection, usePerf} from '../Perf/perf-store.js';
 import SessionExpiryModal from '../SessionInspector/SessionExpiryModal.jsx';
 import {useInspectorActions} from '../SessionInspector/use-inspector.js';
@@ -103,6 +104,12 @@ const PerfFollower = () => {
   useEffect(() => {
     followSelection(deviceId, appId);
   }, [deviceId, appId]);
+  // the desk shows the last build against its reference, whichever tool is open
+  useEffect(() => {
+    if (!perf.running) {
+      loadPerfHistory(appId);
+    }
+  }, [appId, perf.running]);
   const inspectorOpen = location.pathname === '/inspector';
   return perf.running && hasSession && !inspectorOpen ? <PerfScreenWatch /> : null;
 };

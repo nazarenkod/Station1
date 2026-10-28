@@ -1,4 +1,13 @@
-import {IconActivity, IconDeviceMobile, IconInfoCircle, IconPlayerPlay, IconPlayerStop} from '@tabler/icons-react';
+import {
+  IconActivity,
+  IconAdjustments,
+  IconDeviceFloppy,
+  IconDeviceMobile,
+  IconInfoCircle,
+  IconPlayerPlay,
+  IconPlayerStop,
+  IconX,
+} from '@tabler/icons-react';
 import {Alert, Button, Segmented, Tag, Tooltip} from 'antd';
 import {useEffect, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -8,13 +17,19 @@ import {useNavigate} from 'react-router';
 import {screenSegments, segmentAt, summarize} from '../../../shared/perf/series.js';
 import {activeDevice, isDeviceRunning} from '../../actions/Workstation.js';
 import {startQuickSession} from '../../lib/session/quick-session.js';
+import {useProfiles} from '../../lib/settings/profiles-store.js';
 import {adviceText, useProjectAdvice} from '../../lib/settings/project-advice.js';
+import {usePerfConfig} from '../../lib/settings/views.js';
 import {backend} from '../../polyfills.js';
 import EmptyState from '../Workstation/EmptyState.jsx';
 import {AdviceActions} from '../Workstation/ProjectAdvice.jsx';
 import {formatElapsed} from '../Workstation/SessionChip.jsx';
-import {attachPerf, startPerf, stopPerf, usePerf} from './perf-store.js';
+import {formatBytes, formatCount, formatMegabytes, formatPercent, MB} from './perf-format.js';
+import {buildReport, loadPerfHistory, openRun, selectRun, usePerfHistory} from './perf-history.js';
+import {attachPerf, closeRun, startPerf, stopPerf, usePerf} from './perf-store.js';
 import PerfChart, {useWidth} from './PerfChart.jsx';
+import {BuildsView, ScreensView} from './PerfReport.jsx';
+import PerfTolerances from './PerfTolerances.jsx';
 
 import styles from './Perf.module.css';
 
@@ -25,12 +40,6 @@ const MIN_SPAN_MS = 60 * 1000;
 const PLOT_LEFT = 68;
 const PLOT_RIGHT = 28;
 const PARTS = ['java', 'native', 'graphics', 'code', 'stack', 'other', 'system'];
-
-const MB = 1024 * 1024;
-const formatMegabytes = (mb) => `${mb >= 100 || mb === 0 ? mb.toFixed(0) : mb.toFixed(1)} MB`;
-export const formatBytes = (bytes) => formatMegabytes(bytes / MB);
-export const formatPercent = (value) => `${value >= 10 || value === 0 ? value.toFixed(0) : value.toFixed(1)}%`;
-const formatCount = (value) => `${Math.round(value)}`;
 
 /**
  * The strip of screens over the charts: each screen the session went
@@ -137,10 +146,57 @@ const PerfTool = () => {
   const [range, setRange] = useState('recent');
   const [hoverAt, setHoverAt] = useState(null);
   const [session, setSession] = useState(null);
+  const [view, setView] = useState('live');
+  const [tolerancesOpen, setTolerancesOpen] = useState(false);
+  const history = usePerfHistory();
+  const settings = usePerfConfig();
+  const profiles = useProfiles();
+  const project = profiles.list.find((profile) => profile.id === profiles.activeId)?.name ?? null;
+  // the runs kept belong to the app measured, else to the one in the title bar
+  const historyAppId = perf.running || perf.viewing ? perf.appId : (app?.id ?? null);
 
   useEffect(() => {
     attachPerf();
   }, []);
+  useEffect(() => {
+    loadPerfHistory(historyAppId);
+  }, [historyAppId]);
+
+  const openKept = async (id) => {
+    if (await openRun(id)) {
+      setView('live');
+    }
+  };
+  // the build's report follows the run picked
+  const openBuild = (id) => {
+    selectRun(id);
+    setView('screens');
+  };
+
+  // what is saved to a file: the run shown, or the measurement as it goes
+  const exportRun = async () => {
+    const kept = perf.viewing ? history.runs.find((run) => run.id === perf.viewing) : null;
+    const run = kept ?? {
+      appId: perf.appId,
+      platform: perf.android ? 'android' : 'ios',
+      device: device?.name ?? perf.deviceId,
+      os: device?.platformVersion ?? '',
+      build: {
+        version: perf.status.version ?? '',
+        number: perf.status.number ?? '',
+        kind: perf.status.build ?? 'unknown',
+      },
+      startedAt: perf.startedAt,
+      endAt: perf.samples.at(-1)?.at ?? perf.startedAt,
+    };
+    const report = kept ? buildReport({...history, selectedId: kept.id}, settings) : null;
+    await backend.perf.export({
+      run,
+      samples: perf.samples,
+      markers: perf.markers,
+      comparison: report?.comparison ? {reference: report.picked.baseline.build, ...report.comparison} : null,
+    });
+  };
 
   const start = async () => {
     setSession(null);
@@ -169,7 +225,7 @@ const PerfTool = () => {
     return <EmptyState tool="perf" icon={IconActivity} title={t('perfDesktopOnly')} />;
   }
   const running = isDeviceRunning(device);
-  if (!perf.running && !running) {
+  if (!perf.running && !running && !history.runs.length) {
     return (
       <EmptyState
         tool="perf"
@@ -185,7 +241,7 @@ const PerfTool = () => {
       />
     );
   }
-  if (!perf.running && perf.samples.length === 0) {
+  if (!perf.running && perf.samples.length === 0 && !history.runs.length) {
     return (
       <EmptyState
         tool="perf"
@@ -249,16 +305,57 @@ const PerfTool = () => {
         {status.build === 'debug' && <Tag color="warning">{t('perfBuild_debug')}</Tag>}
         {status.build === 'release' && <Tag>{t('perfBuild_release')}</Tag>}
         {status.flutter && <Tag>Flutter</Tag>}
-        <div className={styles.spacer} />
         <Segmented
-          value={range}
-          onChange={setRange}
+          value={view}
+          onChange={setView}
           options={[
-            {value: 'recent', label: t('perfRange_recent')},
-            {value: 'all', label: t('perfRange_all')},
+            {value: 'live', label: t('perfView_live')},
+            {value: 'screens', label: t('perfView_screens')},
+            {value: 'builds', label: t('perfView_builds', {count: history.runs.length})},
           ]}
         />
+        <div className={styles.spacer} />
+        {view === 'live' && perf.samples.length > 0 && (
+          <Segmented
+            value={range}
+            onChange={setRange}
+            options={[
+              {value: 'recent', label: t('perfRange_recent')},
+              {value: 'all', label: t('perfRange_all')},
+            ]}
+          />
+        )}
+        <Tooltip title={t('perfExport')}>
+          <Button
+            aria-label={t('perfExport')}
+            icon={<IconDeviceFloppy size={16} />}
+            disabled={!perf.samples.length}
+            onClick={exportRun}
+          />
+        </Tooltip>
+        <Button icon={<IconAdjustments size={16} />} onClick={() => setTolerancesOpen(true)}>
+          {t('perfTolerances')}
+        </Button>
       </div>
+      <PerfTolerances open={tolerancesOpen} onClose={() => setTolerancesOpen(false)} project={project} />
+      {perf.viewing && view === 'live' && (
+        <Alert
+          className={styles.banner}
+          type="info"
+          showIcon
+          title={t('perfViewingRun', {
+            build:
+              [status.version, status.number ? `(${status.number})` : ''].filter(Boolean).join(' ') ||
+              t('perfNoVersion'),
+            date: new Date(perf.startedAt).toLocaleString(),
+          })}
+          action={
+            <Button size="small" icon={<IconX size={14} />} onClick={() => closeRun()}>
+              {t('perfCloseRun')}
+            </Button>
+          }
+        />
+      )}
 
       {status.state === 'failed' && (
         <Alert
@@ -285,47 +382,59 @@ const PerfTool = () => {
       )}
 
       <div className={styles.body}>
-        <div className={styles.charts}>
-          <ScreenStrip segments={segments} from={from} to={to} hoverAt={hoverAt} unnamed={t('perfScreenUnnamed')} />
-          {!segments.length && <div className={styles.noScreens}>{t('perfNoScreens')}</div>}
-          {charts.map((chart) => (
-            <PerfChart
-              key={chart.key}
-              label={chart.label}
-              hint={chart.hint}
-              samples={perf.samples}
-              value={chart.value}
-              format={chart.format}
-              floor={chart.floor}
-              whole={chart.whole}
-              from={from}
-              to={to}
-              segments={segments}
-              markers={perf.markers}
-              hoverAt={hoverAt}
-              onHover={setHoverAt}
-            />
-          ))}
-          <div className={styles.timeAxis}>
-            <span>{formatElapsed(from - (perf.startedAt ?? from))}</span>
-            <span>{formatElapsed(to - (perf.startedAt ?? to))}</span>
+        {view === 'screens' && <ScreensView />}
+        {view === 'builds' && <BuildsView onOpenRun={openKept} onOpenBuild={openBuild} />}
+        {view === 'live' && !perf.samples.length && (
+          <div className={styles.liveEmpty}>
+            <p className={styles.reportNote}>{t('perfLiveEmpty')}</p>
+            <Button type="primary" icon={<IconPlayerPlay size={16} />} disabled={!app?.id || !running} onClick={start}>
+              {t('perfStart')}
+            </Button>
           </div>
-          {hoverAt !== null && (
-            <HoverCard
-              at={hoverAt}
-              from={from}
-              to={to}
-              samples={perf.samples}
-              segments={segments}
-              startedAt={perf.startedAt}
-              android={android}
-            />
-          )}
-          <p className={styles.note}>
-            <IconInfoCircle size={14} />
-            {t('perfLoadNote')}
-          </p>
-        </div>
+        )}
+        {view === 'live' && perf.samples.length > 0 && (
+          <div className={styles.charts}>
+            <ScreenStrip segments={segments} from={from} to={to} hoverAt={hoverAt} unnamed={t('perfScreenUnnamed')} />
+            {!segments.length && <div className={styles.noScreens}>{t('perfNoScreens')}</div>}
+            {charts.map((chart) => (
+              <PerfChart
+                key={chart.key}
+                label={chart.label}
+                hint={chart.hint}
+                samples={perf.samples}
+                value={chart.value}
+                format={chart.format}
+                floor={chart.floor}
+                whole={chart.whole}
+                from={from}
+                to={to}
+                segments={segments}
+                markers={perf.markers}
+                hoverAt={hoverAt}
+                onHover={setHoverAt}
+              />
+            ))}
+            <div className={styles.timeAxis}>
+              <span>{formatElapsed(from - (perf.startedAt ?? from))}</span>
+              <span>{formatElapsed(to - (perf.startedAt ?? to))}</span>
+            </div>
+            {hoverAt !== null && (
+              <HoverCard
+                at={hoverAt}
+                from={from}
+                to={to}
+                samples={perf.samples}
+                segments={segments}
+                startedAt={perf.startedAt}
+                android={android}
+              />
+            )}
+            <p className={styles.note}>
+              <IconInfoCircle size={14} />
+              {t('perfLoadNote')}
+            </p>
+          </div>
+        )}
       </div>
 
       <footer className={styles.statusBar}>

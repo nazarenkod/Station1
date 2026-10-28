@@ -65,6 +65,8 @@ export const TASKS = 'TASKS';
 export const AGENT_MEMORY = 'AGENT_MEMORY';
 // the keys and files pinned at the top of the data tab, by app: [{file, key}]; goes with the profile
 export const APP_DATA_PINS = 'APP_DATA_PINS';
+// the project's tolerances against the reference, the runs a reference takes, the thresholds of findings; goes with the profile
+export const PERF_CONFIG = 'PERF_CONFIG';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -124,4 +126,6 @@ export const DEFAULT_SETTINGS = {
   [TASKS]: {},
   [AGENT_MEMORY]: {notes: []},
   [APP_DATA_PINS]: {},
+  // the values in place are in shared/perf/baseline.js (PERF_DEFAULTS); an empty object takes them all
+  [PERF_CONFIG]: {},
 };

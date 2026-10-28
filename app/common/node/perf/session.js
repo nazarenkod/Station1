@@ -1,5 +1,6 @@
 import {isAppId} from '../../shared/perf/parsers.js';
 import {addSample, processChanges} from '../../shared/perf/series.js';
+import {appVersion} from '../device/apps.js';
 import {DEVICE_KIND} from '../doctor/devices.js';
 import {androidSampler} from './android.js';
 import {simulatorSampler} from './ios.js';
@@ -17,12 +18,13 @@ const isAndroid = (device) =>
  * processes start and end, and batches of both sent to the screen.
  */
 export class PerfSession {
-  constructor({device, appId, onBatch, sampler = null, now = () => Date.now()}) {
+  constructor({device, appId, onBatch, sampler = null, now = () => Date.now(), version = appVersion}) {
     this.device = device;
     this.appId = appId;
     this.onBatch = onBatch;
     this.now = now;
     this.sampler = sampler;
+    this.readVersion = version;
     this.samples = [];
     this.markers = [];
     this.pids = [];
@@ -73,10 +75,42 @@ export class PerfSession {
       .build()
       .then(({kind, flutter}) => this.setStatus({build: kind, flutter}))
       .catch(() => null);
+    // the version the device reports: runs of one build are compared together
+    Promise.resolve(this.readVersion(this.device, this.appId))
+      .then((installed) => this.setStatus({version: installed?.version ?? '', number: installed?.build ?? ''}))
+      .catch(() => null);
     await this.look();
     this.every(LOOK_MS, () => this.look());
     this.every(this.sampler.memoryEvery, () => this.readMemory());
     return this.status;
+  }
+
+  /**
+   * What the run measured so far, to be kept: the samples of the main
+   * process, the markers the window gathered (screens and processes).
+   */
+  run(markers) {
+    const platform = isAndroid(this.device) ? 'android' : 'ios';
+    return {
+      id: `${this.startedAt.toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      appId: this.appId,
+      platform,
+      device: this.device.name ?? this.device.id,
+      os: this.device.platformVersion ?? '',
+      build: {version: this.status.version ?? '', number: this.status.number ?? '', kind: this.status.build},
+      samples: this.samples,
+      markers: markers ?? this.markers,
+      startedAt: this.startedAt,
+      endAt: this.samples.at(-1)?.at ?? this.now(),
+    };
+  }
+
+  /** A new test: the measurement goes on from now with nothing behind it. */
+  reset() {
+    this.samples = [];
+    this.markers = [];
+    this.pending = {samples: [], markers: []};
+    this.startedAt = this.now();
   }
 
   stop() {
