@@ -1,4 +1,4 @@
-# Руки агента — як зроблено
+# Керування застосунком — як зроблено
 
 > Дизайн до контракту [spec.md](spec.md): що й навіщо — там, тут — де в коді, які дані, що зберігає. Частина [основної специфікації](../SPEC.md), розділ [15. Агент станції](../SPEC.md#agent).
 
@@ -30,7 +30,7 @@
 - `app/common/shared/agent/permissions.js` — картки Kiro для сервера `hands`: група «дозволено» — так, «питати» — людина, «заборонено» — ні.
 - `app/common/node/agent/service.js` — сервер рук у кожній розмові, коли руки встановлено; новий хід скидає лічильник і «Стоп».
 - `app/common/node/agent/hands-tools.js` — `goals_status` (цілі з вікна, `goals-store`) і `builds_list` (`BUILDS_HISTORY` для застосунку сесії).
-- Вікно: `app/common/renderer/lib/agent/bridge.js` — `session` (сервер і id сесії), `elementAt` (елемент під точкою), `handsStep` (крок на екранах сесії й свіже джерело); `components/A11yTool/screen-history.js` — крок агента позначено `by: 'agent'`; `components/Agent/HandsBlock.jsx` у `AgentPanel.jsx` — «Оператор керує пристроєм», «Стоп», рядки дій, картки «Ще 60» й OTP (`lib/agent/agent-store.js`: `handsSteps`, `handsCards`, `stopHands`, `answerHandsCard`); `components/Settings/AgentSettings.jsx` — «Руки агента»: встановлення й ліміт.
+- Вікно: `app/common/renderer/lib/agent/bridge.js` — `session` (сервер і id сесії), `elementAt` (елемент під точкою), `handsStep` (крок на екранах сесії й свіже джерело); `components/A11yTool/screen-history.js` — крок агента позначено `by: 'agent'`; `components/Agent/HandsBlock.jsx` у `AgentPanel.jsx` — «Оператор керує пристроєм», «Стоп», рядки дій, картки «Ще 60» й OTP (`lib/agent/agent-store.js`: `handsSteps`, `handsCards`, `stopHands`, `answerHandsCard`); `components/Settings/AgentSettings.jsx` — «Керування застосунком»: встановлення й ліміт.
 - IPC: `hands:status`, `hands:install`, `agent:handsStop`, `agent:cardAnswer`; події `agent:handsStep`, `agent:handsMore`, `agent:otp`.
 
 ## Модель даних
@@ -52,7 +52,7 @@
 
 - **Окремий процес, а не бібліотека в головному** (2026-10-28, разом з користувачем): DMG не росте на сотні мегабайт, падіння драйвера не чіпає інтерфейс, версію оновлює Doctor, той самий процес згодом отримають зовнішні агенти.
 - **Підʼєднання робить плагін сам** (2026-10-28, замість кроку агента): публічного API немає, тож точка входу імпортує `attachSessionAction` з `dist/tools/session/attach-session.js` зафіксованої версії. Коли `check` відповідає `{attach: {serverUrl, sessionId}}`, плагін підʼєднується й питає ще раз. Так `appium_session_management` (≈ 3 800 символів) агенту не потрібен. Нова версія appium-mcp — перевірити інтеграційним тестом.
-- **Руки лише за командою** (2026-10-28): `service.setHands` завантажує ту саму розмову Kiro (`session/load`) з сервером рук чи без нього, прапорець `hands` живе в записі розмови (`AGENT_SESSIONS`). Перемикач «Руки» — `AgentPanel.jsx`, «Протестувати» — `components/Goals/GoalsPanel.jsx` через `askOnTask(…, {hands: true})`.
+- **Руки лише за командою** (2026-10-28): `service.setHands` завантажує ту саму розмову Kiro (`session/load`) з сервером рук чи без нього, прапорець `hands` живе в записі розмови (`AGENT_SESSIONS`). Перемикач «Керувати застосунком» — `AgentPanel.jsx`, «Протестувати» — `components/Goals/GoalsPanel.jsx` через `askOnTask(…, {hands: true})`.
 - **Основні інструменти** (`CORE_TOOLS` у `shared/agent/hands.js`): 8 інструментів ≈ 12 400 символів проти ≈ 33 100 усіх; решта — з `AGENT_CONFIG.handsExtended`.
 - **Дозвіл за групами — і в картках Kiro, і в плагіні**: картку Kiro показує до виклику, а `check` ще раз перевіряє групу, заборони й пароль — так обійти не можна навіть із «Завжди».
 - **Повний XML ніколи**: `appium_get_page_source` пропускається лише з `selector` чи `pattern`.

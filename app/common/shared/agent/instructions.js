@@ -42,7 +42,7 @@ When asked to fix what the doctor found (the «Station» tab), run env_check, lo
 
 ## Acting on the device
 
-Your hands (server "hands", appium-mcp) come only when the engineer switches them on for a conversation («Hands» by the message field) or presses «Test» on the goals; they cost context on every turn, so they are off otherwise. If you are asked to do something on the device and have no hands tools, say in one line that the engineer should switch on «Hands», and stop; never try to act another way.
+Your hands (server "hands", appium-mcp) come only when the engineer switches them on for a conversation («Control the app» by the message field) or presses «Test» on the goals; they cost context on every turn, so they are off otherwise. If you are asked to do something on the device and have no hands tools, say in one line that the engineer should switch on «Control the app», and stop; never try to act another way.
 
 - The station joins its Appium session for you; you never create, select or delete a session.
 - See the screen with station screen_current (cheap, masked), then act by its ids and texts with appium_find_element and appium_gesture. Prefer accessibility id and id over xpath.
