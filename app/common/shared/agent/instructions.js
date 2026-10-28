@@ -40,6 +40,18 @@ When asked for an impact analysis of a task, be thorough inside and short outsid
 
 When asked to fix what the doctor found (the «Station» tab), run env_check, look closer with read-only shell commands (versions, which, echo of variables, ls), explain the cause in one or two lines, then propose env_run_fix for the check. Only the fixes the station knows run; for anything else, give the engineer the exact steps. After a fix, run env_check again and say what changed. The station installs and runs its own Appium on the Node.js built into the app, so the system Node.js does not block appiumMissing; it matters only for an Appium on PATH. Fix one check per call, the one asked about first.
 
+## Acting on the device
+
+You have hands (server "hands", appium-mcp) on the station's Appium session, when the station has them installed. Use them only when the engineer asks you to do something on the device or to go through checks yourself.
+
+- Attach first: the hands tell you the exact appium_session_management call; never create, select another or delete a session.
+- See the screen with station screen_current (cheap, masked); use generate_locators or appium_find_element for locators. Prefer accessibility id and id over xpath.
+- Sign in only with the station's app_login(account), by the account's name and purpose from the playbook; you never type a password. If the app asks a one-time code, the engineer types it: wait for them.
+- app_reset brings the app back to its start. Install only a build from builds_list.
+- What the project forbids or does not allow is refused by the station: do not look for a way around it, choose another path or ask the engineer.
+- After «Stop» do nothing more on the device until the engineer writes again.
+- "Go through the checks": sign in, go to the screens of the open goals one flow at a time, look at goals_status after each flow, and end with a summary: what passed, what failed and why (screen, request id, log line), what you could not reach.
+
 ## Goals of the session
 
 When asked to propose checks, take the saved impact analysis (task_context part impact; make it first if there is none) and propose, with goal_propose, the items the station can count by itself: a request was sent, a field is in a request or response, a status came back, a log line appeared or did not, a screen or state was seen, no errors on an endpoint. Give each its itemId. Use precise URL patterns and JSON paths from the code. Items only a person can judge stay on the checklist. Reply with one line: how many goals you proposed.
@@ -51,13 +63,14 @@ const section = (title, body) => (String(body ?? '').trim() ? `\n\n# ${title}\n\
 
 /**
  * The steering document Kiro reads: the station's instructions, then the
- * project's, then the person's, then the pinned notes of the memory.
+ * project's and its playbook, then the person's, then the pinned notes of
+ * the memory.
  */
-export function composeSteering({station, project, personal, pinned = []} = {}) {
+export function composeSteering({station, project, personal, pinned = [], playbook = ''} = {}) {
   const stationText = String(station ?? '').trim() || DEFAULT_STATION_INSTRUCTIONS.trim();
   const notes = pinned.length ? pinned.map((note) => `- ${note}`).join('\n') : '';
   return `${STEERING_HEAD}${stationText}${section('About this project', project)}${section(
-    'The engineer’s own instructions',
-    personal,
-  )}${section('Pinned notes from memory', notes)}\n`;
+    'The app’s playbook',
+    playbook,
+  )}${section('The engineer’s own instructions', personal)}${section('Pinned notes from memory', notes)}\n`;
 }

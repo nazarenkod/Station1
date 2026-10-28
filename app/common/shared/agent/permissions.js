@@ -1,3 +1,4 @@
+import {HANDS_SERVER, handsPermission} from './hands.js';
 import {STATION_SERVER} from './mcp-servers.js';
 
 // What the station answers when Kiro asks permission for a tool, before the
@@ -48,10 +49,14 @@ export const refusedCommand = (command) => SHELL_REFUSE.test(String(command ?? '
 /**
  * What to do with a permission request.
  * @param {object} request the params of `session/request_permission`
- * @param {{readTools: Set<string>}} station the station tools that only read
+ * @param {object} station
+ * @param {Set<string>} station.readTools the station tools that only read
+ * @param {Map<string, string>} [station.handsGroups] the station tools that act on the device, with their group
+ * @param {object} [station.permissions] what the project lets the agent do on the device, by group
+ * @param {object} [station.input] the arguments of the call
  * @returns {{action: 'allow' | 'reject' | 'ask', optionId?: string, reason?: string}}
  */
-export function decidePermission(request, {readTools}) {
+export function decidePermission(request, {readTools, handsGroups = new Map(), permissions = null, input = null}) {
   const options = request.options ?? [];
   const allow = pick(options, ['allow_once']);
   const reject = pick(options, ['reject_once', 'reject_always']);
@@ -59,11 +64,26 @@ export function decidePermission(request, {readTools}) {
   const identity = kiro.mcpTool?.identity;
   const capability = String(kiro.consent?.capability ?? '');
 
+  // on the device the project's permissions decide: allowed goes, denied is refused, the rest is asked
+  const byGroup = (answer) =>
+    answer === 'allow' && allow
+      ? {action: 'allow', optionId: allow.optionId, reason: 'handsAllowed'}
+      : answer === 'reject' && reject
+        ? {action: 'reject', optionId: reject.optionId, reason: 'handsDenied'}
+        : {action: 'ask'};
   if (identity?.serverName === STATION_SERVER) {
     if (readTools.has(identity.toolName) && allow) {
       return {action: 'allow', optionId: allow.optionId, reason: 'stationRead'};
     }
+    if (handsGroups.has(identity.toolName) && permissions) {
+      const value = permissions[handsGroups.get(identity.toolName)];
+      return byGroup({allow: 'allow', deny: 'reject'}[value] ?? 'ask');
+    }
     return {action: 'ask'};
+  }
+  if (identity?.serverName === HANDS_SERVER && permissions) {
+    const args = input ?? request.toolCall?.rawInput?.arguments ?? request.toolCall?.rawInput ?? {};
+    return byGroup(handsPermission(identity.toolName, args, permissions));
   }
   if (identity) {
     // another MCP server: its tools may do anything, the person decides

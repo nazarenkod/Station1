@@ -14,6 +14,7 @@ import {
   switchProfile,
   useProfiles,
 } from '../../lib/settings/profiles-store.js';
+import PlaybookSettings from './PlaybookSettings.jsx';
 import ProjectPlatforms from './ProjectPlatforms.jsx';
 import {ExportDialog} from './StationTransfer.jsx';
 
@@ -230,6 +231,7 @@ const ProfilesSettings = ({focus = null}) => {
           focus={profile.id === (focus?.profileId ?? profiles.activeId) ? focus : null}
         />
       ))}
+      <PlaybookSettings />
       <NameDialog
         open={!!creating}
         title={creating === 'copy' ? t('settingsProfileCopy', {name: active?.name ?? ''}) : t('settingsProfileNew')}

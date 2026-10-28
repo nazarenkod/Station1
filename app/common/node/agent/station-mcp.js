@@ -23,12 +23,38 @@ const sameToken = (given, expected) => {
   return a.length === b.length && timingSafeEqual(a, b);
 };
 
+const MAX_BODY = 256 * 1024;
+
+const readJson = (request) =>
+  new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    request.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY) {
+        reject(new Error('too big'));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on('end', () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'));
+      } catch (error) {
+        reject(error);
+      }
+    });
+    request.on('error', reject);
+  });
+
 /**
  * @param {object} options
  * @param {object[]} options.tools
  * @param {(conversation: string, event: object) => void} [options.onEvent] a read that hit the budget, a change
+ * @param {Record<string, (conversation: string, body: object) => Promise<object>>} [options.hands] what the plugin of the hands asks: `check`, `done`
  */
-export function createStationMcp({tools, onEvent = () => {}}) {
+export function createStationMcp({tools, onEvent = () => {}, hands = {}}) {
   const token = randomBytes(24).toString('hex');
   const conversations = new Map();
   let server = null;
@@ -72,14 +98,38 @@ export function createStationMcp({tools, onEvent = () => {}}) {
     return mcp;
   };
 
+  // the plugin of the agent's hands asks before and tells after each action
+  const handleHands = async (request, response, conversation, op) => {
+    if (request.method !== 'POST' || !Object.hasOwn(hands, op)) {
+      response.writeHead(404).end();
+      return;
+    }
+    const body = await readJson(request);
+    let answer = await hands[op](conversation, body);
+    if (answer?.read) {
+      const budget = budgetOf(conversation);
+      const given = budget.give(`hands:${body.tool}`, body.args, answer.text);
+      if (given.kind === 'budget') {
+        onEvent(conversation, {kind: 'budget', ...budget.state()});
+      }
+      answer = {text: given.text};
+    }
+    response.writeHead(200, {'content-type': 'application/json'}).end(JSON.stringify(answer ?? {}));
+  };
+
   const handle = async (request, response) => {
+    const handsMatch = /^\/hands\/([^/?#]+)\/(\w+)$/.exec(request.url ?? '');
     const match = /^\/mcp\/([^/?#]+)/.exec(request.url ?? '');
-    if (!match) {
+    if (!match && !handsMatch) {
       response.writeHead(404).end();
       return;
     }
     if (!sameToken(request.headers.authorization, token)) {
       response.writeHead(401).end();
+      return;
+    }
+    if (handsMatch) {
+      await handleHands(request, response, decodeURIComponent(handsMatch[1]), handsMatch[2]);
       return;
     }
     const conversation = decodeURIComponent(match[1]);
@@ -101,6 +151,8 @@ export function createStationMcp({tools, onEvent = () => {}}) {
     },
     // what runs without asking: tools that read, and those that only keep what the agent found
     readTools: new Set(tools.filter((tool) => tool.readOnly || tool.autoAllow).map((tool) => tool.name)),
+    // the station's tools that act on the device, by the group of the project's permissions they are in
+    handsGroups: new Map(tools.filter((tool) => tool.handsGroup).map((tool) => [tool.name, tool.handsGroup])),
 
     async start() {
       if (server) {

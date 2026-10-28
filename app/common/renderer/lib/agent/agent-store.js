@@ -42,6 +42,10 @@ let state = {
   // notes the agent read in the turn that runs, then by the turn's line
   usedNow: [],
   turnNotes: {},
+  // what the agent did on the device in the turn that runs, or the last one
+  handsSteps: [],
+  // cards of the hands waiting for the person: more actions, a one-time code
+  handsCards: [],
 };
 const listeners = new Set();
 let started = false;
@@ -134,6 +138,23 @@ export function startAgent() {
   backend.agent.onMemoryProposal(({sessionId, ...proposal}) => {
     if (!sessionId || sessionId === state.sessionId) {
       addProposal(proposal);
+    }
+  });
+  backend.agent.onHandsStep?.(({sessionId, ...step}) => {
+    if (!sessionId || sessionId === state.sessionId) {
+      publish({handsSteps: [...state.handsSteps, step].slice(-200)});
+    }
+  });
+  backend.agent.onHandsMore?.(({id, sessionId}) => {
+    if (!sessionId || sessionId === state.sessionId) {
+      publish({open: true, handsCards: [...state.handsCards, {id, kind: 'more'}]});
+    } else {
+      backend.agent.cardAnswer(id, false);
+    }
+  });
+  backend.agent.onOtp?.(({id, sessionId, account}) => {
+    if (!sessionId || sessionId === state.sessionId) {
+      publish({open: true, handsCards: [...state.handsCards, {id, kind: 'otp', account}]});
     }
   });
   backend.agent.onExit(() =>
@@ -282,6 +303,7 @@ export async function sendMessage(message, chips, {deep = false, confirmCredits 
     pendingTurn: turn,
     turnStartedAt: Date.now(),
     interrupted: null,
+    handsSteps: [],
   });
   const result = await backend.agent.prompt({sessionId: state.sessionId, message, chips, deep, confirmCredits});
   if (result.ok) {
@@ -392,7 +414,16 @@ export async function refreshCredits() {
 export function followProfile() {
   const key = `${activeProfileId()}/${currentTaskKey() ?? ''}`;
   if (state.sessionId && state.key !== key) {
-    publish({sessionId: null, key: null, chat: emptyChat(), changes: [], turns: {}, permissions: []});
+    publish({
+      sessionId: null,
+      key: null,
+      chat: emptyChat(),
+      changes: [],
+      turns: {},
+      permissions: [],
+      handsSteps: [],
+      handsCards: [],
+    });
     if (state.open) {
       openConversation();
     }
@@ -461,3 +492,20 @@ export async function saveProposal(id, note, options = {}) {
 }
 
 export const dismissGoalProposal = (id) => publish({goalProposals: state.goalProposals.filter((one) => one.id !== id)});
+
+/** «Stop» on the device: the agent does nothing more there and its turn ends. */
+export async function stopHands() {
+  if (state.sessionId) {
+    await backend.agent.handsStop(state.sessionId);
+  }
+  for (const card of state.handsCards) {
+    await backend.agent.cardAnswer(card.id, false);
+  }
+  publish({handsCards: []});
+}
+
+/** The person's answer to a card of the hands. */
+export async function answerHandsCard(id, answer) {
+  await backend.agent.cardAnswer(id, answer);
+  publish({handsCards: state.handsCards.filter((card) => card.id !== id)});
+}

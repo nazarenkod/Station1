@@ -66,6 +66,12 @@ const backend = {
   get agent() {
     return window.electronIPC.agent;
   },
+  get hands() {
+    return window.electronIPC.hands;
+  },
+  get playbook() {
+    return window.electronIPC.playbook;
+  },
   get task() {
     return window.electronIPC.task;
   },

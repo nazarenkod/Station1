@@ -50,6 +50,11 @@ export function noteAction(methodName, args = [], now = Date.now()) {
   publish({lastAction: {name: actionKind(methodName, args), at: now}});
 }
 
+/** An action of the agent on the device: the next step of the path is the Operator's. */
+export function noteAgentAction(now = Date.now()) {
+  publish({lastAction: {name: 'agent', at: now}});
+}
+
 /** Starts the screens and the path over: a new test on the same session. */
 export function clearScreenHistory() {
   publish({...emptyFlow(), viewingKey: null, viewingStateId: null, lastAction: null});

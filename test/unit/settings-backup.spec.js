@@ -83,6 +83,7 @@ describe('export', () => {
       'agent',
       'appData',
       'perf',
+      'playbook',
     ]);
   });
 

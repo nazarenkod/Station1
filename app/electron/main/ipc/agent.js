@@ -10,25 +10,39 @@ import {appDataTools} from '../../../common/node/agent/app-data-tools.js';
 import {createChangeJournal} from '../../../common/node/agent/changes.js';
 import {createCreditsStore} from '../../../common/node/agent/credits-store.js';
 import {envTools} from '../../../common/node/agent/env-tools.js';
+import {handsTools} from '../../../common/node/agent/hands-tools.js';
+import {createHands} from '../../../common/node/agent/hands.js';
 import {KiroAgent} from '../../../common/node/agent/kiro.js';
 import {testMcpServer} from '../../../common/node/agent/mcp-test.js';
 import {createMemoryStore} from '../../../common/node/agent/memory-store.js';
 import {memoryTools} from '../../../common/node/agent/memory-tools.js';
+import {playbookTools} from '../../../common/node/agent/playbook-tools.js';
 import {createAgentService} from '../../../common/node/agent/service.js';
 import {createStationMcp} from '../../../common/node/agent/station-mcp.js';
 import {taskTools} from '../../../common/node/agent/task-tools.js';
 import {stationTools} from '../../../common/node/agent/tools.js';
 import {run, shellEnv} from '../../../common/node/doctor/exec.js';
+import {journal as stationJournal} from '../../../common/node/journal.js';
 import {inspectRepo} from '../../../common/node/source/repo.js';
 import {DEFAULT_STATION_INSTRUCTIONS} from '../../../common/shared/agent/instructions.js';
 import {cleanServer, secretNames, toAcpServers} from '../../../common/shared/agent/mcp-servers.js';
+import {cleanPlaybook, playbookSummary} from '../../../common/shared/agent/playbook.js';
 import {compileMasks, DEFAULT_MASK_PATTERNS} from '../../../common/shared/agent/privacy.js';
-import {AGENT_CONFIG, AI_CONFIG, DEFAULT_SETTINGS, SOURCE_PATHS} from '../../../common/shared/setting-defs.js';
+import {
+  AGENT_CONFIG,
+  AI_CONFIG,
+  APP_PLAYBOOK,
+  BUILDS_HISTORY,
+  DEFAULT_SETTINGS,
+  SOURCE_PATHS,
+} from '../../../common/shared/setting-defs.js';
 import {platformKey} from '../../../common/shared/settings/platforms.js';
 import {agentWorkspace, branchToRemember, sourceFor} from '../../../common/shared/settings/source.js';
 import {encryptedSecret} from '../secrets.js';
 
 const BRIDGE_TIMEOUT_MS = 8000;
+// a step of the hands reads the screen again, which takes a while on an iPhone
+const HANDS_STEP_TIMEOUT_MS = 20000;
 
 const broadcast = (channel, payload) => {
   for (const window of BrowserWindow.getAllWindows()) {
@@ -38,6 +52,20 @@ const broadcast = (channel, payload) => {
 
 // the hidden fields of an MCP server (tokens, keys), together, in the keychain
 const serverSecret = (serverId) => encryptedSecret(`AGENT_MCP_${serverId.replace(/[^\w-]/g, '')}_ENCRYPTED`, 'key');
+
+// the login and password of an account of the playbook, together, in the keychain
+const accountSecret = (accountId) =>
+  encryptedSecret(`PLAYBOOK_ACCOUNT_${String(accountId).replace(/[^\w-]/g, '')}_ENCRYPTED`, 'password');
+
+const readAccount = async (accountId) => {
+  try {
+    return JSON.parse((await accountSecret(accountId).read()) ?? 'null');
+  } catch {
+    return null;
+  }
+};
+
+const HANDS_INSTALL_TIMEOUT_MS = 20 * 60 * 1000;
 
 const readSecrets = async (serverId) => {
   try {
@@ -82,10 +110,13 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
         return;
       }
       const id = randomUUID();
-      const timer = setTimeout(() => {
-        waiting.delete(id);
-        reject(new Error('The station window did not answer'));
-      }, BRIDGE_TIMEOUT_MS);
+      const timer = setTimeout(
+        () => {
+          waiting.delete(id);
+          reject(new Error('The station window did not answer'));
+        },
+        kind === 'handsStep' ? HANDS_STEP_TIMEOUT_MS : BRIDGE_TIMEOUT_MS,
+      );
       waiting.set(id, {resolve, timer});
       window.webContents.send('agent:ask', {id, kind, args});
     });
@@ -119,7 +150,47 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
     masks: async () => compileMasks(await maskPatterns()),
   });
 
+  const playbook = async () => (await get(APP_PLAYBOOK)) ?? {};
+  // the builds of the app on the device the station knows, newest first
+  const appBuilds = async () => {
+    const session = await askWindow('session').catch(() => null);
+    const history = (await get(BUILDS_HISTORY)) ?? [];
+    return session?.appId ? history.filter((build) => build.appId === session.appId && build.file) : [];
+  };
+  // a card in the chat waits for the person: more actions, or a one-time code typed on the device
+  const waitingCards = new Map();
+  const askCard = (channel, payload) =>
+    new Promise((resolve) => {
+      const id = randomUUID();
+      waitingCards.set(id, resolve);
+      broadcast(channel, {id, ...payload});
+    });
+  ipcMain.handle('agent:cardAnswer', (_evt, id, answer) => {
+    const resolve = waitingCards.get(id);
+    waitingCards.delete(id);
+    resolve?.(answer);
+  });
+  const sendStep = (conversation, step) =>
+    broadcast('agent:handsStep', {sessionId: service?.sessionOf(conversation), ...step});
+
   let service = null;
+  const hands = createHands({
+    dir: path.join(app.getPath('userData'), 'hands'),
+    node: process.execPath,
+    npm: async (command, args) =>
+      (await run(command, args, {timeout: HANDS_INSTALL_TIMEOUT_MS, env: await shellEnv()})).ok === true,
+    ask: askWindow,
+    playbook,
+    builds: async () => (await appBuilds()).map((build) => build.file),
+    limit: async () => (await get(AGENT_CONFIG))?.handsLimit ?? DEFAULT_SETTINGS[AGENT_CONFIG].handsLimit,
+    turnOf: (conversation) => service?.turnOf(conversation) ?? 0,
+    onStep: sendStep,
+    askMore: async (conversation) =>
+      !!(await askCard('agent:handsMore', {sessionId: service?.sessionOf(conversation)})),
+    log: (entry) => stationJournal.add(entry),
+    masks: async () => compileMasks(await maskPatterns()),
+  });
+
   const tools = [
     ...stationTools({
       proxy: () => proxy.snapshot(),
@@ -160,6 +231,18 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
       onFixed: doctor.changed,
     }),
     ...appDataTools({service: appData, masks: async () => compileMasks(await maskPatterns())}),
+    ...playbookTools({
+      ask: askWindow,
+      playbook,
+      secret: readAccount,
+      onStep: (conversation, step) => {
+        askWindow('handsStep', {line: step.line, ok: true}).catch(() => null);
+        sendStep(conversation, {at: Date.now(), ok: true, ...step});
+      },
+      onOtp: async (conversation, info) =>
+        !!(await askCard('agent:otp', {sessionId: service?.sessionOf(conversation), ...info})),
+    }),
+    ...handsTools({ask: askWindow, builds: appBuilds}),
     ...taskTools({
       current: tasks.current,
       store: tasks.store,
@@ -174,6 +257,7 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
     tools,
     onEvent: (conversation, event) =>
       broadcast('agent:budget', {sessionId: service?.sessionOf(conversation), conversation, ...event}),
+    hands: {check: hands.check, done: hands.done},
   });
 
   // the person's answer to a permission card
@@ -225,6 +309,20 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
     send: broadcast,
     ask: askPerson,
     secrets: readSecrets,
+    hands,
+    handsPermissions: async () => cleanPlaybook(await playbook()).permissions,
+    playbookSummary: async () => {
+      const book = cleanPlaybook(await playbook());
+      const ready = Object.fromEntries(
+        await Promise.all(
+          book.accounts.map(async (account) => {
+            const secret = await readAccount(account.id);
+            return [account.id, !!(secret?.login && secret?.password)];
+          }),
+        ),
+      );
+      return book.accounts.length || book.forbidden.length ? playbookSummary(book, {ready: (id) => ready[id]}) : '';
+    },
     pinnedNotes: async () => (await memory.pinned()).notes.map((note) => note.text),
     notesFor: async (chips) => {
       const tags = {
@@ -267,6 +365,36 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
   ipcMain.handle('agent:past', (_evt, profileId) => service.past(profileId));
   ipcMain.handle('agent:prompt', (_evt, request) => service.prompt(request));
   ipcMain.handle('agent:cancel', (_evt, sessionId) => service.cancel(sessionId));
+  ipcMain.handle('agent:handsStop', (_evt, sessionId) => service.stopHands(sessionId));
+  ipcMain.handle('hands:status', () => hands.status());
+  ipcMain.handle('hands:install', () => hands.install());
+
+  // the accounts of the playbook: only whether each has its login and password leaves the keychain
+  ipcMain.handle('playbook:secretState', async (_evt, ids) =>
+    Object.fromEntries(
+      await Promise.all(
+        (ids ?? []).map(async (id) => {
+          const secret = await readAccount(id);
+          return [id, !!(secret?.login && secret?.password)];
+        }),
+      ),
+    ),
+  );
+  ipcMain.handle('playbook:setSecret', async (_evt, id, value) => {
+    const kept = {...(await readAccount(id)), ...value};
+    const clean = Object.fromEntries(Object.entries(kept).filter(([, one]) => one));
+    await accountSecret(id).write(Object.keys(clean).length ? JSON.stringify(clean) : null);
+    return !!(clean.login && clean.password);
+  });
+  // «Try the sign-in» in the settings: the same sign-in the agent asks for, without the agent
+  ipcMain.handle('playbook:tryLogin', async (_evt, account) => {
+    try {
+      const login = tools.find((tool) => tool.name === 'app_login');
+      return {ok: true, text: await login.run({account}, {conversation: 'settings'})};
+    } catch (error) {
+      return {ok: false, text: error.message};
+    }
+  });
   ipcMain.handle('agent:consent', (_evt, profileId, given) => service.consent(profileId, given));
   ipcMain.handle('agent:consented', (_evt, profileId) => service.consented(profileId));
   ipcMain.handle('agent:turn', (_evt, sessionId) => service.turnOf(service.conversationOf(sessionId)));

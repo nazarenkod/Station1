@@ -45,6 +45,9 @@ import {kiroProblem} from './kiro.js';
  * @param {(sessionId: string) => string[]} [deps.pinnedNotes] notes of the memory every conversation starts with
  * @param {(turn: object) => Promise<void>} [deps.onTurn] a turn ended, with its credits
  * @param {(chips: object[]) => Promise<object[]>} [deps.notesFor] the notes of the memory about what the chips name
+ * @param {ReturnType<import('./hands.js').createHands>} [deps.hands] the agent's hands on the device
+ * @param {() => Promise<object>} [deps.handsPermissions] what the project lets the agent do on the device
+ * @param {() => Promise<string>} [deps.playbookSummary] the app's playbook in a few lines, for the instructions
  */
 export function createAgentService(deps) {
   const setting = async (key) => ({...DEFAULT_SETTINGS[key], ...((await deps.get(key)) ?? {})});
@@ -103,6 +106,7 @@ export function createAgentService(deps) {
       project: project.instructions,
       personal: config.personalInstructions,
       pinned: deps.pinnedNotes ? await deps.pinnedNotes() : [],
+      playbook: deps.playbookSummary ? await deps.playbookSummary().catch(() => '') : '',
     });
     const file = path.join(deps.home, '.kiro', 'steering', 'station.md');
     const before = await readFile(file, 'utf8').catch(() => null);
@@ -126,13 +130,19 @@ export function createAgentService(deps) {
       }
     }
     const code = await deps.workspace(profileId);
+    // the hands go only once installed; their tools follow the project's permissions of this moment
+    const hands = off.has('hands') ? null : await deps.hands?.server(conversation, {port, token}).catch(() => null);
     // the station's folder carries the instructions; with no code it is where the agent works
     const additionalDirectories = code.cwd ? [...code.additionalDirectories, deps.home] : code.additionalDirectories;
     return {
       model: config.model,
       cwd: code.cwd ?? deps.home,
       additionalDirectories,
-      mcpServers: [stationServer({port, token, conversation}), ...toAcpServers(servers, secrets, off)],
+      mcpServers: [
+        stationServer({port, token, conversation}),
+        ...(hands ? [hands] : []),
+        ...toAcpServers(servers, secrets, off),
+      ],
     };
   };
 
@@ -237,6 +247,7 @@ export function createAgentService(deps) {
       }
       turns.set(sessionId, (turns.get(sessionId) ?? 0) + 1);
       deps.mcp.startTurn(known.conversation, {deep, limits: {read: config.readBudget, deep: config.deepBudget}});
+      deps.hands?.startTurn(known.conversation);
       await deps.set(AGENT_SESSIONS, touchConversation(await deps.get(AGENT_SESSIONS), known.profileId, sessionId));
       try {
         // notes about the screen or request go along by their ids only; the agent reads them if it needs
@@ -255,6 +266,15 @@ export function createAgentService(deps) {
     },
 
     cancel(sessionId) {
+      deps.kiro.cancel(sessionId);
+    },
+
+    /** «Stop» on the device: no more actions in this turn, and the turn ends. */
+    stopHands(sessionId) {
+      const conversation = open.get(sessionId)?.conversation;
+      if (conversation) {
+        deps.hands?.stop(conversation);
+      }
       deps.kiro.cancel(sessionId);
     },
 
@@ -293,11 +313,17 @@ export function createAgentService(deps) {
      * asks the person the rest with what the call wants to do.
      */
     async permission(request) {
-      const decision = decidePermission(request, {readTools: deps.mcp.readTools});
+      const input = toolInputs.get(request.toolCall?.toolCallId) ?? null;
+      const decision = decidePermission(request, {
+        readTools: deps.mcp.readTools,
+        handsGroups: deps.mcp.handsGroups,
+        permissions: deps.handsPermissions ? await deps.handsPermissions().catch(() => null) : null,
+        input,
+      });
       if (decision.action !== 'ask') {
         return {optionId: decision.optionId};
       }
-      return await deps.ask({...request, input: toolInputs.get(request.toolCall?.toolCallId) ?? null});
+      return await deps.ask({...request, input});
     },
   };
   return service;

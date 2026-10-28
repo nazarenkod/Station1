@@ -1,4 +1,11 @@
-import {IconBrain, IconCheck, IconPlugConnected, IconRestore} from '@tabler/icons-react';
+import {
+  IconBrain,
+  IconCheck,
+  IconDeviceMobile,
+  IconDownload,
+  IconPlugConnected,
+  IconRestore,
+} from '@tabler/icons-react';
 import {App, Button, Input, InputNumber, Tag} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -130,6 +137,67 @@ const ServerJson = ({servers, onChange, statuses}) => {
         <ServerRow key={server.id} server={server} status={statuses.find((one) => one.name === server.name)} />
       ))}
     </div>
+  );
+};
+
+/**
+ * The agent's hands: appium-mcp in the station's folder, installed on
+ * request since it is large, and how many actions a turn may take.
+ */
+const HandsSettings = ({limit, onLimit}) => {
+  const {t} = useTranslation();
+  const {message} = App.useApp();
+  const [status, setStatus] = useState(null);
+  useEffect(() => {
+    backend.hands?.status().then(setStatus);
+  }, []);
+  if (!backend.hands || !status) {
+    return null;
+  }
+  const install = async () => {
+    setStatus({...status, installing: true});
+    const result = await backend.hands.install();
+    setStatus(result);
+    message[result.ok ? 'success' : 'error'](t(result.ok ? 'agentHandsInstalled' : 'agentHandsInstallFailed'));
+  };
+  return (
+    <section className={`${styles.card} ${styles.cardOpen}`}>
+      <div className={styles.cardHead}>
+        <span className={`${styles.logo} ${styles.logo_ai}`}>
+          <IconDeviceMobile size={18} stroke={1.7} />
+        </span>
+        <span className={styles.cardTitleBlock}>
+          <span className={styles.cardTitle}>{t('agentHandsSettings')}</span>
+          <span className={styles.cardPurpose}>{t('agentHandsPurpose')}</span>
+        </span>
+        <span className={`${styles.status} ${status.installed ? styles.statusOn : ''}`}>
+          <span className={styles.statusDot} />
+          {status.installed ? t('agentHandsOn') : t('agentHandsOff')}
+        </span>
+      </div>
+      <div className={styles.cardBody}>
+        <div className={styles.mcpRow}>
+          <span className={`${styles.mono} ${styles.profileHint}`}>{status.spec}</span>
+          <span className={styles.spacer} />
+          <Button
+            size="small"
+            type={status.installed ? 'default' : 'primary'}
+            icon={<IconDownload size={14} />}
+            loading={status.installing}
+            onClick={install}
+          >
+            {status.installed ? t('agentHandsReinstall') : t('agentHandsInstall')}
+          </Button>
+        </div>
+        <div className={styles.agentNumbers}>
+          <label>
+            <span>{t('agentHandsLimit')}</span>
+            <InputNumber min={5} step={10} value={limit} onChange={(value) => onLimit(value ?? 60)} />
+          </label>
+        </div>
+        <span className={styles.profileHint}>{t('agentHandsHint')}</span>
+      </div>
+    </section>
   );
 };
 
@@ -305,6 +373,8 @@ const AgentSettings = () => {
           </div>
         </div>
       </section>
+
+      <HandsSettings limit={config.handsLimit} onLimit={(handsLimit) => saveConfig({handsLimit})} />
 
       <section className={`${styles.card} ${styles.cardOpen}`}>
         <div className={styles.cardBody}>

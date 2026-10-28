@@ -703,3 +703,20 @@ button.cardHead:hover {
   color: var(--vi-warn-fg);
   background: var(--vi-warn-bg);
 }
+
+/* a row of the playbook: fields side by side, the free text taking the room */
+.playbookField {
+  flex: 1 1 180px;
+  width: auto;
+  min-width: 0;
+}
+
+.playbookShort {
+  flex: 0 0 150px;
+  width: 150px;
+}
+
+.playbookLabel {
+  flex: 0 0 64px;
+  color: var(--vi-text-2);
+}

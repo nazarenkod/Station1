@@ -126,6 +126,20 @@ window.electronIPC = {
     onMemoryUsed: subscribe('agent:memoryUsed'),
     onMemoryProposal: subscribe('agent:memoryProposal'),
     onGoalProposal: subscribe('agent:goalProposal'),
+    handsStop: async (sessionId) => await ipcRenderer.invoke('agent:handsStop', sessionId),
+    cardAnswer: async (id, answer) => await ipcRenderer.invoke('agent:cardAnswer', id, answer),
+    onHandsStep: subscribe('agent:handsStep'),
+    onHandsMore: subscribe('agent:handsMore'),
+    onOtp: subscribe('agent:otp'),
+  },
+  hands: {
+    status: async () => await ipcRenderer.invoke('hands:status'),
+    install: async () => await ipcRenderer.invoke('hands:install'),
+  },
+  playbook: {
+    secretState: async (ids) => await ipcRenderer.invoke('playbook:secretState', ids),
+    setSecret: async (id, value) => await ipcRenderer.invoke('playbook:setSecret', id, value),
+    tryLogin: async (account) => await ipcRenderer.invoke('playbook:tryLogin', account),
   },
   source: {
     pickFolder: async () => await ipcRenderer.invoke('source:pickFolder'),

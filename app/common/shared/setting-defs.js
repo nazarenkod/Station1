@@ -67,6 +67,8 @@ export const AGENT_MEMORY = 'AGENT_MEMORY';
 export const APP_DATA_PINS = 'APP_DATA_PINS';
 // the project's tolerances against the reference, the runs a reference takes, the thresholds of findings; goes with the profile
 export const PERF_CONFIG = 'PERF_CONFIG';
+// the app's playbook: accounts by name and purpose, the sign-in, the agent's permissions, what it must not touch, the reset; goes with the profile, the logins and passwords stay in the keychain
+export const APP_PLAYBOOK = 'APP_PLAYBOOK';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -115,6 +117,8 @@ export const DEFAULT_SETTINGS = {
     personalInstructions: '',
     mcpServers: [],
     readBudget: 40000,
+    // actions on the device in one turn before the agent asks for more
+    handsLimit: 60,
     deepBudget: 200000,
     dailyCreditLimit: 0,
     // the model every conversation is pinned to; the newest of its family when the account lacks it
@@ -128,4 +132,6 @@ export const DEFAULT_SETTINGS = {
   [APP_DATA_PINS]: {},
   // the values in place are in shared/perf/baseline.js (PERF_DEFAULTS); an empty object takes them all
   [PERF_CONFIG]: {},
+  // the defaults in place are in shared/agent/playbook.js (cleanPlaybook)
+  [APP_PLAYBOOK]: {},
 };

@@ -1,3 +1,4 @@
+import {cleanPlaybook} from '../agent/playbook.js';
 import {
   A11Y_CONFIG,
   A11Y_ISSUE_STATES,
@@ -5,6 +6,7 @@ import {
   AGENT_PROJECT,
   AI_CONFIG,
   APP_DATA_PINS,
+  APP_PLAYBOOK,
   BUILD_JOBS,
   DEFAULT_SETTINGS,
   GITLAB_CONFIG,
@@ -42,6 +44,7 @@ export const GROUP_KEYS = [
   AGENT_PROJECT,
   AI_CONFIG,
   APP_DATA_PINS,
+  APP_PLAYBOOK,
   BUILD_JOBS,
   GITLAB_CONFIG,
   IMPORTANT_SOURCE_ATTRIBUTES,
@@ -104,7 +107,18 @@ export function cleanPins(value) {
 }
 const copy = (value) => (value === undefined ? undefined : structuredClone(value));
 
-export const PROFILE_GROUPS = ['proxy', 'logs', 'filters', 'a11y', 'builds', 'jira', 'agent', 'appData', 'perf'];
+export const PROFILE_GROUPS = [
+  'proxy',
+  'logs',
+  'filters',
+  'a11y',
+  'builds',
+  'jira',
+  'agent',
+  'appData',
+  'perf',
+  'playbook',
+];
 export const STATION_GROUPS = ['general', 'integrations', 'devices', 'inspector', 'agentStation'];
 
 /**
@@ -203,6 +217,13 @@ export const GROUPS = {
     read: (all) => get(all, PERF_CONFIG),
     write: (value) => ({[PERF_CONFIG]: isObject(value) ? copy(value) : DEFAULT_SETTINGS[PERF_CONFIG]}),
     valid: (value) => isObject(value) && isObjectOrNull(value.tolerances) && isObjectOrNull(value.rules),
+  },
+  playbook: {
+    scope: 'profile',
+    // accounts by name and purpose; their logins and passwords are in the keychain, never here
+    read: (all) => cleanPlaybook(get(all, APP_PLAYBOOK)),
+    write: (value) => ({[APP_PLAYBOOK]: cleanPlaybook(value)}),
+    valid: (value) => isObject(value) && isList(value.accounts) && isList(value.forbidden),
   },
   general: {
     scope: 'station',

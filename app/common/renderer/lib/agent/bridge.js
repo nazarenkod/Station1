@@ -1,10 +1,12 @@
 import {compileMasks} from '../../../shared/agent/privacy.js';
 import {compactFlow, compactTree} from '../../../shared/agent/screen.js';
 import {AI_CONFIG} from '../../../shared/setting-defs.js';
+import {refreshA11yScreen} from '../../actions/A11y.js';
 import {activeDevice} from '../../actions/Workstation.js';
-import {screenHistory} from '../../components/A11yTool/screen-history.js';
+import {noteAgentAction, screenHistory} from '../../components/A11yTool/screen-history.js';
 import {backend, getSetting} from '../../polyfills.js';
 import {parseUiTree} from '../a11y/ui-tree.ts';
+import {goalsState} from '../goals/goals-store.js';
 import {profilesState} from '../settings/profiles-store.js';
 import {currentPicks} from './selection.js';
 
@@ -13,6 +15,12 @@ import {currentPicks} from './selection.js';
 // Each answer is short; the main process puts it through the read budget.
 
 const MAX_SCREENSHOT_SIDE = 720;
+// the app moves after a tap before its new screen is worth reading
+const SETTLE_MS = 700;
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const inside = (rect, x, y) =>
+  !!rect && x >= rect.x && y >= rect.y && x <= rect.x + rect.width && y <= rect.y + rect.height;
 
 let started = false;
 
@@ -67,6 +75,50 @@ function answers(store) {
     },
     async flow() {
       return compactFlow(screenHistory());
+    },
+    // the Inspector's session, for the station's own actions and the agent's hands
+    async session() {
+      const {inspector, workstation} = store.getState();
+      const sessionId = inspector?.driver?.sessionId ?? null;
+      const platform = /ios/i.test(inspector?.featureCaps?.platformName ?? '') ? 'ios' : 'android';
+      return {
+        serverUrl: inspector?.serverDetails?.serverUrl ?? null,
+        sessionId,
+        platform,
+        appId: workstation.app?.id ?? null,
+        screen: currentScreen(),
+      };
+    },
+    // the element under a point of the screen: the smallest one that holds it
+    async elementAt({x, y}) {
+      const {inspector} = store.getState();
+      if (!inspector?.sourceXML) {
+        return null;
+      }
+      const found = parseUiTree(inspector.sourceXML, {})
+        .nodes.filter((node) => node.visible !== false && inside(node.bounds, x, y))
+        .sort((a, b) => a.bounds.width * a.bounds.height - b.bounds.width * b.bounds.height)[0];
+      return found
+        ? {
+            text: found.text,
+            label: found.label,
+            resourceId: found.resourceId,
+            password: !!found.password,
+            className: found.className,
+          }
+        : null;
+    },
+    // an action of the agent: a step of the Operator on the screens, and the screen read again
+    async handsStep() {
+      noteAgentAction();
+      await delay(SETTLE_MS);
+      await store.dispatch(refreshA11yScreen()).catch(() => null);
+      const flow = screenHistory();
+      return {screen: currentScreen(), key: flow.currentKey ?? null, stateId: flow.currentStateId ?? null};
+    },
+    async goals() {
+      const {goals, run} = goalsState();
+      return {goals, states: run?.states ?? {}};
     },
     async a11yFindings() {
       const scan = store.getState().inspector?.a11yScan;

@@ -49,6 +49,7 @@ import {useScreenHistory} from '../A11yTool/screen-history.js';
 import GoalCard from '../Goals/GoalCard.jsx';
 import AgentText from './AgentText.jsx';
 import ConsentCard from './ConsentCard.jsx';
+import HandsBlock from './HandsBlock.jsx';
 import MemoryCard from './MemoryCard.jsx';
 
 import styles from './Agent.module.css';
@@ -559,6 +560,7 @@ const AgentPanel = () => {
               </div>
             </div>
           ))}
+        <HandsBlock busy={busy} />
         {busy && (
           <div className={styles.working} role="status">
             <IconLoader2 size={14} className={styles.spin} />
