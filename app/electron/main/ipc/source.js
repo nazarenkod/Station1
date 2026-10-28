@@ -1,3 +1,5 @@
+import os from 'node:os';
+
 import {BrowserWindow, dialog, ipcMain} from 'electron';
 
 import {
@@ -9,7 +11,7 @@ import {
   repoRoot,
   switchBranch,
 } from '../../../common/node/source/repo.js';
-import {branchToRemember, sourceOfRepo} from '../../../common/shared/settings/source.js';
+import {branchToRemember, shortPath, sourceOfRepo} from '../../../common/shared/settings/source.js';
 
 /**
  * The repositories of the project profiles on this Mac: their folders, what
@@ -71,6 +73,8 @@ export function setupSourceIPC(station) {
         return {
           repoId: repo.id,
           path: known.path ?? null,
+          // the folder as the person reads it, with ~ for the home folder
+          shown: shortPath(known.path, os.homedir()),
           previousBranch: known.previousBranch ?? null,
           modules: known.modules ?? {},
           // each repository against the branches of its platform

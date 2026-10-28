@@ -19,7 +19,7 @@ import styles from './Workstation.module.css';
 const STAGE_TEXT = {tools: 'wsStartingTools', server: 'quickStartingServer', session: 'quickStarting'};
 const TOOLS = ['proxy', 'logs', 'perf'];
 // where each problem is fixed
-const FIX_PATH = {device: '/station', app: '/settings', station: '/station'};
+const FIX_PATH = {device: '/station', app: '/projects', station: '/station'};
 
 /** What the start needs, each with the way to fix it. */
 const ProblemList = ({problems, onGo}) => {

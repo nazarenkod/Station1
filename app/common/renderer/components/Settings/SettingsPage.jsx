@@ -9,7 +9,7 @@ import {
 import {Alert, App, Button, Form} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {useLocation} from 'react-router';
+import {Navigate, useLocation} from 'react-router';
 
 import {backend} from '../../polyfills.js';
 import {AiSettingsFields, useAiSettings} from '../AiSettings/AiSettingsModal.jsx';
@@ -20,13 +20,12 @@ import ToggleTheme from '../SessionBuilder/AppSettings/ToggleTheme.jsx';
 import AgentSettings from './AgentSettings.jsx';
 import {GitLabSettingsFields, useGitLabSettings} from './GitLabSettings.jsx';
 import IosSigningSettings from './IosSigningSettings.jsx';
-import ProfilesSettings from './ProfilesSettings.jsx';
 import StationTransfer from './StationTransfer.jsx';
 
 import styles from './SettingsPage.module.css';
 
-// the build sources live in the platforms of each project now (project.platforms)
-const SECTIONS = ['integrations', 'agent', 'profiles', 'devices', 'general'];
+// the projects have a page of their own now, their build sources in each platform (project.platforms)
+const SECTIONS = ['integrations', 'agent', 'devices', 'general'];
 
 /**
  * One outside service as a single line: what it is, what it is connected to
@@ -231,21 +230,6 @@ const General = () => {
   );
 };
 
-const Profiles = ({focus}) => {
-  const {t} = useTranslation();
-  return (
-    <Stagger className={styles.section}>
-      <StaggerItem>
-        <h2 className={styles.sectionTitle}>{t('settingsProfiles')}</h2>
-        <p className={styles.sectionText}>{t('settingsProfilesText')}</p>
-      </StaggerItem>
-      <StaggerItem className={styles.section}>
-        <ProfilesSettings focus={focus} />
-      </StaggerItem>
-    </Stagger>
-  );
-};
-
 const Agent = () => {
   const {t} = useTranslation();
   return (
@@ -264,23 +248,27 @@ const Agent = () => {
 const PAGES = {
   integrations: Integrations,
   agent: Agent,
-  profiles: Profiles,
   devices: Devices,
   general: General,
 };
 
 /**
- * The workstation's settings: outside services and their keys, project
- * profiles, language and look, export, import and backups.
+ * The workstation's settings: outside services and their keys, the
+ * operator, devices, language and look, export, import and backups.
  */
 const SettingsPage = () => {
   const {t} = useTranslation();
   // another screen can open a section of its own: the session start opens the devices
   const {state} = useLocation();
-  // the old «builds» section is now the builds of a project's platform
-  const asked = state?.section === 'builds' ? 'profiles' : state?.section;
+  const asked = state?.section;
   const [section, setSection] = useState(SECTIONS.includes(asked) ? asked : 'integrations');
   const Page = PAGES[section];
+
+  // the old «profiles» and «builds» sections are the projects page now
+  if (asked === 'profiles' || asked === 'builds') {
+    const focus = asked === 'builds' ? {field: 'builds', project: state?.project ?? null} : (state?.focus ?? null);
+    return <Navigate to="/projects" replace state={{focus}} />;
+  }
 
   return (
     <div className={styles.page}>
@@ -299,11 +287,7 @@ const SettingsPage = () => {
           ))}
         </nav>
         <div className={styles.content}>
-          <Page
-            focus={
-              state?.section === 'builds' ? {field: 'builds', project: state?.project ?? null} : (state?.focus ?? null)
-            }
-          />
+          <Page />
         </div>
       </div>
     </div>

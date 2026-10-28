@@ -1,5 +1,15 @@
-import {IconBrandAndroid, IconBrandApple, IconDots, IconLayersLinked, IconPlus} from '@tabler/icons-react';
-import {App, Button, Dropdown, Tabs} from 'antd';
+import {
+  IconApps,
+  IconBrandAndroid,
+  IconBrandApple,
+  IconDots,
+  IconGitBranch,
+  IconInfoCircle,
+  IconLayersLinked,
+  IconPackage,
+  IconPlus,
+} from '@tabler/icons-react';
+import {App, Button, Dropdown, Tabs, Tooltip} from 'antd';
 import {useEffect, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
@@ -14,8 +24,8 @@ import styles from './SettingsPage.module.css';
 
 export const PLATFORM_ICONS = {android: IconBrandAndroid, ios: IconBrandApple, multi: IconLayersLinked};
 
-/** One part of a platform: its title and what is in it. */
-const Part = ({title, hint, children, focused}) => {
+/** One part of a platform: its icon and title, and what is in it. */
+const Part = ({icon: Icon, title, hint, children, focused}) => {
   const ref = useRef(null);
   useEffect(() => {
     if (focused) {
@@ -24,7 +34,10 @@ const Part = ({title, hint, children, focused}) => {
   }, [focused]);
   return (
     <div ref={ref} className={`${styles.platformPart} ${focused ? styles.platformPartFocused : ''}`}>
-      <span className={styles.platformPartTitle}>{title}</span>
+      <span className={styles.platformPartTitle}>
+        <Icon size={16} stroke={1.7} />
+        {title}
+      </span>
       {children}
       {hint && <span className={styles.profileHint}>{hint}</span>}
     </div>
@@ -33,8 +46,7 @@ const Part = ({title, hint, children, focused}) => {
 
 /**
  * The platforms of a project, a tab each: its app, branches, repositories
- * with their submodules and its build sources; below, the code the platforms
- * share. One «multi» tab when one code makes the Android and iOS apps.
+ * with their submodules and its build sources. One «multi» tab when one code makes the Android and iOS apps.
  * `AppField` is the field of a project app on a platform.
  */
 const ProjectPlatforms = ({profile, active, focus, AppField}) => {
@@ -98,7 +110,7 @@ const ProjectPlatforms = ({profile, active, focus, AppField}) => {
 
   const section = (platform) => (
     <div className={styles.platformBody}>
-      <Part title={t('settingsPlatformApp')} focused={active && field === 'app'}>
+      <Part icon={IconApps} title={t('settingsPlatformApp')} focused={active && field === 'app'}>
         {platform === 'multi' ? (
           <>
             <AppField profile={profile} platform="android" />
@@ -108,11 +120,11 @@ const ProjectPlatforms = ({profile, active, focus, AppField}) => {
           <AppField profile={profile} platform={platform} />
         )}
       </Part>
-      <Part title={t('settingsPlatformCode')} focused={active && field === 'code'}>
+      <Part icon={IconGitBranch} title={t('settingsPlatformCode')} focused={active && field === 'code'}>
         <BranchFields profile={profile} platform={platform} />
         <RepoList profile={profile} platform={platform} infos={infos} onRefresh={refresh} />
       </Part>
-      <Part title={t('settingsPlatformBuilds')} focused={active && field === 'builds'}>
+      <Part icon={IconPackage} title={t('settingsPlatformBuilds')} focused={active && field === 'builds'}>
         {active ? (
           <BuildSourcesSettings
             platform={platform}
@@ -146,6 +158,9 @@ const ProjectPlatforms = ({profile, active, focus, AppField}) => {
         })}
         tabBarExtraContent={
           <span className={styles.platformAdd}>
+            <Tooltip title={t('settingsProfileAppsHint')} placement="bottomRight">
+              <IconInfoCircle size={16} className={styles.platformInfo} aria-label={t('settingsProfileAppsHint')} />
+            </Tooltip>
             {missing.map((platform) => (
               <Button
                 key={platform}
@@ -165,9 +180,6 @@ const ProjectPlatforms = ({profile, active, focus, AppField}) => {
           </span>
         }
       />
-      <Part title={t('settingsPlatformShared')} hint={t('settingsPlatformSharedHint')}>
-        <RepoList profile={profile} platform="shared" infos={infos} onRefresh={refresh} />
-      </Part>
     </div>
   );
 };

@@ -86,7 +86,7 @@
 | Профілі проєктів, збереження, експорт та імпорт налаштувань без секретів | [settings.backup](settings.backup/spec.md) | implemented |
 | Встановлення на Mac і поширення | [dist.mac](dist.mac/spec.md) | implemented |
 | Журнал станції: команди, IPC, помилки — для дебагу | [station.debug-log](station.debug-log/spec.md) | implemented |
-| Проєкт по платформах: застосунок, репозиторії, гілки й сабмодулі окремо для Android та iOS або разом для мультиплатформи | [project.platforms](project.platforms/spec.md) | implemented |
+| Проєкт по платформах на сторінці «Проєкти»: застосунок, репозиторії, гілки й сабмодулі окремо для Android та iOS або разом для мультиплатформи | [project.platforms](project.platforms/spec.md) | implemented |
 
 Заплановано: остаточна назва продукту.
 
@@ -292,7 +292,7 @@
 5. **Злиття.** `spec.md`, `design.md`, код і тести — одним комітом. Статус `implemented`, таблиця розділу тут оновлена, `tasks.md` видалено.
 6. **Еволюція.** Зміна поведінки змінює `spec.md`, зміна реалізації — `design.md`, у тому самому коміті.
 
-**Борг тестів зараз:** 42 критерії без тесту, переважно інтерфейс (station.shell, station.debug-log, settings.integrations), налаштування пристрою під проксі (proxy.device-setup) й встановлення на Mac (dist.mac).
+**Борг тестів зараз:** 46 критеріїв без тесту, переважно інтерфейс (station.shell, project.platforms, station.debug-log, settings.integrations), налаштування пристрою під проксі (proxy.device-setup) й встановлення на Mac (dist.mac).
 
 <a id="agent"></a>
 

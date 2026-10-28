@@ -385,6 +385,10 @@
   --tool-color: var(--vi-tool-home);
 }
 
+.tool_projects {
+  --tool-color: var(--vi-tool-projects);
+}
+
 .tool_inspector {
   --tool-color: var(--vi-tool-inspector);
 }

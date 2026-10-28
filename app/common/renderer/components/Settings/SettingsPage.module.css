@@ -407,46 +407,138 @@ button.cardHead:hover {
   gap: 10px;
 }
 
+/* a repository: one head line with its name, branch and actions, marks and submodules below */
 .sourceRepo {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  border: 1px solid var(--vi-hairline);
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--vi-border);
   border-radius: var(--vi-radius-md);
+  background: var(--ant-color-bg-container);
+  transition: border-color var(--vi-mid) var(--vi-ease);
 }
 
-.sourceRepoHead,
-.sourceFolder,
-.sourceActions {
+.sourceRepo:hover {
+  border-color: var(--vi-border-strong);
+}
+
+.sourceRepoHead {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+
+.sourceRepoIcon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--vi-tool-projects);
+  background: color-mix(in srgb, var(--vi-tool-projects) 10%, transparent);
+}
+
+.sourceRepoTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sourceRepoNameRow {
+  display: flex;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
 .sourceName {
-  flex: 1;
-  min-width: 140px;
+  margin: 0 !important;
+  font-size: var(--vi-text-md);
 }
 
-.sourceRole {
-  width: 130px;
+.sourceMainTag {
+  padding: 0 7px;
+  border-radius: var(--vi-radius-pill);
+  background: var(--vi-off-bg);
+  color: var(--vi-text-3);
+  font-size: var(--vi-text-xs);
+  line-height: 18px;
 }
 
-.sourceFolder > .mono {
-  flex: 1;
-  min-width: 0;
+/* the branch a repository is on: green where it should be, amber when not */
+.branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  padding: 0 8px;
+  border-radius: var(--vi-radius-pill);
+  font-family: var(--vi-font-mono);
+  font-size: var(--vi-text-xs);
+  line-height: 20px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--vi-text-2);
-  font-size: var(--vi-text-sm);
 }
 
-.sourceIcon {
-  vertical-align: -2px;
-  margin-right: 4px;
+.branch_dev {
+  background: var(--vi-ok-bg);
+  color: var(--vi-ok-fg);
+}
+
+.branch_release {
+  background: var(--vi-info-bg);
+  color: var(--vi-info-fg);
+}
+
+.branch_other,
+.branch_detached {
+  background: var(--vi-warn-bg);
+  color: var(--vi-warn-fg);
+}
+
+.sourceMeta {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  color: var(--vi-text-3);
+  font-size: var(--vi-text-sm);
+  white-space: nowrap;
+}
+
+.sourceMeta > .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sourceTip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--vi-font-mono);
+  font-size: var(--vi-text-xs);
+  word-break: break-all;
+}
+
+.sourceActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--vi-text-2);
+}
+
+.sourceActionsGap {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--vi-border);
 }
 
 .sourceWarn {
@@ -454,16 +546,61 @@ button.cardHead:hover {
   font-size: var(--vi-text-sm);
 }
 
+/* what is not right, as short marks under the head */
+.sourceMarks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 46px;
+}
+
+.sourceMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-radius: var(--vi-radius-pill);
+  background: var(--vi-warn-bg);
+  color: var(--vi-warn-fg);
+  font-size: var(--vi-text-xs);
+  line-height: 20px;
+  cursor: default;
+}
+
 .sourceModules {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-left: 18px;
+  gap: 1px;
+  padding-left: 40px;
   font-size: var(--vi-text-sm);
 }
 
-.sourceActions {
-  padding-top: 4px;
+.sourceModulesToggle {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  height: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--vi-radius-sm);
+  background: none;
+  color: var(--vi-text-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sourceModulesToggle:hover {
+  background: var(--vi-hover);
+  color: var(--vi-text);
+}
+
+.sourceModulesToggle svg {
+  transition: transform var(--vi-mid) var(--vi-ease);
+}
+
+.sourceModulesToggle .sourceModulesOpen {
+  transform: rotate(90deg);
 }
 
 .sourceSwitch {
@@ -600,12 +737,24 @@ button.cardHead:hover {
   align-items: center;
   gap: 6px;
   min-height: 28px;
-  padding-left: calc(var(--depth, 0) * 20px);
+  padding-left: calc(26px + var(--depth, 0) * 20px);
+  padding-right: 4px;
   border-radius: var(--vi-radius-sm);
 }
 
 .sourceModule:hover {
   background: var(--vi-hover);
+}
+
+/* «Own folder» shows on the row under the pointer, not on every one */
+.sourceModuleFolder {
+  opacity: 0;
+  transition: opacity var(--vi-fast) var(--vi-ease);
+}
+
+.sourceModule:hover .sourceModuleFolder,
+.sourceModuleFolder:focus-visible {
+  opacity: 1;
 }
 
 .sourceModule .spacer {
@@ -638,6 +787,21 @@ button.cardHead:hover {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  padding: 4px 18px 18px;
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--vi-border);
+  border-radius: var(--vi-radius-lg);
+  box-shadow: var(--vi-shadow-card);
+}
+
+.platforms :global(.ant-tabs-nav) {
+  margin-bottom: 14px;
+}
+
+.platformInfo {
+  margin-right: 6px;
+  color: var(--vi-text-3);
+  cursor: help;
 }
 
 .platformTab {
@@ -661,10 +825,11 @@ button.cardHead:hover {
 .platformPart {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--vi-hairline);
+  gap: 10px;
+  padding: 14px;
   border-radius: var(--vi-radius-md);
+  background: var(--vi-sunken);
+  border: 1px solid transparent;
   transition:
     border-color var(--vi-mid) var(--vi-ease),
     box-shadow var(--vi-mid) var(--vi-ease);
@@ -676,9 +841,14 @@ button.cardHead:hover {
 }
 
 .platformPartTitle {
-  font-size: var(--vi-text-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--vi-text-xs);
   font-weight: 600;
-  color: var(--ant-color-text-secondary);
+  letter-spacing: var(--vi-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--vi-text-3);
 }
 
 .platformBuilds {

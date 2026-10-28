@@ -18,7 +18,7 @@ export const AdviceActions = ({advice, size = 'middle', primary = true}) => {
     return null;
   }
   const platform = t(`settingsPlatform_${advice.platform}`);
-  const open = () => navigate('/settings', {state: adviceFocus(advice)});
+  const open = () => navigate('/projects', {state: adviceFocus(advice)});
   if (advice.kind === 'noApp') {
     return (
       <Button size={size} type={primary ? 'primary' : 'default'} onClick={open}>

@@ -27,8 +27,7 @@ export function adviceText(t, advice) {
     : t('projectAdviceNoApp', {platform});
 }
 
-/** Where the settings open to fix it: the profiles, the platform's tab, the field. */
+/** Where the projects page opens to fix it: the platform's tab, the field. */
 export const adviceFocus = (advice) => ({
-  section: 'profiles',
   focus: {field: 'app', platform: advice.kind === 'noApp' ? advice.section : advice.platform},
 });

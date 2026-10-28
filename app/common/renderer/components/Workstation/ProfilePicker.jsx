@@ -11,7 +11,7 @@ import {problemFor, useStartProblems} from '../../lib/session/test-run.js';
 import {addProfile, switchProfile, useProfiles} from '../../lib/settings/profiles-store.js';
 import {adviceText, useProjectAdvice} from '../../lib/settings/project-advice.js';
 import {backend} from '../../polyfills.js';
-import {NameDialog} from '../Settings/ProfilesSettings.jsx';
+import NameDialog from '../Projects/NameDialog.jsx';
 import {PLATFORM_ICONS} from '../Settings/ProjectPlatforms.jsx';
 import {AdviceActions} from './ProjectAdvice.jsx';
 
@@ -93,7 +93,7 @@ const ProfilePicker = () => {
           icon={<IconSettings size={14} />}
           onClick={() => {
             setOpen(false);
-            navigate('/settings', {state: {section: 'profiles'}});
+            navigate('/projects');
           }}
         >
           {t('wsProfilesManage')}

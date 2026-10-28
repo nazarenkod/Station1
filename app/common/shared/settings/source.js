@@ -238,6 +238,55 @@ export function safeRemote(url) {
   return text.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^@/]*@/i, '$1');
 }
 
+/** A folder as the person reads it: the home folder as `~`. */
+export function shortPath(folder, home) {
+  if (!folder) {
+    return '';
+  }
+  const root = String(home ?? '').replace(/\/+$/, '');
+  if (root && (folder === root || folder.startsWith(`${root}/`))) {
+    return `~${folder.slice(root.length)}`;
+  }
+  return folder;
+}
+
+/**
+ * The colour of the branch a repository is on: the development branch is
+ * where it should be, the release branch is fine to look at, anything else
+ * (or no branch) is worth noticing.
+ * @returns {'dev' | 'release' | 'other' | 'detached'}
+ */
+export function branchTone(state, source) {
+  if (!state?.branch || state.detached) {
+    return 'detached';
+  }
+  if (state.branch === source.devBranch) {
+    return 'dev';
+  }
+  return state.branch === source.releaseBranch ? 'release' : 'other';
+}
+
+const SINCE_UNITS = [
+  ['day', 86_400_000],
+  ['hour', 3_600_000],
+  ['minute', 60_000],
+];
+
+/**
+ * How long ago something happened, in the largest whole unit, for
+ * Intl.RelativeTimeFormat: under a minute is «now».
+ * @returns {{value: number, unit: 'day' | 'hour' | 'minute' | 'second'}}
+ */
+export function sinceParts(time, now = Date.now()) {
+  const passed = Math.max(0, now - new Date(time).getTime());
+  for (const [unit, size] of SINCE_UNITS) {
+    if (passed >= size) {
+      return {value: -Math.floor(passed / size), unit};
+    }
+  }
+  return {value: 0, unit: 'second'};
+}
+
 /**
  * What the person should know about a repository before the agent works in
  * it: it is not on the development branch, it has changes that a switch would

@@ -64,7 +64,7 @@ const FirstRule = ({watch, rules}) => {
         >
           {t('buildsPipelineSaveRule')}
         </Button>
-        <Button size="small" type="link" onClick={() => navigate('/settings', {state: {section: 'builds'}})}>
+        <Button size="small" type="link" onClick={() => navigate('/projects', {state: {focus: {field: 'builds'}}})}>
           {t('buildsPipelineAllRules')}
         </Button>
       </div>
@@ -337,7 +337,7 @@ const WatchCard = ({watch, rules}) => {
             size="small"
             type="link"
             icon={<IconPencil size={12} />}
-            onClick={() => navigate('/settings', {state: {section: 'builds', project: watch.rule}})}
+            onClick={() => navigate('/projects', {state: {focus: {field: 'builds', project: watch.rule}}})}
           >
             {t('buildsPipelineEditJobs')}
           </Button>

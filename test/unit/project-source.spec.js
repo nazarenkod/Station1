@@ -7,6 +7,7 @@ import {afterAll, beforeAll, describe, expect, it, vi} from 'vitest';
 
 import {
   agentWorkspace,
+  branchTone,
   branchToRemember,
   changeRepo,
   moduleFolder,
@@ -18,6 +19,8 @@ import {
   projectSource,
   repoWarnings,
   safeRemote,
+  shortPath,
+  sinceParts,
   setBranches,
   sourceFor,
 } from '../../app/common/shared/settings/source.js';
@@ -399,5 +402,32 @@ describe('a repository on disk', () => {
     commit(work, 'other.txt', 'other\n', 'other');
     git(work, 'push', '-q', 'origin', 'feature/PAY-1');
     expect((await pullRepo(copy)).error).toBe('pull');
+  });
+});
+
+describe('how a repository reads on the projects page', () => {
+  const source = {devBranch: 'develop', releaseBranch: 'main'};
+
+  it('shows the home folder as ~', () => {
+    expect(shortPath('/Users/qa/Documents/git/ap24v6', '/Users/qa')).toBe('~/Documents/git/ap24v6');
+    expect(shortPath('/Users/qa', '/Users/qa/')).toBe('~');
+    expect(shortPath('/Users/qab/code', '/Users/qa')).toBe('/Users/qab/code');
+    expect(shortPath('/opt/code', null)).toBe('/opt/code');
+    expect(shortPath(null, '/Users/qa')).toBe('');
+  });
+
+  it('colours the branch by what it is to the project', () => {
+    expect(branchTone({branch: 'develop'}, source)).toBe('dev');
+    expect(branchTone({branch: 'main'}, source)).toBe('release');
+    expect(branchTone({branch: 'pre_real'}, source)).toBe('other');
+    expect(branchTone({branch: null, detached: true}, source)).toBe('detached');
+  });
+
+  it('says how long ago in the largest whole unit', () => {
+    const now = Date.parse('2026-10-28T13:30:00Z');
+    expect(sinceParts('2026-10-28T13:29:40Z', now)).toEqual({value: 0, unit: 'second'});
+    expect(sinceParts('2026-10-28T13:22:00Z', now)).toEqual({value: -8, unit: 'minute'});
+    expect(sinceParts('2026-10-28T10:00:00Z', now)).toEqual({value: -3, unit: 'hour'});
+    expect(sinceParts('2026-10-25T13:30:00Z', now)).toEqual({value: -3, unit: 'day'});
   });
 });

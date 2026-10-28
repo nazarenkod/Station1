@@ -1,5 +1,8 @@
 import {
+  IconAlertTriangle,
   IconArrowBackUp,
+  IconBrandGit,
+  IconChevronRight,
   IconCloudDownload,
   IconFolderOpen,
   IconGitBranch,
@@ -7,16 +10,18 @@ import {
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react';
-import {App, Button, Input, Modal, Popconfirm, Select, Spin, Tag, Tooltip} from 'antd';
+import {App, Button, Input, Modal, Popconfirm, Select, Spin, Tag, Tooltip, Typography} from 'antd';
 import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {
+  branchTone,
   changeRepo,
   moduleTree,
   newRepo,
   repoWarnings,
   setBranches,
+  sinceParts,
   sourceOfRepo,
 } from '../../../shared/settings/source.js';
 import {setProfilePlatforms, setProfileSource} from '../../lib/settings/profiles-store.js';
@@ -132,14 +137,17 @@ const SwitchDialog = ({open, profileId, repo, source, onClose, onDone}) => {
 };
 
 /**
- * The submodules of a repository as a tree: a submodule of a submodule sits
- * under it. Each is of the platform of its repository and may come from a
- * folder of its own instead of the copy inside.
+ * The submodules of a repository, folded into one line with how many there
+ * are; open, a tree where a submodule of a submodule sits under it. Each may
+ * come from a folder of its own instead of the copy inside: the button shows
+ * on the row under the pointer, or always once a folder is set.
  */
 const ModuleTree = ({profileId, repo, info, onRefresh}) => {
   const {t} = useTranslation();
+  const [open, setOpen] = useState(false);
   const tree = moduleTree(info.state.submodules);
   const own = info.modules ?? {};
+  const off = tree.filter((module) => !module.initialized && !own[module.path]).length;
 
   const pickFolder = async (modulePath) => {
     const folder = await backend.source.pickFolder();
@@ -155,100 +163,136 @@ const ModuleTree = ({profileId, repo, info, onRefresh}) => {
 
   return (
     <div className={styles.sourceModules}>
-      <span>{t('settingsSourceSubmodules')}</span>
-      {tree.map((module) => {
-        const name = module.parent ? module.path.slice(module.parent.length + 1) : module.path;
-        return (
-          <div
-            key={module.path}
-            className={`${styles.sourceModule} ${module.depth ? styles.sourceModuleNested : ''}`}
-            style={{'--depth': module.depth}}
-          >
-            <span className={`${styles.mono} ${styles.sourceModuleName}`} title={module.url || module.path}>
-              {name}
-            </span>
-            {!module.initialized && !own[module.path] && (
-              <Tag className={styles.sourceModuleOff}>{t('settingsSourceSubmoduleOff')}</Tag>
-            )}
-            <span className={styles.spacer} />
-            {own[module.path] ? (
-              <Tag
-                closable
-                onClose={(e) => {
-                  e.preventDefault();
-                  clearFolder(module.path);
-                }}
-                title={own[module.path]}
-                className={styles.mono}
-              >
-                {own[module.path].split('/').slice(-2).join('/')}
-              </Tag>
-            ) : (
-              <Tooltip title={t('settingsSourceModuleFolderHint')}>
-                <Button
-                  size="small"
-                  type="text"
-                  icon={<IconFolderOpen size={14} />}
-                  onClick={() => pickFolder(module.path)}
+      <button
+        type="button"
+        className={styles.sourceModulesToggle}
+        aria-expanded={open}
+        onClick={() => setOpen((was) => !was)}
+      >
+        <IconChevronRight size={14} className={open ? styles.sourceModulesOpen : ''} />
+        {t('settingsSourceSubmodulesCount', {count: tree.length})}
+        {off > 0 && <span className={styles.sourceWarn}>{t('settingsSourceSubmodulesOff', {count: off})}</span>}
+      </button>
+      {open &&
+        tree.map((module) => {
+          const name = module.parent ? module.path.slice(module.parent.length + 1) : module.path;
+          return (
+            <div
+              key={module.path}
+              className={`${styles.sourceModule} ${module.depth ? styles.sourceModuleNested : ''}`}
+              style={{'--depth': module.depth}}
+            >
+              <span className={`${styles.mono} ${styles.sourceModuleName}`} title={module.url || module.path}>
+                {name}
+              </span>
+              {!module.initialized && !own[module.path] && (
+                <Tooltip title={t('settingsSourceSubmoduleOff')}>
+                  <Tag className={styles.sourceModuleOff}>{t('settingsSourceSubmoduleOffShort')}</Tag>
+                </Tooltip>
+              )}
+              <span className={styles.spacer} />
+              {own[module.path] ? (
+                <Tag
+                  closable
+                  onClose={(e) => {
+                    e.preventDefault();
+                    clearFolder(module.path);
+                  }}
+                  title={own[module.path]}
+                  className={styles.mono}
                 >
-                  {t('settingsSourceModuleFolder')}
-                </Button>
-              </Tooltip>
-            )}
-          </div>
-        );
-      })}
+                  {own[module.path].split('/').slice(-2).join('/')}
+                </Tag>
+              ) : (
+                <Tooltip title={t('settingsSourceModuleFolderHint')}>
+                  <Button
+                    size="small"
+                    type="text"
+                    icon={<IconFolderOpen size={14} />}
+                    className={styles.sourceModuleFolder}
+                    onClick={() => pickFolder(module.path)}
+                  >
+                    {t('settingsSourceModuleFolder')}
+                  </Button>
+                </Tooltip>
+              )}
+            </div>
+          );
+        })}
     </div>
   );
 };
 
-const RepoState = ({profileId, repo, info, source, onRefresh}) => {
+/** «8 minutes ago» in the language of the station. */
+const useAgo = () => {
+  const {i18n} = useTranslation();
+  return (time) => {
+    const {value, unit} = sinceParts(time);
+    return new Intl.RelativeTimeFormat(i18n.language, {numeric: 'auto'}).format(value, unit);
+  };
+};
+
+/**
+ * The branch a repository is on, coloured by what it is to the project; the
+ * full warning about it is in its tooltip.
+ */
+const BranchTag = ({state, source, warning}) => {
   const {t} = useTranslation();
-  if (!info?.path) {
-    return <span className={styles.profileHint}>{t('settingsSourceNoFolder')}</span>;
-  }
-  const state = info.state;
-  if (!state) {
-    return <Spin size="small" />;
-  }
-  if (!state.ok) {
-    return <span className={styles.sourceWarn}>{t(`settingsSourceErr_${state.error}`)}</span>;
-  }
-  const facts = [
-    state.branch ?? t('settingsSourceDetachedShort'),
-    state.remote ?? t('settingsSourceNoRemote'),
-    state.lastFetch
-      ? t('settingsSourceFetched', {time: new Date(state.lastFetch).toLocaleString()})
-      : t('settingsSourceNeverFetched'),
-  ];
+  const tone = branchTone(state, source);
   return (
-    <>
-      <span className={styles.profileHint}>
-        <IconGitBranch size={14} className={styles.sourceIcon} />
-        {facts.join(' · ')}
+    <Tooltip title={warning ? t(`settingsSourceWarn_${warning.kind}`, warning) : null}>
+      <span className={`${styles.branch} ${styles[`branch_${tone}`]}`}>
+        <IconGitBranch size={13} />
+        {state.branch ?? t('settingsSourceDetachedShort')}
       </span>
-      {repoWarnings(state, source).map((warning) => (
-        <span key={`${warning.kind}-${warning.branch ?? ''}`} className={styles.sourceWarn}>
-          {t(`settingsSourceWarn_${warning.kind}`, warning)}
-        </span>
-      ))}
-      {state.submodules.length > 0 && (
-        <ModuleTree profileId={profileId} repo={repo} info={info} onRefresh={onRefresh} />
-      )}
-    </>
+    </Tooltip>
   );
 };
+
+/** What is not right with a repository, as short marks with the whole text on hover. */
+const RepoWarnings = ({warnings}) => {
+  const {t} = useTranslation();
+  // the branch itself says it is not the development one
+  const shown = warnings.filter((warning) => warning.kind !== 'notDev' && warning.kind !== 'detached');
+  if (!shown.length) {
+    return null;
+  }
+  return (
+    <div className={styles.sourceMarks}>
+      {shown.map((warning) => (
+        <Tooltip
+          key={`${warning.kind}-${warning.branch ?? ''}`}
+          title={t(`settingsSourceWarn_${warning.kind}`, warning)}
+        >
+          <span className={styles.sourceMark}>
+            <IconAlertTriangle size={13} />
+            {t(`settingsSourceMark_${warning.kind}`, warning)}
+          </span>
+        </Tooltip>
+      ))}
+    </div>
+  );
+};
+
+/** An action on a repository as an icon, its name in the tooltip. */
+const RepoAction = ({icon: Icon, label, ...props}) => (
+  <Tooltip title={label}>
+    <Button type="text" size="small" icon={<Icon size={16} />} aria-label={label} {...props} />
+  </Tooltip>
+);
 
 const RepoRow = ({profileId, repo, main, info, source, onChange, onMove, onRefresh}) => {
   const {t} = useTranslation();
   const {message} = App.useApp();
   const gitError = useGitError();
-  const [name, setName] = useState(repo.name);
+  const ago = useAgo();
   const [busy, setBusy] = useState(null);
   const [switching, setSwitching] = useState(false);
-  useEffect(() => setName(repo.name), [repo.name]);
 
-  const ready = !!info?.state?.ok;
+  const state = info?.state;
+  const ready = !!state?.ok;
+  const warnings = ready ? repoWarnings(state, source) : [];
+  const branchWarning = warnings.find((warning) => warning.kind === 'notDev' || warning.kind === 'detached');
   const act = (action, done) => async () => {
     setBusy(action);
     const result = await backend.source[action](profileId, repo.id);
@@ -269,26 +313,107 @@ const RepoRow = ({profileId, repo, main, info, source, onChange, onMove, onRefre
     }
   };
 
+  // where it is and when it was fetched; the address and the whole path on hover
+  let meta;
+  if (!info?.path) {
+    meta = <span className={styles.profileHint}>{t('settingsSourceNoFolder')}</span>;
+  } else if (!state) {
+    meta = <Spin size="small" />;
+  } else if (!state.ok) {
+    meta = <span className={styles.sourceWarn}>{t(`settingsSourceErr_${state.error}`)}</span>;
+  } else {
+    meta = (
+      <Tooltip
+        title={
+          <span className={styles.sourceTip}>
+            <span>{info.path}</span>
+            <span>{state.remote ?? t('settingsSourceNoRemote')}</span>
+          </span>
+        }
+        placement="bottomLeft"
+      >
+        <span className={styles.sourceMeta}>
+          <span className={styles.mono}>{info.shown || info.path}</span>
+          <span>·</span>
+          <span>
+            {state.lastFetch
+              ? t('settingsSourceFetchedAgo', {ago: ago(state.lastFetch)})
+              : t('settingsSourceNeverFetched')}
+          </span>
+        </span>
+      </Tooltip>
+    );
+  }
+
   return (
     <div className={styles.sourceRepo}>
       <div className={styles.sourceRepoHead}>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => name.trim() && name.trim() !== repo.name && onChange({name: name.trim()})}
-          className={styles.sourceName}
-          aria-label={t('settingsSourceName')}
-        />
-        {main && <Tag>{t('settingsSourceMain')}</Tag>}
-        <Popconfirm
-          title={t('settingsSourceRemoveAsk', {name: repo.name})}
-          okText={t('settingsSourceRemove')}
-          cancelText={t('Cancel')}
-          okButtonProps={{danger: true}}
-          onConfirm={() => onChange(null)}
-        >
-          <Button type="text" danger icon={<IconTrash size={16} />} aria-label={t('settingsSourceRemove')} />
-        </Popconfirm>
+        <span className={styles.sourceRepoIcon}>
+          <IconBrandGit size={18} stroke={1.6} />
+        </span>
+        <div className={styles.sourceRepoTitle}>
+          <span className={styles.sourceRepoNameRow}>
+            <Typography.Text
+              strong
+              className={styles.sourceName}
+              editable={{
+                tooltip: t('settingsSourceRename'),
+                onChange: (name) => name.trim() && name.trim() !== repo.name && onChange({name: name.trim()}),
+              }}
+            >
+              {repo.name}
+            </Typography.Text>
+            {main && <span className={styles.sourceMainTag}>{t('settingsSourceMain')}</span>}
+            {ready && <BranchTag state={state} source={source} warning={branchWarning} />}
+          </span>
+          {meta}
+        </div>
+        <div className={styles.sourceActions}>
+          {ready && (
+            <>
+              <RepoAction
+                icon={IconCloudDownload}
+                label={t('settingsSourceFetch')}
+                loading={busy === 'fetch'}
+                onClick={act('fetch', () => t('settingsSourceFetchDone'))}
+              />
+              <RepoAction icon={IconGitBranch} label={t('settingsSourceSwitch')} onClick={() => setSwitching(true)} />
+              <RepoAction
+                icon={IconGitPullRequest}
+                label={t('settingsSourcePull')}
+                loading={busy === 'pull'}
+                onClick={act('pull', () => t('settingsSourcePullDone'))}
+              />
+              {info.previousBranch && (
+                <RepoAction
+                  icon={IconArrowBackUp}
+                  label={t('settingsSourceRestore', {branch: info.previousBranch})}
+                  loading={busy === 'restoreBranch'}
+                  onClick={act('restoreBranch', () => t('settingsSourceSwitchDone', {branch: info.previousBranch}))}
+                />
+              )}
+              <span className={styles.sourceActionsGap} />
+            </>
+          )}
+          {info?.path ? (
+            <RepoAction icon={IconFolderOpen} label={t('settingsSourcePickFolder')} onClick={pickFolder} />
+          ) : (
+            <Button size="small" type="primary" icon={<IconFolderOpen size={14} />} onClick={pickFolder}>
+              {t('settingsSourcePickFolder')}
+            </Button>
+          )}
+          <Popconfirm
+            title={t('settingsSourceRemoveAsk', {name: repo.name})}
+            okText={t('settingsSourceRemove')}
+            cancelText={t('Cancel')}
+            okButtonProps={{danger: true}}
+            onConfirm={() => onChange(null)}
+          >
+            <span>
+              <RepoAction icon={IconTrash} label={t('settingsSourceRemove')} danger />
+            </span>
+          </Popconfirm>
+        </div>
       </div>
       {repo.guessed && (
         <div className={styles.sourceGuessed}>
@@ -303,45 +428,9 @@ const RepoRow = ({profileId, repo, main, info, source, onChange, onMove, onRefre
           ))}
         </div>
       )}
-      <div className={styles.sourceFolder}>
-        <span className={styles.mono}>{info?.path ?? ''}</span>
-        <Button size="small" icon={<IconFolderOpen size={14} />} onClick={pickFolder}>
-          {t('settingsSourcePickFolder')}
-        </Button>
-      </div>
-      <RepoState profileId={profileId} repo={repo} info={info} source={source} onRefresh={onRefresh} />
-      {ready && (
-        <div className={styles.sourceActions}>
-          <Button
-            size="small"
-            icon={<IconCloudDownload size={14} />}
-            loading={busy === 'fetch'}
-            onClick={act('fetch', () => t('settingsSourceFetchDone'))}
-          >
-            {t('settingsSourceFetch')}
-          </Button>
-          <Button size="small" icon={<IconGitBranch size={14} />} onClick={() => setSwitching(true)}>
-            {t('settingsSourceSwitch')}
-          </Button>
-          <Button
-            size="small"
-            icon={<IconGitPullRequest size={14} />}
-            loading={busy === 'pull'}
-            onClick={act('pull', () => t('settingsSourcePullDone'))}
-          >
-            {t('settingsSourcePull')}
-          </Button>
-          {info.previousBranch && (
-            <Button
-              size="small"
-              icon={<IconArrowBackUp size={14} />}
-              loading={busy === 'restoreBranch'}
-              onClick={act('restoreBranch', () => t('settingsSourceSwitchDone', {branch: info.previousBranch}))}
-            >
-              {t('settingsSourceRestore', {branch: info.previousBranch})}
-            </Button>
-          )}
-        </div>
+      <RepoWarnings warnings={warnings} />
+      {ready && state.submodules.length > 0 && (
+        <ModuleTree profileId={profileId} repo={repo} info={info} onRefresh={onRefresh} />
       )}
       <SwitchDialog
         open={switching}
@@ -409,8 +498,8 @@ export const BranchFields = ({profile, platform}) => {
 };
 
 /**
- * The repositories of one platform of a project (or of its shared code) on
- * this Mac, which the agent reads: the first is the main one.
+ * The repositories of one platform of a project on this Mac, which the agent
+ * reads: the first is the main one.
  */
 export const RepoList = ({profile, platform, infos, onRefresh}) => {
   const {t} = useTranslation();
@@ -460,7 +549,7 @@ export const RepoList = ({profile, platform, infos, onRefresh}) => {
           key={repo.id}
           profileId={profile.id}
           repo={repo}
-          main={platform !== 'shared' && index === 0}
+          main={index === 0}
           info={infos.find((info) => info.repoId === repo.id)}
           source={sourceOfRepo(source, repo)}
           onChange={(patch) => save(changeRepo(source, repo.id, patch))}
@@ -468,14 +557,10 @@ export const RepoList = ({profile, platform, infos, onRefresh}) => {
           onRefresh={onRefresh}
         />
       ))}
-      {!repos.length && (
-        <span className={styles.profileHint}>
-          {platform === 'shared' ? t('settingsSourceSharedEmpty') : t('settingsSourceEmpty')}
-        </span>
-      )}
+      {!repos.length && <span className={styles.profileHint}>{t('settingsSourceEmpty')}</span>}
       <div>
-        <Button size="small" icon={<IconPlus size={14} />} onClick={addRepo}>
-          {platform === 'shared' ? t('settingsSourceAddShared') : t('settingsSourceAdd')}
+        <Button size="small" type="dashed" icon={<IconPlus size={14} />} onClick={addRepo}>
+          {t('settingsSourceAdd')}
         </Button>
       </div>
     </div>

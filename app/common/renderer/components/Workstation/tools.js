@@ -4,6 +4,7 @@ import {
   IconDatabase,
   IconDeviceMobileCog,
   IconFocus2,
+  IconFolders,
   IconLayoutDashboard,
   IconPackage,
   IconTerminal2,
@@ -15,6 +16,8 @@ import {
  */
 export const TOOLS = [
   {key: 'home', path: '/', paths: ['/'], icon: IconLayoutDashboard, ready: true},
+  // the projects: their platforms, apps and code, which the tools follow
+  {key: 'projects', path: '/projects', paths: ['/projects'], icon: IconFolders, ready: true},
   // the accessibility check is a tab of the Inspector; /a11y opens it there
   {key: 'inspector', path: '/session', paths: ['/session', '/inspector', '/a11y'], icon: IconFocus2, ready: true},
   {key: 'proxy', path: '/proxy', paths: ['/proxy'], icon: IconArrowsExchange, ready: true},
