@@ -167,6 +167,8 @@
 | Інспектор: екран, дерево, локатори, стеження за пристроєм, екрани сесії | [inspector.screen](inspector.screen/spec.md) | implemented |
 | Швидке стеження, шлях сесії, стани екранів | [inspector.flow](inspector.flow/spec.md) | implemented |
 | Вбудований Appium | [session.appium](session.appium/spec.md) | implemented |
+| Репозиторій автотестів у проєкті: правила screen object і приклади, лише читання | [project.autotests](project.autotests/spec.md) | draft |
+| Screen object з екранів сесії: підсумок, вибір і об'єднання станів, пакети в проєкті, код на Kotlin за правилами команди | [autotests.screen-objects](autotests.screen-objects/spec.md) | draft |
 
 Заплановано (спек немає):
 
@@ -174,7 +176,7 @@
 |---|---|---|
 | Locator Score | Оцінка стабільності локатора, альтернативи | MVP |
 | Кодген на Kotlin | Готовий код Kotlin + Appium / Selenide (є Java, Python, JS, Ruby, .NET) | MVP |
-| Page Object генератор, рекордер у Page Object | Екран цілком у клас | v1 |
+| Рекордер у Page Object | Дії сесії в методи screen object (генератор — [autotests.screen-objects](autotests.screen-objects/spec.md)) | v1 |
 | Compose і WebView | Семантика Compose, WebView через CDP | v1 |
 | Самолікування локаторів | Новий локатор для тесту, що впав | v2 |
 
@@ -244,6 +246,7 @@
 | Частина | Спека | Стан |
 |---|---|---|
 | CLI, MCP-сервер, доктор середовища | [access.cli-mcp](access.cli-mcp/spec.md) | implemented, частково |
+| Зовнішні агенти: агент тестів забирає пакети screen object через MCP станції | [access.external-agents](access.external-agents/spec.md) | draft |
 
 Заплановано: локальний API ядра, з якого живляться UI, CLI й MCP (MVP за документом); headless-режим для CI, плагін до TestNG/JUnit — v1.
 
@@ -349,6 +352,6 @@
 
 | Фіча | Що робить | Етап |
 |---|---|---|
-| Зовнішні агенти | MCP станції для Claude Code, Kiro на іншій машині, CI; CLI `agent ask` | v1 |
+| Зовнішні агенти | MCP станції для Claude Code, Kiro на іншій машині, CI; CLI `agent ask` (перший крок — [access.external-agents](access.external-agents/spec.md)) | v1 |
 
-Свідомо відкладено, доки не запрацює основа: автотести з сесії, баги з провальних цілей. Керування пристроєм — [agent.hands](agent.hands/spec.md).
+Свідомо відкладено, доки не запрацює основа: автотести з сесії (крім screen object — [autotests.screen-objects](autotests.screen-objects/spec.md)), баги з провальних цілей. Керування пристроєм — [agent.hands](agent.hands/spec.md).
