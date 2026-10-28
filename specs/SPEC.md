@@ -339,7 +339,7 @@
 | Код застосунку в проєкті: локальний репозиторій, сабмодулі, гілки `develop` і `main` | [project.source](project.source/spec.md) | implemented |
 | Задача: Jira, повʼязані задачі, Confluence, MR із коментарів → контекст задачі й імпакт-аналіз | [task.context](task.context/spec.md) | implemented |
 | Цілі сесії: перевірки з задачі й коду, які станція рахує наживо | [agent.goals](agent.goals/spec.md) | implemented |
-| Руки агента: дії на пристрої через вбудований appium-mcp на сесії інспектора, дозволи за групами з проєкту, «Стоп», заборони, кожна дія на екранах сесії | [agent.hands](agent.hands/spec.md) | implemented |
+| Руки агента: дії на пристрої через appium-mcp на сесії інспектора, лише за командою («Руки», «Протестувати»), дозволи за групами з проєкту, «Стоп», заборони, кожна дія на екранах сесії | [agent.hands](agent.hands/spec.md) | implemented |
 | Плейбук застосунку: акаунти з секретами й призначенням, вхід без моделі (`app_login`), дозволи агента, заборони, скидання | [project.playbook](project.playbook/spec.md) | implemented |
 
 Порядок робіт: project.source → agent.core з інструментами читання → task.context → agent.memory → інструменти змін → agent.goals. Кожен крок корисний сам.

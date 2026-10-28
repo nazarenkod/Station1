@@ -1,4 +1,4 @@
-import {IconBrain, IconCopy, IconPencil, IconPlus, IconSend, IconTrash} from '@tabler/icons-react';
+import {IconBrain, IconCopy, IconPencil, IconPlayerPlay, IconPlus, IconSend, IconTrash} from '@tabler/icons-react';
 import {App, Button, Checkbox, Dropdown, Input, Modal, Tooltip} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -84,6 +84,7 @@ const GoalsPanel = () => {
   const task = useTask();
   const goals = useGoals();
   const [report, setReport] = useState(null);
+  const {message} = App.useApp();
 
   if (!task.current || !task.data?.context) {
     return null;
@@ -91,6 +92,14 @@ const GoalsPanel = () => {
   const states = goals.run?.states ?? {};
   const sum = counts();
   const past = pastRuns(task.data);
+
+  // the agent goes through the open goals itself, with its hands on in the task's conversation
+  const test = async () => {
+    const problem = await askOnTask(t('goalsTestPrompt', {key: task.current}), {hands: true});
+    if (problem) {
+      message.warning(t(problem === 'handsMissing' ? 'agentHandsMissing' : 'agentHandsFailed'));
+    }
+  };
 
   const open = (evidence) => {
     if (evidence?.kind && TOOL_OF[evidence.kind]) {
@@ -109,6 +118,13 @@ const GoalsPanel = () => {
           </span>
         )}
         <span className={styles.spacer} />
+        {goals.goals.length > 0 && (
+          <Tooltip title={t('goalsTestHint')}>
+            <Button size="small" type="primary" icon={<IconPlayerPlay size={14} />} onClick={test}>
+              {t('goalsTest')}
+            </Button>
+          </Tooltip>
+        )}
         <Button size="small" onClick={() => askOnTask(t('goalsProposePrompt', {key: task.current}), {deep: true})}>
           {t('goalsPropose')}
         </Button>

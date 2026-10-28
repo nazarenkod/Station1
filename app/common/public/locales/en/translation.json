@@ -2473,5 +2473,13 @@
   "agentHandsInstalled": "The hands are installed. They come with the next conversation.",
   "agentHandsInstallFailed": "Could not install appium-mcp. The details are in the station journal.",
   "agentHandsLimit": "Actions per turn",
-  "agentHandsHint": "Takes about 400 MB in the station's folder. The descriptions of the hands' tools add ≈ 9,000 tokens of context to every turn. What the agent may do is set by the project's playbook."
+  "agentHandsHint": "Takes about 400 MB in the station’s folder. The hands come in a conversation with the «Hands» switch or «Test» on the goals; the core tools take ≈ 3,000 tokens of context a turn, all of them ≈ 8,000. What the agent may do is set by the project’s playbook.",
+  "agentHandsSwitch": "Hands",
+  "agentHandsSwitchHint": "The Operator gets hands on the device in this conversation. Their tools take context on every turn, so switch them on when something has to be done on the device.",
+  "agentHandsMissing": "Install the hands first: Settings → Operator → The agent's hands.",
+  "agentHandsFailed": "Could not load the conversation again with the hands. Try once more.",
+  "agentHandsExtended": "All the tools of appium-mcp: drag and drop, multi-touch, WebView contexts, location, orientation, screenshot, recording",
+  "goalsTest": "Test",
+  "goalsTestHint": "The Operator switches its hands on in the task's conversation and goes through the open goals on the device itself",
+  "goalsTestPrompt": "Go through the checks of {{key}} on the device: sign in, go through the flows of the open goals, look at goals_status after each, and end with a summary."
 }

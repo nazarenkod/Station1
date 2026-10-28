@@ -82,22 +82,20 @@ describe.skipIf(!process.env.HANDS_DIR)('the hands on a live Appium session', fu
     return {error: !!result.isError, text: result.content.map((part) => part.text).join('\n')};
   };
 
-  it('shows only the allowed tools', async function () {
+  it('shows the core tools of a flow, small enough to keep on', async function () {
     const {tools} = await client.listTools();
     const names = tools.map((tool) => tool.name);
     expect(names).not.toContain('select_device');
+    expect(names).not.toContain('appium_session_management');
     expect(names).toContain('appium_gesture');
+    // the descriptions are paid for on every turn
+    expect(JSON.stringify(tools).length).toBeLessThan(14000);
   });
 
-  it('asks to attach, attaches, taps, refuses what is forbidden and leaves the session alive', async function () {
-    const before = await call('appium_gesture', {action: 'back'});
-    expect(before.text).toContain(`sessionId=${sessionId}`);
-    const bad = await call('appium_session_management', {action: 'create', platform: 'android'});
-    expect(bad.error).toBe(true);
-    const attach = await call('appium_session_management', {action: 'attach', remoteServerUrl: SERVER, sessionId});
-    expect(attach.error).toBe(false);
+  it('joins the session itself, taps, refuses what is forbidden and leaves the session alive', async function () {
     const found = await call('appium_find_element', {strategy: 'id', selector: 'input'});
-    const id = /elementId '?([\w-]+)'?/.exec(found.text)?.[1] ?? /([0-9a-f-]{6,})/.exec(found.text)?.[1];
+    expect(found.error).toBe(false);
+    const id = /elementId '?([\w-]+)'?/.exec(found.text)?.[1];
     screenNow = 'Danger';
     const forbidden = await call('appium_gesture', {action: 'tap', elementUUID: id});
     screenNow = 'Home';
@@ -106,8 +104,7 @@ describe.skipIf(!process.env.HANDS_DIR)('the hands on a live Appium session', fu
     const id2 = /elementId '?([\w-]+)'?/.exec(ok2.text)?.[1];
     const tap = await call('appium_gesture', {action: 'tap', elementUUID: id2});
     expect(tap.text).toMatch(/Screen now: Next/);
-    const whole = await call('appium_get_page_source', {});
-    expect(whole.error).toBe(true);
+    expect(steps).toEqual(['tap']);
     await client.close();
     client = null;
     const alive = await (await fetch(`${SERVER}/session/${sessionId}/source`)).json();

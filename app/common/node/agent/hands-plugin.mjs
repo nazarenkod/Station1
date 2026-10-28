@@ -55,32 +55,45 @@ async function elementOf(driver, elementId) {
 
 /**
  * @param {{post: (op: 'check' | 'done', body: object) => Promise<object>}} station
+ * @param {(session: {serverUrl: string, sessionId: string}) => Promise<boolean>} [attach] joins the station's session
  */
-export function createStationPlugin(station) {
+export function createStationPlugin(station, attach = null) {
   const touched = new WeakMap();
+
+  // what the action touches and whether the station lets it go
+  const ask = async (ctx) => {
+    const driver = ctx.session.getDriver?.() ?? null;
+    let elementId = ctx.args?.elementUUID ?? ctx.args?.sourceElementUUID ?? null;
+    if (!elementId && ctx.toolName === 'appium_set_value' && driver?.getActiveElement) {
+      const active = await Promise.resolve(driver.getActiveElement()).catch(() => null);
+      elementId = active?.['element-6066-11e4-a52e-4f735466cecf'] ?? active?.ELEMENT ?? null;
+    }
+    const element = await elementOf(driver, elementId).catch(() => null);
+    const verdict = await station.post('check', {
+      tool: ctx.toolName,
+      args: safeArgs(ctx.toolName, ctx.args ?? {}),
+      active: ctx.session.getSessionId?.() ?? null,
+      element,
+    });
+    return {verdict, element};
+  };
+
   return {
     name: 'station',
     version: '1.0.0',
 
     async beforeCall(ctx) {
-      const driver = ctx.session.getDriver?.() ?? null;
-      let elementId = ctx.args?.elementUUID ?? ctx.args?.sourceElementUUID ?? null;
-      if (!elementId && ctx.toolName === 'appium_set_value' && driver?.getActiveElement) {
-        const active = await Promise.resolve(driver.getActiveElement()).catch(() => null);
-        elementId = active?.['element-6066-11e4-a52e-4f735466cecf'] ?? active?.ELEMENT ?? null;
-      }
-      const element = await elementOf(driver, elementId).catch(() => null);
-      let verdict;
+      let asked;
       try {
-        verdict = await station.post('check', {
-          tool: ctx.toolName,
-          args: safeArgs(ctx.toolName, ctx.args ?? {}),
-          active: ctx.session.getSessionId?.() ?? null,
-          element,
-        });
+        asked = await ask(ctx);
+        // not on the station's session yet: join it, then ask once more
+        if (asked.verdict?.attach && attach && (await attach(asked.verdict.attach))) {
+          asked = await ask(ctx);
+        }
       } catch (error) {
         return refusal(`The station did not answer (${error.message}): nothing done on the device.`);
       }
+      const {verdict, element} = asked;
       if (!verdict?.ok) {
         return refusal(verdict?.text ?? 'The station refused this.');
       }
@@ -141,10 +154,20 @@ async function main() {
     process.stderr.write('The station did not say where the hands are or which tools they have.\n');
     process.exit(2);
   }
-  const core = await import(pathToFileURL(path.join(home, 'node_modules', 'appium-mcp', 'dist', 'core.js')).href);
+  const dist = path.join(home, 'node_modules', 'appium-mcp', 'dist');
+  const core = await import(pathToFileURL(path.join(dist, 'core.js')).href);
+  // appium-mcp has no public way to join a session from a plugin: its own attach, of the pinned version
+  const {attachSessionAction} = await import(
+    pathToFileURL(path.join(dist, 'tools', 'session', 'attach-session.js')).href
+  );
+  const attach = async ({serverUrl, sessionId}) =>
+    !(await attachSessionAction({remoteServerUrl: serverUrl, sessionId}))?.isError;
   const server = await core.createAppiumMcpServer({
     plugins: [
-      createStationPlugin(stationClient({url: process.env.STATION_HANDS_URL, token: process.env.STATION_TOKEN})),
+      createStationPlugin(
+        stationClient({url: process.env.STATION_HANDS_URL, token: process.env.STATION_TOKEN}),
+        attach,
+      ),
     ],
     additionalInstructions: process.env.HANDS_INSTRUCTIONS ?? '',
     policy: {allowTools: tools.map((tool) => new RegExp(`^${escape(tool)}$`))},

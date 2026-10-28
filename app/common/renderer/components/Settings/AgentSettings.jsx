@@ -6,7 +6,7 @@ import {
   IconPlugConnected,
   IconRestore,
 } from '@tabler/icons-react';
-import {App, Button, Input, InputNumber, Tag} from 'antd';
+import {App, Button, Input, InputNumber, Switch, Tag} from 'antd';
 import {useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
@@ -144,7 +144,7 @@ const ServerJson = ({servers, onChange, statuses}) => {
  * The agent's hands: appium-mcp in the station's folder, installed on
  * request since it is large, and how many actions a turn may take.
  */
-const HandsSettings = ({limit, onLimit}) => {
+const HandsSettings = ({limit, onLimit, extended, onExtended}) => {
   const {t} = useTranslation();
   const {message} = App.useApp();
   const [status, setStatus] = useState(null);
@@ -195,6 +195,10 @@ const HandsSettings = ({limit, onLimit}) => {
             <InputNumber min={5} step={10} value={limit} onChange={(value) => onLimit(value ?? 60)} />
           </label>
         </div>
+        <label className={styles.mcpRow}>
+          <Switch size="small" checked={extended} onChange={onExtended} />
+          <span>{t('agentHandsExtended')}</span>
+        </label>
         <span className={styles.profileHint}>{t('agentHandsHint')}</span>
       </div>
     </section>
@@ -374,7 +378,12 @@ const AgentSettings = () => {
         </div>
       </section>
 
-      <HandsSettings limit={config.handsLimit} onLimit={(handsLimit) => saveConfig({handsLimit})} />
+      <HandsSettings
+        limit={config.handsLimit}
+        onLimit={(handsLimit) => saveConfig({handsLimit})}
+        extended={!!config.handsExtended}
+        onExtended={(handsExtended) => saveConfig({handsExtended})}
+      />
 
       <section className={`${styles.card} ${styles.cardOpen}`}>
         <div className={styles.cardBody}>

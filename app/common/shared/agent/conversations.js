@@ -50,15 +50,22 @@ export function resumeConversation(all, profileId, sessionId) {
   return {...all, [profileId]: {...profile, current: {...profile.current, [entry.key]: sessionId}}};
 }
 
-/** A conversation got a title or a new turn. */
-export function touchConversation(all, profileId, sessionId, {title, now = new Date()} = {}) {
+/** A conversation got a title, a new turn, or the hands on or off. */
+export function touchConversation(all, profileId, sessionId, {title, hands, now = new Date()} = {}) {
   const profile = profileOf(all, profileId);
   return {
     ...all,
     [profileId]: {
       ...profile,
       list: profile.list.map((one) =>
-        one.sessionId === sessionId ? {...one, title: title ?? one.title, updatedAt: new Date(now).toISOString()} : one,
+        one.sessionId === sessionId
+          ? {
+              ...one,
+              title: title ?? one.title,
+              hands: hands ?? one.hands ?? false,
+              updatedAt: new Date(now).toISOString(),
+            }
+          : one,
       ),
     },
   };

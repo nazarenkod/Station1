@@ -119,6 +119,8 @@ export const DEFAULT_SETTINGS = {
     readBudget: 40000,
     // actions on the device in one turn before the agent asks for more
     handsLimit: 60,
+    // all the tools of appium-mcp for the hands, not only those a flow needs; each costs context every turn
+    handsExtended: false,
     deepBudget: 200000,
     dailyCreditLimit: 0,
     // the model every conversation is pinned to; the newest of its family when the account lacks it

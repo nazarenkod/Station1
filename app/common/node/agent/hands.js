@@ -24,8 +24,8 @@ export const HANDS_SPEC = 'appium-mcp@1.99.1';
 const PLUGIN_FILE = 'station-hands.mjs';
 
 const INSTRUCTIONS =
-  "You act on the station's Appium session only. Attach to it first as the station says, never create or delete a session. " +
-  "See the screen with the station's screen_current (or generate_locators for locators); sign in with the station's app_login, never type a password.";
+  "You act on the station's Appium session; the station joins it for you. " +
+  "See the screen with the station's screen_current; sign in with the station's app_login, never type a password.";
 
 /**
  * @param {object} deps
@@ -41,6 +41,7 @@ const INSTRUCTIONS =
  * @param {(conversation: string) => Promise<boolean>} [deps.askMore] the limit is reached: the person says whether to go on
  * @param {(entry: object) => void} [deps.log] the station journal
  * @param {() => Promise<RegExp[]>} [deps.masks] what the station hides in what goes to the agent
+ * @param {() => Promise<boolean>} [deps.extended] all the tools of appium-mcp, not only the core ones
  */
 export function createHands(deps) {
   const conversations = new Map();
@@ -106,7 +107,7 @@ export function createHands(deps) {
       const env = {
         ELECTRON_RUN_AS_NODE: '1',
         HANDS_HOME: deps.dir,
-        HANDS_TOOLS: allowedTools(book.permissions).join(','),
+        HANDS_TOOLS: allowedTools(book.permissions, {extended: !!(await deps.extended?.())}).join(','),
         HANDS_INSTRUCTIONS: INSTRUCTIONS,
         STATION_HANDS_URL: `http://127.0.0.1:${port}/hands/${encodeURIComponent(conversation)}`,
         STATION_TOKEN: token,
@@ -165,8 +166,8 @@ export function createHands(deps) {
       if (!verdict.ok) {
         return verdict;
       }
-      // what only reads, and joining the session, is not an action on the device
-      if (!['look', 'session'].includes(group)) {
+      // what only reads is not an action on the device
+      if (group !== 'look') {
         const limit = ((await deps.limit?.()) ?? HANDS_LIMIT) + state.extra;
         if (state.count >= limit) {
           const more = (await deps.askMore?.(conversation)) ?? false;
@@ -191,8 +192,8 @@ export function createHands(deps) {
       const masks = (await deps.masks?.().catch(() => null)) ?? undefined;
       const hidden = maskText(String(text ?? ''), masks);
       // what only reads is data: it goes through the read budget of the turn, as the station's reads do
-      if (['look', 'session'].includes(group)) {
-        return {text: hidden, read: group === 'look'};
+      if (group === 'look') {
+        return {text: hidden, read: true};
       }
       const line = actionLine(tool, args, element);
       const after = await deps.ask('handsStep', {line, ok}).catch(() => null);

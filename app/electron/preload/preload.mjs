@@ -127,6 +127,7 @@ window.electronIPC = {
     onMemoryProposal: subscribe('agent:memoryProposal'),
     onGoalProposal: subscribe('agent:goalProposal'),
     handsStop: async (sessionId) => await ipcRenderer.invoke('agent:handsStop', sessionId),
+    setHands: async (sessionId, on) => await ipcRenderer.invoke('agent:setHands', sessionId, on),
     cardAnswer: async (id, answer) => await ipcRenderer.invoke('agent:cardAnswer', id, answer),
     onHandsStep: subscribe('agent:handsStep'),
     onHandsMore: subscribe('agent:handsMore'),

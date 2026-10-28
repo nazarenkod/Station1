@@ -42,6 +42,10 @@ let state = {
   // notes the agent read in the turn that runs, then by the turn's line
   usedNow: [],
   turnNotes: {},
+  // whether this conversation has the hands: off until the person asks for them
+  hands: false,
+  // the conversation is being loaded again with or without the hands
+  handsSwitching: false,
   // what the agent did on the device in the turn that runs, or the last one
   handsSteps: [],
   // cards of the hands waiting for the person: more actions, a one-time code
@@ -213,6 +217,7 @@ async function openAnew(profileId, taskKey, key) {
   publish({
     status: 'ready',
     sessionId: result.sessionId,
+    hands: !!result.hands,
     model: result.model ?? null,
     chat: chats.get(result.sessionId) ?? emptyChat(),
   });
@@ -259,6 +264,7 @@ export async function newConversation() {
   publish({
     status: 'ready',
     sessionId: result.sessionId,
+    hands: !!result.hands,
     model: result.model ?? null,
     chat: chats.get(result.sessionId) ?? emptyChat(),
   });
@@ -275,6 +281,7 @@ export async function resumeConversation(sessionId) {
   publish({
     status: 'ready',
     sessionId: result.sessionId,
+    hands: !!result.hands,
     model: result.model ?? null,
     chat: chats.get(result.sessionId) ?? emptyChat(),
   });
@@ -423,6 +430,7 @@ export function followProfile() {
       permissions: [],
       handsSteps: [],
       handsCards: [],
+      hands: false,
     });
     if (state.open) {
       openConversation();
@@ -448,10 +456,17 @@ const whenIdle = () =>
  * Opens the chat on the task's conversation and sends a message there, for
  * the buttons of the desk: right away, or as soon as the turn that runs ends.
  */
-export async function askOnTask(message, {deep = false, chips = [], topic = null} = {}) {
+export async function askOnTask(message, {deep = false, chips = [], topic = null, hands = false} = {}) {
   publish({open: true});
   await openConversation();
   await whenIdle();
+  // testing the task goes on in its own conversation, with the hands on
+  if (hands && state.sessionId && !state.hands) {
+    const problem = await setHands(true);
+    if (problem) {
+      return problem;
+    }
+  }
   // an ask with a topic of its own (fixing one check) gets a conversation of its own: the context stays small and cheap
   if (topic && topics.get(state.sessionId) !== topic) {
     await newConversation();
@@ -462,6 +477,7 @@ export async function askOnTask(message, {deep = false, chips = [], topic = null
   if (state.sessionId) {
     await sendMessage(message, chips, {deep});
   }
+  return null;
 }
 
 let proposalId = 0;
@@ -508,4 +524,22 @@ export async function stopHands() {
 export async function answerHandsCard(id, answer) {
   await backend.agent.cardAnswer(id, answer);
   publish({handsCards: state.handsCards.filter((card) => card.id !== id)});
+}
+
+/**
+ * The hands on or off in this conversation: the same conversation goes on
+ * with them or without them. Returns what went wrong, or null.
+ */
+export async function setHands(on) {
+  if (!state.sessionId || state.handsSwitching) {
+    return null;
+  }
+  publish({handsSwitching: true});
+  try {
+    const result = await backend.agent.setHands(state.sessionId, on);
+    publish(result.ok ? {hands: result.hands} : {});
+    return result.ok ? null : result.error;
+  } finally {
+    publish({handsSwitching: false});
+  }
 }

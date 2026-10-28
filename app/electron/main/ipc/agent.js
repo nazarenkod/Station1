@@ -189,6 +189,7 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
       !!(await askCard('agent:handsMore', {sessionId: service?.sessionOf(conversation)})),
     log: (entry) => stationJournal.add(entry),
     masks: async () => compileMasks(await maskPatterns()),
+    extended: async () => !!(await get(AGENT_CONFIG))?.handsExtended,
   });
 
   const tools = [
@@ -366,6 +367,7 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
   ipcMain.handle('agent:prompt', (_evt, request) => service.prompt(request));
   ipcMain.handle('agent:cancel', (_evt, sessionId) => service.cancel(sessionId));
   ipcMain.handle('agent:handsStop', (_evt, sessionId) => service.stopHands(sessionId));
+  ipcMain.handle('agent:setHands', (_evt, sessionId, on) => service.setHands({sessionId, on}));
   ipcMain.handle('hands:status', () => hands.status());
   ipcMain.handle('hands:install', () => hands.install());
 

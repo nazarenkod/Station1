@@ -117,7 +117,7 @@ export function createAgentService(deps) {
   };
 
   /** What a conversation opens: its folders and its servers, the station's own first. */
-  const sessionInputs = async (profileId, conversation, off = new Set()) => {
+  const sessionInputs = async (profileId, conversation, off = new Set(), {hands: withHands = false} = {}) => {
     await writeSteering();
     const {port, token} = await deps.mcp.start();
     const config = await setting(AGENT_CONFIG);
@@ -130,8 +130,9 @@ export function createAgentService(deps) {
       }
     }
     const code = await deps.workspace(profileId);
-    // the hands go only once installed; their tools follow the project's permissions of this moment
-    const hands = off.has('hands') ? null : await deps.hands?.server(conversation, {port, token}).catch(() => null);
+    // the hands go only when asked for (their tools cost context every turn) and once installed;
+    // their tools follow the project's permissions of this moment
+    const hands = withHands ? await deps.hands?.server(conversation, {port, token}).catch(() => null) : null;
     // the station's folder carries the instructions; with no code it is where the agent works
     const additionalDirectories = code.cwd ? [...code.additionalDirectories, deps.home] : code.additionalDirectories;
     return {
@@ -166,9 +167,13 @@ export function createAgentService(deps) {
     const taskKey = entry?.key && entry.key !== '_general' ? entry.key : null;
     // Kiro sends the conversation again as updates; the window starts it clean
     deps.send('agent:reset', {sessionId});
-    const result = await deps.kiro.loadSession({sessionId, ...(await sessionInputs(profileId, conversation))});
-    open.set(sessionId, {profileId, taskKey, conversation, model: result?.model ?? null});
-    return {sessionId, conversation, model: result?.model ?? null, fresh: false};
+    const hands = !!entry?.hands;
+    const result = await deps.kiro.loadSession({
+      sessionId,
+      ...(await sessionInputs(profileId, conversation, new Set(), {hands})),
+    });
+    open.set(sessionId, {profileId, taskKey, conversation, model: result?.model ?? null, hands});
+    return {sessionId, conversation, model: result?.model ?? null, fresh: false, hands};
   };
 
   const service = {
@@ -182,7 +187,14 @@ export function createAgentService(deps) {
         // a window opened anew has no chat yet: the conversation is loaded again to replay it
         if (sessionId && open.has(sessionId) && !replay) {
           const known = open.get(sessionId);
-          return {ok: true, sessionId, conversation: known.conversation, model: known.model ?? null, fresh: false};
+          return {
+            ok: true,
+            sessionId,
+            conversation: known.conversation,
+            model: known.model ?? null,
+            fresh: false,
+            hands: !!known.hands,
+          };
         }
         if (sessionId) {
           try {
@@ -211,7 +223,12 @@ export function createAgentService(deps) {
         return {
           ok: true,
           ...(open.has(sessionId)
-            ? {sessionId, conversation: open.get(sessionId).conversation, model: open.get(sessionId).model ?? null}
+            ? {
+                sessionId,
+                conversation: open.get(sessionId).conversation,
+                model: open.get(sessionId).model ?? null,
+                hands: !!open.get(sessionId).hands,
+              }
             : await load(profileId, sessionId)),
         };
       } catch (error) {
@@ -267,6 +284,36 @@ export function createAgentService(deps) {
 
     cancel(sessionId) {
       deps.kiro.cancel(sessionId);
+    },
+
+    /**
+     * The hands on or off in a conversation, by the person's command: Kiro
+     * loads the same conversation again with or without them, so what was
+     * said stays and the tools' descriptions cost nothing while they are off.
+     */
+    async setHands({sessionId, on}) {
+      const known = open.get(sessionId);
+      if (!known) {
+        return {ok: false, error: 'stopped'};
+      }
+      if (on && !(await deps.hands?.status())?.installed) {
+        return {ok: false, error: 'handsMissing'};
+      }
+      try {
+        deps.send('agent:reset', {sessionId});
+        const result = await deps.kiro.loadSession({
+          sessionId,
+          ...(await sessionInputs(known.profileId, known.conversation, new Set(), {hands: on})),
+        });
+        open.set(sessionId, {...known, model: result?.model ?? known.model, hands: on});
+        await deps.set(
+          AGENT_SESSIONS,
+          touchConversation(await deps.get(AGENT_SESSIONS), known.profileId, sessionId, {hands: on}),
+        );
+        return {ok: true, hands: on};
+      } catch (error) {
+        return {ok: false, error: kiroProblem(error), detail: error.message};
+      }
     },
 
     /** «Stop» on the device: no more actions in this turn, and the turn ends. */

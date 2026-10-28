@@ -10,8 +10,9 @@ export const HANDS_SERVER = 'hands';
 export const HANDS_LIMIT = 60;
 const MAX_ANSWER = 1000;
 
-// tools the agent never gets: the session and the device are the station's
+// tools the agent never gets: the session and the device are the station's (it joins the session itself)
 export const NEVER_TOOLS = new Set([
+  'appium_session_management',
   'select_device',
   'prepare_ios_simulator',
   'appium_prepare_ios_real_device',
@@ -25,7 +26,6 @@ export const NEVER_TOOLS = new Set([
 
 // the group of each tool; a map for the tools whose `action` decides it
 const TOOL_GROUPS = {
-  appium_session_management: 'session',
   appium_find_element: 'look',
   appium_find_elements: 'look',
   appium_get_text: 'look',
@@ -64,13 +64,23 @@ const TOOL_GROUPS = {
   appium_screen_recording: 'capture',
 };
 
+// what a flow needs: find, tap and swipe, type, keys, alerts, the app; their descriptions cost
+// about a third of all the tools, every turn. The rest comes with «more tools» in the settings.
+export const CORE_TOOLS = new Set([
+  'appium_find_element',
+  'appium_gesture',
+  'appium_set_value',
+  'appium_mobile_press_key',
+  'appium_mobile_keyboard',
+  'appium_alert',
+  'appium_app_lifecycle',
+  'appium_get_text',
+]);
+
 // the actions of each group, for the instructions and the settings
 export const HAND_GROUPS = ['look', 'act', 'app', 'install', 'appData', 'device', 'capture'];
 
-/**
- * The group an action is in: a group of the permissions, `session` for the
- * station's own session handling, or `never`.
- */
+/** The group an action is in: a group of the permissions, or `never`. */
 export function groupOf(tool, args = {}) {
   if (NEVER_TOOLS.has(tool)) {
     return 'never';
@@ -86,12 +96,16 @@ export function groupOf(tool, args = {}) {
   return known[args?.action] ?? known['*'] ?? 'never';
 }
 
-/** The tools the agent sees: none that is never shown, none whose every action is denied. */
-export function allowedTools(permissions) {
+/**
+ * The tools the agent sees: the core ones, or all with `extended`; never
+ * one the station keeps, nor one whose every action is denied.
+ */
+export function allowedTools(permissions, {extended = false} = {}) {
   return Object.entries(TOOL_GROUPS)
+    .filter(([tool]) => extended || CORE_TOOLS.has(tool))
     .filter(([, groups]) => {
       const all = typeof groups === 'string' ? [groups] : Object.values(groups);
-      return all.some((group) => group === 'session' || permissions?.[group] !== 'deny');
+      return all.some((group) => permissions?.[group] !== 'deny');
     })
     .map(([tool]) => tool);
 }
@@ -104,9 +118,6 @@ export function allowedTools(permissions) {
  */
 export function handsPermission(tool, args, permissions) {
   const group = groupOf(tool, args);
-  if (group === 'session') {
-    return 'allow';
-  }
   if (group === 'never') {
     return 'reject';
   }
@@ -119,9 +130,6 @@ const touchesElement = (tool, args) =>
   (tool === 'appium_gesture' && ['tap', 'double_tap', 'long_press'].includes(args?.action));
 
 const appIdOf = (args) => args?.id ?? args?.name ?? null;
-
-const attachHint = (expected) =>
-  `Call appium_session_management with action=attach, remoteServerUrl=${expected.serverUrl} and sessionId=${expected.sessionId} first; then repeat this.`;
 
 const refuse = (text) => ({ok: false, text});
 
@@ -138,7 +146,7 @@ const refuse = (text) => ({ok: false, text});
  * @param {object | null} [input.element] the element the action touches
  * @param {string | null} [input.screen] the title of the screen on the device
  * @param {string[]} [input.builds] the build files the station knows
- * @returns {{ok: true, group: string} | {ok: false, text: string}}
+ * @returns {{ok: true, group: string} | {ok: false, text: string, attach?: object}}
  */
 export function handsVerdict({
   tool,
@@ -165,21 +173,13 @@ export function handsVerdict({
   if (args.sessionId && args.sessionId !== expected.sessionId) {
     return refuse(`Work on the station's session only (sessionId ${expected.sessionId}).`);
   }
-  if (group === 'session') {
-    if (args.action === 'list') {
-      return {ok: true, group};
-    }
-    const right = args.sessionId === expected.sessionId;
-    if (args.action === 'attach' && right && args.remoteServerUrl === expected.serverUrl) {
-      return {ok: true, group};
-    }
-    if (args.action === 'select' && right) {
-      return {ok: true, group};
-    }
-    return refuse(`Only the station's session is yours. ${attachHint(expected)}`);
-  }
+  // the plugin joins the station's session itself and asks again
   if (active !== expected.sessionId) {
-    return refuse(`Not on the station's session yet. ${attachHint(expected)}`);
+    return {
+      ok: false,
+      attach: expected,
+      text: 'The station could not join its session: ask the user to start one again.',
+    };
   }
   if (playbook.permissions[group] === 'deny') {
     return refuse(`The project does not let the agent do this (${group}).`);
@@ -253,7 +253,7 @@ const FAILURES = [
   ],
   [
     /invalid session|session.*(?:terminated|not (?:found|started))|ECONNREFUSED|did not answer/i,
-    'The session is gone: ask the user to start one (Start session), then attach again.',
+    'The session is gone: ask the user to start one (Start session), then go on.',
   ],
   [/timed? ?out|timeout/i, 'The device took too long: look at the screen and try once more.'],
 ];

@@ -2,6 +2,7 @@ import {describe, expect, it} from 'vitest';
 
 import {createStationPlugin} from '../../app/common/node/agent/hands-plugin.mjs';
 import {createHands} from '../../app/common/node/agent/hands.js';
+import {createAgentService} from '../../app/common/node/agent/service.js';
 import {createStationMcp} from '../../app/common/node/agent/station-mcp.js';
 import {
   actionLine,
@@ -39,13 +40,25 @@ describe('the tools the agent gets', function () {
     expect(groupOf('appium_something_new')).toBe('never');
   });
 
-  it('never shows the session and device setup, nor a tool whose every action is denied', function () {
-    const all = allowedTools(DEFAULT_PERMISSIONS);
-    expect(all).toContain('appium_session_management');
+  it('shows the core tools of a flow, all of them on request, never the session and device setup', function () {
+    const core = allowedTools(DEFAULT_PERMISSIONS);
+    expect(core).toEqual([
+      'appium_find_element',
+      'appium_get_text',
+      'appium_gesture',
+      'appium_set_value',
+      'appium_mobile_press_key',
+      'appium_mobile_keyboard',
+      'appium_alert',
+      'appium_app_lifecycle',
+    ]);
+    const all = allowedTools(DEFAULT_PERMISSIONS, {extended: true});
     expect(all).toContain('generate_locators');
-    expect(all).not.toContain('select_device');
-    expect(all).not.toContain('appium_driver_settings');
-    const strict = allowedTools({...DEFAULT_PERMISSIONS, capture: 'deny', device: 'deny'});
+    expect(all).toContain('appium_screenshot');
+    for (const tool of ['appium_session_management', 'select_device', 'appium_driver_settings']) {
+      expect(all).not.toContain(tool);
+    }
+    const strict = allowedTools({...DEFAULT_PERMISSIONS, capture: 'deny', device: 'deny'}, {extended: true});
     expect(strict).not.toContain('appium_screenshot');
     expect(strict).not.toContain('appium_mobile_clipboard');
     // its get still reads
@@ -58,26 +71,20 @@ describe('the tools the agent gets', function () {
     expect(
       handsPermission('appium_app_lifecycle', {action: 'install'}, {...DEFAULT_PERMISSIONS, install: 'deny'}),
     ).toBe('reject');
-    expect(handsPermission('appium_session_management', {action: 'attach'}, DEFAULT_PERMISSIONS)).toBe('allow');
+    expect(handsPermission('appium_session_management', {action: 'attach'}, DEFAULT_PERMISSIONS)).toBe('reject');
     expect(handsPermission('select_device', {}, DEFAULT_PERMISSIONS)).toBe('reject');
   });
 });
 
 describe('whether an action may go', function () {
-  it('works on the station session only and says how to join it', function () {
+  it('works on the station session only, and has the plugin join it', function () {
     expect(verdict('appium_gesture', {action: 'back'}, {expected: null}).text).toMatch(/no session/i);
     const notYet = verdict('appium_gesture', {action: 'back'}, {active: null});
     expect(notYet.ok).toBe(false);
-    expect(notYet.text).toContain('remoteServerUrl=http://127.0.0.1:4723');
-    expect(notYet.text).toContain('sessionId=s1');
+    expect(notYet.attach).toEqual(expected);
     expect(
       verdict('appium_session_management', {action: 'attach', remoteServerUrl: expected.serverUrl, sessionId: 's1'}).ok,
-    ).toBe(true);
-    expect(
-      verdict('appium_session_management', {action: 'attach', remoteServerUrl: expected.serverUrl, sessionId: 's2'}).ok,
     ).toBe(false);
-    expect(verdict('appium_session_management', {action: 'create', platform: 'android'}).ok).toBe(false);
-    expect(verdict('appium_session_management', {action: 'delete', sessionId: 's1'}).ok).toBe(false);
     expect(verdict('appium_gesture', {action: 'back', sessionId: 'other'}).ok).toBe(false);
   });
 
@@ -423,5 +430,89 @@ describe('where the agent stands', function () {
       text: 'stale element reference',
     });
     expect(answer.text).toMatch(/^Not done\. The screen changed since the element was found/);
+  });
+});
+
+describe('joining the session', function () {
+  it('joins the station session itself when the station says so, then asks again', async function () {
+    let active = null;
+    const checks = [];
+    const plugin = createStationPlugin(
+      {
+        post: async (op, body) => {
+          checks.push(body.active);
+          return body.active === 's1'
+            ? {ok: true}
+            : {ok: false, attach: {serverUrl: 'http://127.0.0.1:4723', sessionId: 's1'}, text: 'no'};
+        },
+      },
+      async ({sessionId}) => {
+        active = sessionId;
+        return true;
+      },
+    );
+    const ctx = {
+      toolName: 'appium_gesture',
+      args: {action: 'back'},
+      session: {getDriver: () => null, getSessionId: () => active},
+    };
+    expect(await plugin.beforeCall(ctx)).toBeUndefined();
+    expect(checks).toEqual([null, 's1']);
+  });
+});
+
+describe('the hands only on command', function () {
+  const make = (installed = true) => {
+    const loads = [];
+    const sent = [];
+    let sessions = {
+      p1: {
+        current: {_general: 'k1'},
+        list: [{sessionId: 'k1', conversation: 'c1', key: '_general', updatedAt: '2026-10-28T00:00:00Z'}],
+      },
+    };
+    const service = createAgentService({
+      kiro: {
+        on: () => {},
+        loadSession: async (inputs) => (loads.push(inputs.mcpServers.map((server) => server.name)), {model: 'm'}),
+        newSession: async () => ({sessionId: 'k1', model: 'm'}),
+      },
+      mcp: {start: async () => ({port: 1, token: 't'}), readTools: new Set()},
+      credits: {},
+      get: async (key) => (key === 'AGENT_SESSIONS' ? sessions : null),
+      set: async (key, value) => {
+        if (key === 'AGENT_SESSIONS') {
+          sessions = value;
+        }
+      },
+      workspace: async () => ({cwd: null, additionalDirectories: []}),
+      secrets: async () => ({}),
+      home: '/tmp/station-agent-test',
+      send: (channel) => sent.push(channel),
+      ask: async () => null,
+      hands: {
+        status: async () => ({installed}),
+        server: async () => ({name: 'hands', command: 'node', args: [], env: []}),
+      },
+    });
+    return {service, loads, sent, sessions: () => sessions};
+  };
+
+  it('opens a conversation without the hands, and loads the same one with them on command', async function () {
+    const {service, loads, sessions} = make();
+    const opened = await service.open({profileId: 'p1', replay: true});
+    expect(opened.hands).toBe(false);
+    expect(loads.at(-1)).toEqual(['station']);
+    expect(await service.setHands({sessionId: 'k1', on: true})).toEqual({ok: true, hands: true});
+    expect(loads.at(-1)).toEqual(['station', 'hands']);
+    expect(sessions().p1.list[0].hands).toBe(true);
+    expect(await service.setHands({sessionId: 'k1', on: false})).toEqual({ok: true, hands: false});
+    expect(loads.at(-1)).toEqual(['station']);
+  });
+
+  it('asks to install the hands first', async function () {
+    const {service} = make(false);
+    await service.open({profileId: 'p1', replay: true});
+    expect(await service.setHands({sessionId: 'k1', on: true})).toEqual({ok: false, error: 'handsMissing'});
   });
 });

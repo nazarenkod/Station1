@@ -25,6 +25,7 @@ import {activeDevice} from '../../actions/Workstation.js';
 import {
   addProposal,
   answerPermission,
+  setHands,
   cancelTurn,
   confirmCredits,
   continueConversation,
@@ -335,6 +336,7 @@ const ContextUsage = ({context}) => {
 const AgentPanel = () => {
   const {t, i18n} = useTranslation();
   const agent = useAgent();
+  const {message} = App.useApp();
   const chips = useChips();
   // a task's conversation is named after the task
   const {current: taskKey, data: taskData} = useTask();
@@ -682,6 +684,23 @@ const AgentPanel = () => {
           <Tooltip title={t('agentDeepHint')}>
             <label className={styles.deep}>
               <Switch size="small" checked={deep} onChange={setDeep} /> {t('agentDeep')}
+            </label>
+          </Tooltip>
+          <Tooltip title={t('agentHandsSwitchHint')}>
+            <label className={styles.deep}>
+              <Switch
+                size="small"
+                checked={agent.hands}
+                loading={agent.handsSwitching}
+                disabled={busy || !agent.sessionId}
+                onChange={async (on) => {
+                  const problem = await setHands(on);
+                  if (problem) {
+                    message.warning(t(problem === 'handsMissing' ? 'agentHandsMissing' : 'agentHandsFailed'));
+                  }
+                }}
+              />{' '}
+              {t('agentHandsSwitch')}
             </label>
           </Tooltip>
           {busy ? (
