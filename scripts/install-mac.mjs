@@ -1,13 +1,13 @@
-// Builds the Mac app for this computer and installs it into /Applications
-// (or ~/Applications without administrator rights), ready to open like any
-// other app: `npm run install:mac`.
+// Builds the Mac app for this computer and installs it into the user's own
+// ~/Applications (no administrator rights, nothing in the shared /Applications),
+// ready to open like any other app: `npm run install:mac`.
 //
 // The app is signed ad hoc (no Developer ID needed): it runs on this Mac.
 // For colleagues, `npm run pack:mac` makes the DMG; docs/signing.md covers
 // signing and notarizing it with a Developer ID.
 
 import {execFileSync} from 'node:child_process';
-import {accessSync, constants, existsSync, mkdirSync, readFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -22,16 +22,9 @@ const {productName} = JSON.parse(readFileSync(path.join(root, 'electron-builder.
 const appleSilicon = execFileSync('sysctl', ['-in', 'hw.optional.arm64'], {encoding: 'utf8'}).trim() === '1';
 const arch = appleSilicon ? 'arm64' : 'x64';
 const built = path.join(root, 'release', arch === 'arm64' ? 'mac-arm64' : 'mac', `${productName}.app`);
-// /Applications needs an administrator; without one the app goes to the user's own ~/Applications
-const writable = (dir) => {
-  try {
-    accessSync(dir, constants.W_OK);
-    return true;
-  } catch {
-    return false;
-  }
-};
-const folder = writable('/Applications') ? '/Applications' : path.join(os.homedir(), 'Applications');
+// always the user's own ~/Applications: never touch the shared /Applications, which belongs to
+// group admin and would then need administrator rights to remove the dev build again
+const folder = path.join(os.homedir(), 'Applications');
 mkdirSync(folder, {recursive: true});
 const installed = path.join(folder, `${productName}.app`);
 
