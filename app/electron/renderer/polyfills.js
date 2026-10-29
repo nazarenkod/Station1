@@ -63,6 +63,9 @@ const backend = {
   get source() {
     return window.electronIPC.source;
   },
+  get autotests() {
+    return window.electronIPC.autotests;
+  },
   get agent() {
     return window.electronIPC.agent;
   },

@@ -21,6 +21,7 @@ import {useScreenRecorder} from '../A11yTool/screen-recorder.js';
 import AgentPanel from '../Agent/AgentPanel.jsx';
 import {attachAppData, selectTarget} from '../AppData/app-data-store.js';
 import {PageTransition} from '../AppShell/motion.jsx';
+import AutotestsSummary from '../Autotests/AutotestsSummary.jsx';
 import {startPipelineWatches} from '../Builds/pipeline-watch.js';
 import {loadDoctor} from '../Desk/doctor-store.js';
 import GoalForm from '../Goals/GoalForm.jsx';
@@ -311,6 +312,7 @@ const Workstation = () => {
       </div>
       <AgentFollower />
       <GoalForm />
+      <AutotestsSummary />
       <SessionKeepAlive />
       <LogsFollower />
       <AppDataFollower />

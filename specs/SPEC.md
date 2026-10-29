@@ -167,8 +167,8 @@
 | Інспектор: екран, дерево, локатори, стеження за пристроєм, екрани сесії | [inspector.screen](inspector.screen/spec.md) | implemented |
 | Швидке стеження, шлях сесії, стани екранів | [inspector.flow](inspector.flow/spec.md) | implemented |
 | Вбудований Appium | [session.appium](session.appium/spec.md) | implemented |
-| Репозиторій автотестів у проєкті: правила screen object і приклади, лише читання | [project.autotests](project.autotests/spec.md) | draft |
-| Screen object з екранів сесії: підсумок, вибір і об'єднання станів, пакети в проєкті, код на Kotlin за правилами команди | [autotests.screen-objects](autotests.screen-objects/spec.md) | draft |
+| Репозиторій автотестів у проєкті: правила screen object і приклади, лише читання | [project.autotests](project.autotests/spec.md) | implemented |
+| Screen object з екранів сесії: підсумок, вибір і об'єднання станів, пакети в проєкті, код на Kotlin за правилами команди | [autotests.screen-objects](autotests.screen-objects/spec.md) | implemented |
 
 Заплановано (спек немає):
 
@@ -246,7 +246,7 @@
 | Частина | Спека | Стан |
 |---|---|---|
 | CLI, MCP-сервер, доктор середовища | [access.cli-mcp](access.cli-mcp/spec.md) | implemented, частково |
-| Зовнішні агенти: агент тестів забирає пакети screen object через MCP станції | [access.external-agents](access.external-agents/spec.md) | draft |
+| Зовнішні агенти: агент тестів забирає пакети screen object через MCP станції | [access.external-agents](access.external-agents/spec.md) | implemented |
 
 Заплановано: локальний API ядра, з якого живляться UI, CLI й MCP (MVP за документом); headless-режим для CI, плагін до TestNG/JUnit — v1.
 
@@ -295,7 +295,7 @@
 5. **Злиття.** `spec.md`, `design.md`, код і тести — одним комітом. Статус `implemented`, таблиця розділу тут оновлена, `tasks.md` видалено.
 6. **Еволюція.** Зміна поведінки змінює `spec.md`, зміна реалізації — `design.md`, у тому самому коміті.
 
-**Борг тестів зараз:** 47 критеріїв без тесту, переважно інтерфейс (station.shell, project.platforms, project.dependencies, station.debug-log, settings.integrations), налаштування пристрою під проксі (proxy.device-setup) й встановлення на Mac (dist.mac).
+**Борг тестів зараз:** 51 критерій без тесту, переважно інтерфейс (station.shell, project.platforms, project.dependencies, station.debug-log, settings.integrations, autotests.screen-objects), налаштування пристрою під проксі (proxy.device-setup) й встановлення на Mac (dist.mac).
 
 <a id="agent"></a>
 

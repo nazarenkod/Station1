@@ -84,6 +84,7 @@ describe('export', () => {
       'appData',
       'perf',
       'playbook',
+      'autotests',
     ]);
   });
 
@@ -421,6 +422,33 @@ describe('the station settings and their backups', () => {
     expect(store.map.get(SOURCE_PATHS)[copy.id]).toBeUndefined();
     const text = await settings.exportText({kind: 'all'});
     expect(text).not.toContain('/code/');
+  });
+
+  it('keeps the autotests folder of a project on this Mac only, for a copy too, and forgets it with the project', async () => {
+    const {settings} = make();
+    const id = (await settings.profiles()).activeId;
+    const removed = [];
+    settings.onProfileRemoved((profileId) => removed.push(profileId));
+    await settings.setAutotestsPath(id, '/code/autotests');
+    await settings.applyImport(
+      JSON.stringify({
+        format: SETTINGS_FORMAT,
+        version: 1,
+        kind: 'profile',
+        profiles: [{name: 'Мій проєкт', groups: {autotests: {rules: 'docs/so.md', examples: '../x'}}}],
+      }),
+      {profiles: [{index: 0, mode: 'replace', groups: ['autotests']}]},
+    );
+    const text = await settings.exportText({kind: 'all'});
+    expect(text).toContain('docs/so.md');
+    expect(text).not.toContain('/code/autotests');
+
+    const copy = await settings.addProfile('Копія', {copy: true});
+    expect(await settings.autotestsPath(copy.id)).toBe('/code/autotests');
+    await settings.removeProfile(copy.id);
+    expect(await settings.autotestsPath(copy.id)).toBeNull();
+    expect(await settings.autotestsPath(id)).toBe('/code/autotests');
+    expect(removed).toEqual([copy.id]);
   });
 
   it('makes the first profile once and switches profiles through the store', async () => {

@@ -46,7 +46,9 @@ Usage:
       --fail-on <level>      high (default), medium, low, info or none
 
   vision-inspector mcp
-      Runs as an MCP server on stdio (for Kiro CLI and other agents).
+      Runs as an MCP server on stdio (for Kiro CLI and other agents). With the
+      station running and «External agents» on, it also gives the packages of
+      screen objects saved there (STATION_DATA_DIR: the station's data folder).
 `;
 
 const readJson = async (file) => (file ? JSON.parse(await readFile(file, 'utf8')) : null);

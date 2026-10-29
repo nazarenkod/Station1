@@ -1,0 +1,229 @@
+/* the summary for autotests and the packages of a project */
+.drawerTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--ant-color-text-secondary);
+  font-size: var(--vi-text-sm);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.footer .hint {
+  margin-right: auto;
+}
+
+.mergeBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--vi-radius-md);
+  background: var(--vi-accent-bg);
+  color: var(--vi-accent-fg);
+  font-size: var(--vi-text-sm);
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.screenTitle {
+  margin: 0;
+  font-size: var(--vi-text-sm);
+  font-weight: 600;
+}
+
+.unit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--vi-border);
+  border-radius: var(--vi-radius-md);
+}
+
+.unitChosen {
+  border-color: var(--ant-color-primary);
+}
+
+.unitThumbs {
+  display: flex;
+  gap: 4px;
+}
+
+.thumb {
+  width: 36px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--vi-radius-sm);
+  border: 1px solid var(--vi-hairline);
+  background: var(--ant-color-fill-tertiary);
+}
+
+.unitText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.unitStates {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--vi-text-sm);
+}
+
+.mono {
+  font-family: var(--vi-font-mono);
+}
+
+/* the packages of a project */
+.packages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.package {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--vi-border);
+  border-radius: var(--vi-radius-md);
+}
+
+.packageText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.packageName {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.packageMeta {
+  color: var(--ant-color-text-secondary);
+  font-size: var(--vi-text-xs);
+}
+
+/* one package open: its screen objects on the left, the chosen one on the right */
+.packageView {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
+  min-height: 420px;
+}
+
+.objects {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.object {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--vi-radius-sm);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.object:hover {
+  background: var(--vi-hover);
+}
+
+.objectShown {
+  border-color: var(--ant-color-primary);
+}
+
+.objectMain {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.objectHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.shots {
+  display: flex;
+  gap: 8px;
+}
+
+.shot {
+  max-height: 180px;
+  border-radius: var(--vi-radius-sm);
+  border: 1px solid var(--vi-hairline);
+}
+
+.code {
+  margin: 0;
+  padding: 12px;
+  max-height: 46vh;
+  overflow: auto;
+  border-radius: var(--vi-radius-md);
+  background: var(--ant-color-fill-quaternary);
+  font-family: var(--vi-font-mono);
+  font-size: var(--vi-text-xs);
+  white-space: pre;
+}
+
+.nameField {
+  max-width: 320px;
+}
+
+.fieldLabel {
+  flex: 0 0 180px;
+  color: var(--ant-color-text-secondary);
+  font-size: var(--vi-text-sm);
+}
+
+.pathRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pathRow :global(.ant-input) {
+  flex: 1;
+}

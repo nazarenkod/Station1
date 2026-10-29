@@ -16,6 +16,7 @@ import {AGENT_CONFIG, AGENT_CONSENT, AGENT_PROJECT, DEFAULT_SETTINGS} from '../.
 import {refreshCredits, useAgent} from '../../lib/agent/agent-store.js';
 import {useProfiles} from '../../lib/settings/profiles-store.js';
 import {backend, getSetting, setSetting} from '../../polyfills.js';
+import ExternalAgentsSettings from '../Autotests/ExternalAgentsSettings.jsx';
 import MemorySettings from './MemorySettings.jsx';
 
 import styles from './SettingsPage.module.css';
@@ -384,6 +385,8 @@ const AgentSettings = () => {
         extended={!!config.handsExtended}
         onExtended={(handsExtended) => saveConfig({handsExtended})}
       />
+
+      <ExternalAgentsSettings />
 
       <section className={`${styles.card} ${styles.cardOpen}`}>
         <div className={styles.cardBody}>

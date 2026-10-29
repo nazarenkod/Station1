@@ -2,10 +2,11 @@ import {Checkbox, Modal} from 'antd';
 import dayjs from 'dayjs';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {useDispatch, useSelector} from 'react-redux';
+import {useDispatch, useSelector, useStore} from 'react-redux';
 
 import {A11Y_SCAN_CLEARED} from '../../actions/A11y.js';
 import {SET_BUILD} from '../../actions/Builds.js';
+import {offerSummary, summaryContext} from '../../lib/autotests/summary-store.js';
 import {newGoalRun} from '../../lib/goals/goals-store.js';
 import {clearScreenHistory} from '../A11yTool/screen-history.js';
 import {clearLogs, useLogs} from '../Logs/logs-store.js';
@@ -22,6 +23,7 @@ import styles from './Desk.module.css';
 const NewTestDialog = ({open, onClose, onDone}) => {
   const {t} = useTranslation();
   const dispatch = useDispatch();
+  const store = useStore();
   const proxy = useProxy();
   const logs = useLogs();
   const perf = usePerf();
@@ -63,6 +65,8 @@ const NewTestDialog = ({open, onClose, onDone}) => {
     }
     if (picked.audit) {
       dispatch({type: A11Y_SCAN_CLEARED});
+      // the screens of the test that ends go to the summary for autotests first
+      offerSummary(summaryContext(store.getState()));
       clearScreenHistory();
     }
     if (picked.build && build.status !== 'idle') {

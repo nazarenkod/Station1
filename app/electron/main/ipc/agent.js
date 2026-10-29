@@ -94,9 +94,10 @@ async function kiroBinary() {
 
 /**
  * The station's agent: Kiro over ACP, the station's MCP server with its
- * tools, the journal of the agent's changes and the credits ledger.
+ * tools, the journal of the agent's changes and the credits ledger. The
+ * server also serves what agents outside the station may read (`external`).
  */
-export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
+export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData, external = null}) {
   const home = path.join(app.getPath('userData'), 'agent', 'workspace');
   const get = (key) => settings.get(key);
   const set = (key, value) => settings.set(key, value);
@@ -260,6 +261,7 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
     onEvent: (conversation, event) =>
       broadcast('agent:budget', {sessionId: service?.sessionOf(conversation), conversation, ...event}),
     hands: {check: hands.check, done: hands.done},
+    external,
   });
 
   // the person's answer to a permission card
@@ -454,4 +456,6 @@ export function setupAgentIPC({station, proxy, logs, tasks, doctor, appData}) {
     kiro.stop();
     mcp.stop();
   });
+
+  return {service, mcp};
 }

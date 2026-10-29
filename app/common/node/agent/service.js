@@ -57,17 +57,25 @@ export function createAgentService(deps) {
   // what each session's tool calls asked for, so a permission card can say what will change
   const toolInputs = new Map();
   const turns = new Map();
+  // one-off conversations the station runs by itself (screen objects): their answer, not a chat
+  const quiet = new Map();
 
   deps.kiro.on('exit', () => open.clear());
 
   deps.kiro.on('update', async (sessionId, update) => {
-    deps.send('agent:update', {sessionId, update});
+    const own = quiet.get(sessionId);
+    if (own && update?.sessionUpdate === 'agent_message_chunk' && update.content?.type === 'text') {
+      own.chunks.push(update.content.text ?? '');
+    }
+    if (!own) {
+      deps.send('agent:update', {sessionId, update});
+    }
     if (update?.sessionUpdate === 'tool_call' && update.rawInput) {
       toolInputs.set(update.toolCallId, update.rawInput.arguments ?? update.rawInput);
     }
     const kiro = update?._meta?.kiro;
     if (update?.sessionUpdate === 'session_info_update' && kiro?.kind === 'turn_completion' && !kiro.replay) {
-      const known = open.get(sessionId) ?? findConversation(await deps.get(AGENT_SESSIONS), sessionId);
+      const known = open.get(sessionId) ?? own ?? findConversation(await deps.get(AGENT_SESSIONS), sessionId);
       const credits = turnCredits(kiro.promptTurnSummaries);
       await deps.credits.add({
         profileId: known?.profileId,
@@ -290,6 +298,42 @@ export function createAgentService(deps) {
     },
 
     /**
+     * A one-off answer, not a chat: a new conversation in `cwd` with no
+     * servers of the station, one message, its text back. It may read the
+     * folder; anything that would need the person is refused. The same
+     * consent and credit threshold as the chat.
+     * @returns {Promise<{ok: true, text: string} | {ok: false, error: string, detail?: string}>}
+     */
+    async generate({profileId, cwd, prompt, confirmCredits = false}) {
+      const consent = await setting(AGENT_CONSENT);
+      if (!consent.profiles?.[profileId]) {
+        return {ok: false, error: 'consent'};
+      }
+      const config = await setting(AGENT_CONFIG);
+      const spentToday = (await deps.credits.summary()).today;
+      if (needsConfirm({spentToday, limit: config.dailyCreditLimit, confirmedDay: consent.confirmedDay})) {
+        if (!confirmCredits) {
+          return {ok: false, error: 'creditLimit', detail: String(spentToday)};
+        }
+        await deps.set(AGENT_CONSENT, {...consent, confirmedDay: todayOf(new Date())});
+      }
+      try {
+        const session = await deps.kiro.newSession({
+          cwd,
+          additionalDirectories: [],
+          mcpServers: [],
+          model: config.model,
+        });
+        const own = {profileId, taskKey: null, conversation: null, chunks: []};
+        quiet.set(session.sessionId, own);
+        const result = await deps.kiro.prompt(session.sessionId, [{type: 'text', text: prompt}]);
+        return {ok: true, text: own.chunks.join(''), stopReason: result?.stopReason ?? 'end_turn'};
+      } catch (error) {
+        return {ok: false, error: kiroProblem(error), detail: error.message};
+      }
+    },
+
+    /**
      * The hands on or off in a conversation, by the person's command: Kiro
      * loads the same conversation again with or without them, so what was
      * said stays and the tools' descriptions cost nothing while they are off.
@@ -364,6 +408,16 @@ export function createAgentService(deps) {
      */
     async permission(request) {
       const input = toolInputs.get(request.toolCall?.toolCallId) ?? null;
+      // no one watches a one-off conversation: what it may not do by itself it does not do
+      if (quiet.has(request.sessionId)) {
+        const decision = decidePermission(request, {readTools: new Set(), input});
+        const refuse = (request.options ?? []).find((option) => option.kind === 'reject_once');
+        return decision.action === 'allow'
+          ? {optionId: decision.optionId}
+          : refuse
+            ? {optionId: refuse.optionId}
+            : null;
+      }
       const decision = decidePermission(request, {
         readTools: deps.mcp.readTools,
         handsGroups: deps.mcp.handsGroups,

@@ -1,7 +1,7 @@
 import {mkdir, readdir, readFile, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
-import {PROFILES, SOURCE_PATHS} from '../../shared/setting-defs.js';
+import {AUTOTESTS_PATHS, PROFILES, SOURCE_PATHS} from '../../shared/setting-defs.js';
 import {GROUP_KEYS} from '../../shared/settings/groups.js';
 import {
   addProfile,
@@ -107,6 +107,9 @@ export function createStationSettings({
     return paths;
   };
 
+  // what else keeps something per profile (the packages of screen objects) forgets it with the profile
+  const removedListeners = new Set();
+
   // ---- backups
 
   const listBackups = async () => {
@@ -183,6 +186,10 @@ export function createStationSettings({
         await writePaths((paths) => {
           paths[profile.id] = structuredClone(paths[profiles.activeId] ?? {});
         });
+        const autotests = (await store.get(AUTOTESTS_PATHS)) ?? {};
+        if (autotests[profiles.activeId]) {
+          await store.set(AUTOTESTS_PATHS, {...autotests, [profile.id]: autotests[profiles.activeId]});
+        }
       }
       return {...(await save(next)), id: profile.id};
     },
@@ -236,7 +243,33 @@ export function createStationSettings({
       await writePaths((paths) => {
         delete paths[id];
       });
-      return await save(result.profiles, result.patch);
+      const autotests = {...(await store.get(AUTOTESTS_PATHS))};
+      delete autotests[id];
+      await store.set(AUTOTESTS_PATHS, autotests);
+      const saved = await save(result.profiles, result.patch);
+      await Promise.all([...removedListeners].map((listener) => Promise.resolve(listener(id)).catch(() => null)));
+      return saved;
+    },
+
+    /** Calls `listener(profileId)` after a profile is deleted. */
+    onProfileRemoved(listener) {
+      removedListeners.add(listener);
+    },
+
+    async autotestsPath(profileId) {
+      return ((await store.get(AUTOTESTS_PATHS)) ?? {})[profileId] ?? null;
+    },
+
+    /** The folder of a profile's autotests repository on this Mac; null forgets it. */
+    async setAutotestsPath(profileId, folder) {
+      const paths = {...(await store.get(AUTOTESTS_PATHS))};
+      if (folder) {
+        paths[profileId] = folder;
+      } else {
+        delete paths[profileId];
+      }
+      await store.set(AUTOTESTS_PATHS, paths);
+      return paths[profileId] ?? null;
     },
 
     async profileForApp(appId) {

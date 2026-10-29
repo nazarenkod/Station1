@@ -107,7 +107,19 @@ export class KiroAgent extends EventEmitter {
       },
       clientInfo: {name: 'station', version: '1'},
     });
-    const result = await withTimeout(Promise.race([hello, failed]), INIT_TIMEOUT_MS, 'Kiro did not answer in time');
+    let result;
+    try {
+      result = await withTimeout(Promise.race([hello, failed]), INIT_TIMEOUT_MS, 'Kiro did not answer in time');
+    } catch (error) {
+      // a process that never started (Kiro not installed yet) is not the one to talk to next time
+      client.close(error.message);
+      child.kill?.();
+      if (this.client === client) {
+        this.client = null;
+        this.child = null;
+      }
+      throw error;
+    }
     this.info = {
       protocolVersion: result?.protocolVersion,
       extensions: new Set(result?.agentCapabilities?._meta?.kiro?.extensionMethods ?? []),

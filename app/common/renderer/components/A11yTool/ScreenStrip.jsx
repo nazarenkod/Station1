@@ -1,10 +1,11 @@
-import {IconArrowNarrowRight, IconEye, IconHistory, IconStack2} from '@tabler/icons-react';
+import {IconArrowNarrowRight, IconEye, IconFileCode, IconHistory, IconStack2} from '@tabler/icons-react';
 import {Alert, Button, Switch, Tooltip} from 'antd';
 import {useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {useDispatch} from 'react-redux';
+import {useDispatch, useStore} from 'react-redux';
 
 import {refreshA11yScreen, showStoredA11yScreen} from '../../actions/A11y.js';
+import {openSummary, summaryContext} from '../../lib/autotests/summary-store.js';
 import {stopViewing, useScreenHistory, viewScreen} from './screen-history.js';
 
 import styles from './ScreenStrip.module.css';
@@ -25,6 +26,7 @@ const lastState = (screen) =>
 const ScreenStrip = ({follow, onFollowChange, follower}) => {
   const {t} = useTranslation();
   const dispatch = useDispatch();
+  const store = useStore();
   const {screens, path, pathDropped, currentKey, currentStateId, viewingKey, viewingStateId} = useScreenHistory();
   const [expandedKey, setExpandedKey] = useState(null);
   const byKey = new Map(screens.map((screen) => [screen.key, screen]));
@@ -84,6 +86,17 @@ const ScreenStrip = ({follow, onFollowChange, follower}) => {
           {t('a11ySessionScreens')}
           <span className={styles.stripCount}>{screens.length}</span>
         </span>
+        <Tooltip title={t('autotestsOpenHint')}>
+          <Button
+            size="small"
+            type="text"
+            icon={<IconFileCode size={14} />}
+            disabled={!screens.some((screen) => screen.named)}
+            onClick={() => openSummary(summaryContext(store.getState()))}
+          >
+            {t('autotestsOpen')}
+          </Button>
+        </Tooltip>
       </div>
 
       {screens.length === 0 ? (

@@ -8,6 +8,7 @@ import {isDev, setupIPCListeners} from './helpers.js';
 import {setupAgentIPC} from './ipc/agent.js';
 import {setupAiIPC} from './ipc/ai.js';
 import {setupAppDataIPC} from './ipc/app-data.js';
+import {setupAutotestsIPC} from './ipc/autotests.js';
 import {setupBuildsIPC} from './ipc/builds.js';
 import {setupDeviceIPC} from './ipc/device.js';
 import {setupDoctorIPC} from './ipc/doctor.js';
@@ -65,6 +66,7 @@ app.on('ready', async () => {
   const station = setupSettingsIPC();
   setupSourceIPC(station);
   const tasks = setupTaskIPC({station});
-  setupAgentIPC({station, proxy, logs, tasks, doctor, appData});
+  const autotests = setupAutotestsIPC({station});
+  autotests.attach(setupAgentIPC({station, proxy, logs, tasks, doctor, appData, external: autotests.external}));
   await setupMainWindow();
 });

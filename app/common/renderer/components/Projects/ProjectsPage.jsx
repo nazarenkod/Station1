@@ -14,6 +14,8 @@ import {
   switchProfile,
   useProfiles,
 } from '../../lib/settings/profiles-store.js';
+import {backend} from '../../polyfills.js';
+import AutotestsSettings from '../Autotests/AutotestsSettings.jsx';
 import PlaybookSettings from '../Settings/PlaybookSettings.jsx';
 import ProjectPlatforms, {PLATFORM_ICONS} from '../Settings/ProjectPlatforms.jsx';
 import {ExportDialog} from '../Settings/StationTransfer.jsx';
@@ -125,6 +127,8 @@ const ProjectView = ({profile, active, onlyOne, focus}) => {
       )}
       {/* the playbook follows the project that is on */}
       {active && <PlaybookSettings />}
+      {/* the autotests' rules are live settings of the project that is on, as the playbook */}
+      {active && backend?.autotests && <AutotestsSettings focused={focus?.field === 'autotests'} />}
       <NameDialog
         open={!!naming}
         title={naming === 'copy' ? t('projectsCopy') : t('settingsProfileRename')}

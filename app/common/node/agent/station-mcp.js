@@ -53,9 +53,15 @@ const readJson = (request) =>
  * @param {object[]} options.tools
  * @param {(conversation: string, event: object) => void} [options.onEvent] a read that hit the budget, a change
  * @param {Record<string, (conversation: string, body: object) => Promise<object>>} [options.hands] what the plugin of the hands asks: `check`, `done`
+ * @param {object} [options.external] what agents outside the station may read, with a token of their own
+ * @param {Record<string, (args: object) => Promise<{text: string, images?: object[]}>>} options.external.tools
+ * @param {() => Promise<boolean>} options.external.allowed whether the person turned access on
+ * @param {(tool: string, args: object) => void} [options.external.onAccess]
  */
-export function createStationMcp({tools, onEvent = () => {}, hands = {}}) {
+export function createStationMcp({tools, onEvent = () => {}, hands = {}, external = null}) {
   const token = randomBytes(24).toString('hex');
+  // an external agent never gets the token of the station's own agent, nor its tools
+  const externalToken = randomBytes(24).toString('hex');
   const conversations = new Map();
   let server = null;
   let port = null;
@@ -117,7 +123,34 @@ export function createStationMcp({tools, onEvent = () => {}, hands = {}}) {
     response.writeHead(200, {'content-type': 'application/json'}).end(JSON.stringify(answer ?? {}));
   };
 
+  // an agent outside the station: a tool by name, JSON in and out
+  const handleExternal = async (request, response, name) => {
+    if (!external || !sameToken(request.headers.authorization, externalToken) || !(await external.allowed())) {
+      response.writeHead(403).end();
+      return;
+    }
+    if (request.method !== 'POST' || !Object.hasOwn(external.tools, name)) {
+      response.writeHead(404).end();
+      return;
+    }
+    const args = await readJson(request);
+    external.onAccess?.(name, args);
+    try {
+      const answer = await external.tools[name](args);
+      response.writeHead(200, {'content-type': 'application/json'}).end(JSON.stringify({ok: true, ...answer}));
+    } catch (error) {
+      response
+        .writeHead(200, {'content-type': 'application/json'})
+        .end(JSON.stringify({ok: false, text: `The station could not do it: ${error.message}`}));
+    }
+  };
+
   const handle = async (request, response) => {
+    const externalMatch = /^\/external\/(\w+)$/.exec(request.url ?? '');
+    if (externalMatch) {
+      await handleExternal(request, response, externalMatch[1]);
+      return;
+    }
     const handsMatch = /^\/hands\/([^/?#]+)\/(\w+)$/.exec(request.url ?? '');
     const match = /^\/mcp\/([^/?#]+)/.exec(request.url ?? '');
     if (!match && !handsMatch) {
@@ -146,6 +179,7 @@ export function createStationMcp({tools, onEvent = () => {}, hands = {}}) {
 
   return {
     token,
+    externalToken,
     get port() {
       return port;
     },

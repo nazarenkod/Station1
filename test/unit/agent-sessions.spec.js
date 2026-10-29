@@ -242,4 +242,45 @@ describe('the agent service', () => {
     expect(summary).toHaveLength(1);
     expect(summary[0][1].today).toBeCloseTo(0.06);
   });
+
+  it('writes screen objects in a one-off conversation in the autotests repository, its answer kept apart from the chat', async () => {
+    expect(await service.generate({profileId: 'p1', cwd: '/code/autotests', prompt: 'код'})).toEqual({
+      ok: false,
+      error: 'consent',
+    });
+    await service.consent('p1');
+    kiro.prompt = async (sessionId, prompt) => {
+      kiro.calls.push(['prompt', {sessionId, prompt}]);
+      kiro.emit('update', sessionId, {
+        sessionUpdate: 'agent_message_chunk',
+        content: {type: 'text', text: '=== A ==='},
+      });
+      kiro.emit('update', sessionId, {
+        sessionUpdate: 'agent_message_chunk',
+        content: {type: 'text', text: '\nclass A'},
+      });
+      return {stopReason: 'end_turn'};
+    };
+    const result = await service.generate({profileId: 'p1', cwd: '/code/autotests', prompt: 'код'});
+    expect(result).toMatchObject({ok: true, text: '=== A ===\nclass A'});
+    const [, params] = kiro.calls.find(([kind]) => kind === 'new');
+    expect(params).toMatchObject({cwd: '/code/autotests', additionalDirectories: [], mcpServers: []});
+    expect(sent.filter(([channel]) => channel === 'agent:update')).toEqual([]);
+  });
+
+  it('lets a one-off conversation read, and refuses for it what would need the person', async () => {
+    await service.consent('p1');
+    await service.generate({profileId: 'p1', cwd: '/code/autotests', prompt: 'код'});
+    const sessionId = kiro.calls.find(([kind]) => kind === 'prompt')[1].sessionId;
+    const options = [
+      {optionId: 'yes', kind: 'allow_once'},
+      {optionId: 'no', kind: 'reject_once'},
+    ];
+    const read = {sessionId, options, toolCall: {kind: 'read'}};
+    const write = {sessionId, options, toolCall: {kind: 'edit'}};
+    const other = {sessionId, options, toolCall: {kind: 'other'}};
+    expect(await service.permission(read)).toEqual({optionId: 'yes'});
+    expect(await service.permission(write)).toEqual({optionId: 'no'});
+    expect(await service.permission(other)).toEqual({optionId: 'no'});
+  });
 });

@@ -4,11 +4,13 @@ import {z} from 'zod';
 
 import {auditScreen, captureSession} from '../common/node/a11y/audit.js';
 import {t, toJson} from '../common/node/a11y/formats.js';
+import {callStation, stationDataDir} from '../common/node/autotests/external.js';
 import {listDevices} from '../common/node/doctor/devices.js';
 import {checkEnvironment} from '../common/node/doctor/environment.js';
 import {scanServers} from '../common/node/doctor/servers.js';
 import {DEFAULT_A11Y_CONFIG} from '../common/renderer/lib/a11y/config';
 import {A11Y_RULES} from '../common/renderer/lib/a11y/types';
+import {EXTERNAL_TOOLS} from '../common/shared/autotests/external-tools.js';
 import {PRODUCT_NAME} from '../common/shared/product.js';
 
 const text = (value) => ({
@@ -18,6 +20,8 @@ const text = (value) => ({
 /**
  * The station's checks for agents (Kiro CLI, Claude Code…). Driving the
  * app is left to the official appium-mcp; these tools look at what it shows.
+ * The test agent also reads the packages of screen objects of the running
+ * station through it.
  */
 export async function startMcpServer() {
   const server = new McpServer({name: 'vision-inspector', version: '1.0.0'});
@@ -84,6 +88,24 @@ export async function startMcpServer() {
         })),
       ),
   );
+
+  // the running station's packages of screen objects, for the test agent; the station answers, this only passes on
+  for (const tool of EXTERNAL_TOOLS) {
+    server.registerTool(
+      tool.name,
+      {title: tool.title, description: tool.description, inputSchema: tool.input(z), annotations: {readOnlyHint: true}},
+      async (args) => {
+        const answer = await callStation(stationDataDir(), tool.name, args);
+        return {
+          content: [
+            {type: 'text', text: answer.text},
+            ...(answer.images ?? []).map((image) => ({type: 'image', data: image.data, mimeType: image.mimeType})),
+          ],
+          isError: !answer.ok,
+        };
+      },
+    );
+  }
 
   await server.connect(new StdioServerTransport());
 }

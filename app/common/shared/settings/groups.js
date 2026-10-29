@@ -1,4 +1,5 @@
 import {cleanPlaybook} from '../agent/playbook.js';
+import {cleanAutotestsConfig} from '../autotests/config.js';
 import {
   A11Y_CONFIG,
   A11Y_ISSUE_STATES,
@@ -7,6 +8,7 @@ import {
   AI_CONFIG,
   APP_DATA_PINS,
   APP_PLAYBOOK,
+  AUTOTESTS_CONFIG,
   BUILD_JOBS,
   DEFAULT_SETTINGS,
   GITLAB_CONFIG,
@@ -45,6 +47,7 @@ export const GROUP_KEYS = [
   AI_CONFIG,
   APP_DATA_PINS,
   APP_PLAYBOOK,
+  AUTOTESTS_CONFIG,
   BUILD_JOBS,
   GITLAB_CONFIG,
   IMPORTANT_SOURCE_ATTRIBUTES,
@@ -118,6 +121,7 @@ export const PROFILE_GROUPS = [
   'appData',
   'perf',
   'playbook',
+  'autotests',
 ];
 export const STATION_GROUPS = ['general', 'integrations', 'devices', 'inspector', 'agentStation'];
 
@@ -224,6 +228,13 @@ export const GROUPS = {
     read: (all) => cleanPlaybook(get(all, APP_PLAYBOOK)),
     write: (value) => ({[APP_PLAYBOOK]: cleanPlaybook(value)}),
     valid: (value) => isObject(value) && isList(value.accounts) && isList(value.forbidden),
+  },
+  autotests: {
+    scope: 'profile',
+    // paths inside the autotests repository; its folder on this Mac is never here
+    read: (all) => cleanAutotestsConfig(get(all, AUTOTESTS_CONFIG)),
+    write: (value) => ({[AUTOTESTS_CONFIG]: cleanAutotestsConfig(value)}),
+    valid: (value) => isObject(value) && isText(value.rules) && isText(value.examples),
   },
   general: {
     scope: 'station',

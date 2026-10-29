@@ -69,6 +69,12 @@ export const APP_DATA_PINS = 'APP_DATA_PINS';
 export const PERF_CONFIG = 'PERF_CONFIG';
 // the app's playbook: accounts by name and purpose, the sign-in, the agent's permissions, what it must not touch, the reset; goes with the profile, the logins and passwords stay in the keychain
 export const APP_PLAYBOOK = 'APP_PLAYBOOK';
+// the project's autotests: where the rules of screen objects and the examples are in its repository; goes with the profile
+export const AUTOTESTS_CONFIG = 'AUTOTESTS_CONFIG';
+// the folder of each profile's autotests repository on this Mac, by profile; never exported
+export const AUTOTESTS_PATHS = 'AUTOTESTS_PATHS';
+// whether agents outside the station (the test agent) may read the packages of screen objects, and when one last did; never exported
+export const EXTERNAL_AGENTS = 'EXTERNAL_AGENTS';
 
 // Attributes which are listed in the source by default
 export const IMPORTANT_SOURCE_ATTRS = [
@@ -136,4 +142,8 @@ export const DEFAULT_SETTINGS = {
   [PERF_CONFIG]: {},
   // the defaults in place are in shared/agent/playbook.js (cleanPlaybook)
   [APP_PLAYBOOK]: {},
+  // the defaults in place are in shared/autotests/config.js (cleanAutotestsConfig)
+  [AUTOTESTS_CONFIG]: {},
+  [AUTOTESTS_PATHS]: {},
+  [EXTERNAL_AGENTS]: {enabled: false, lastAccess: null},
 };

@@ -5,21 +5,26 @@ import {useNavigate} from 'react-router';
 
 import * as A11yActions from '../../actions/A11y.js';
 import * as SessionInspectorActions from '../../actions/SessionInspector.js';
+import {offerSummary, summaryContext} from '../../lib/autotests/summary-store.js';
 
 /**
- * The session actions, and quitting that returns to the session builder.
+ * The session actions, and quitting that returns to the session builder;
+ * the screens of the session are offered for autotests then.
  */
 export function useInspectorActions() {
   const dispatch = useDispatch();
+  const store = useStore();
   const actions = useMemo(() => bindActionCreators({...SessionInspectorActions, ...A11yActions}, dispatch), [dispatch]);
   const navigate = useNavigate();
   const {quitSession} = actions;
   const quitSessionAndReturn = useCallback(
     async ({reason, manualQuit = true, detachOnly = false} = {}) => {
+      const context = summaryContext(store.getState());
       await quitSession({reason, manualQuit, detachOnly});
+      offerSummary(context);
       navigate('/session', {replace: true});
     },
-    [navigate, quitSession],
+    [navigate, quitSession, store],
   );
   return {actions, quitSessionAndReturn};
 }
